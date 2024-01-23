@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "ommi"
+version = "0.1.0"
+description = "An object model mapper intended to provide a consistent interface for many underlying database implementations using whatever model implementations are desired."
+authors = ["Zech Zimmerman <hi@zech.codes>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+tramp = "^0.1.0"
+
+[tool.poetry.group.dev.dependencies]
+pydantic = "^2.5.3"
+attrs = "^23.2.0"
+pytest = "^7.4.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
