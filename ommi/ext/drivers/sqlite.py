@@ -104,44 +104,55 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         return self._connected
 
     async def connect(self, config: SQLiteConfig) -> DatabaseStatus:
-        with SuppressWithCapture(Exception) as error:
+        try:
             self._db = sqlite3.connect(config.filename)
             self._connected = True
 
-        return DatabaseExceptionStatus(*error) if error else DatabaseSuccessStatus(self)
+        except Exception as exc:
+            return DatabaseExceptionStatus(exc)
+
+        else:
+            return DatabaseSuccessStatus(self)
 
     async def disconnect(self) -> DatabaseStatus:
-        with SuppressWithCapture(Exception) as error:
+        try:
             self._db.close()
             self._connected = False
 
-        return DatabaseExceptionStatus(*error) if error else DatabaseSuccessStatus(self)
+        except Exception as error:
+            return DatabaseExceptionStatus(error)
+
+        else:
+            return DatabaseSuccessStatus(self)
 
     async def add(self, *items: OmmiModel) -> DatabaseStatus:
         session = self._db.cursor()
-        with SuppressWithCapture(Exception) as error:
+        try:
             for item in items:
                 self._insert(item, session)
                 self._sync_with_last_inserted(item, session)
 
-        if error:
+        except Exception as error:
             self._db.rollback()
-            return DatabaseExceptionStatus(*error)
+            return DatabaseExceptionStatus(error)
 
-        session.close()
-        return DatabaseSuccessStatus(self)
+        else:
+            session.close()
+            return DatabaseSuccessStatus(self)
 
     async def count(
         self, *predicates: ASTGroupNode | Type[OmmiModel]
     ) -> DatabaseStatus[int]:
         ast = when(*predicates)
-        with SuppressWithCapture(Exception) as error:
+        try:
             session = self._db.cursor()
             result = self._count(ast, session)
 
-        return (
-            DatabaseExceptionStatus(*error) if error else DatabaseSuccessStatus(result)
-        )
+        except Exception as error:
+            return DatabaseExceptionStatus(error)
+
+        else:
+            return DatabaseSuccessStatus(result)
 
     async def delete(self, *items: OmmiModel) -> DatabaseStatus:
         models = {}
@@ -149,41 +160,45 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
             models.setdefault(type(item), []).append(item)
 
         session = self._db.cursor()
-        for model, items in models.items():
-            with SuppressWithCapture(Exception) as error:
+        try:
+            for model, items in models.items():
                 self._delete_rows(model, items, session)
 
-            if error:
-                self._db.rollback()
-                return DatabaseExceptionStatus(*error)
+        except Exception as error:
+            self._db.rollback()
+            return DatabaseExceptionStatus(error)
 
-        session.close()
-        return DatabaseSuccessStatus(self)
+        else:
+            session.close()
+            return DatabaseSuccessStatus(self)
 
     async def fetch(
         self, *predicates: ASTGroupNode | Type[OmmiModel]
     ) -> DatabaseStatus[list[OmmiModel]]:
         ast = when(*predicates)
-        with SuppressWithCapture(Exception) as error:
+        try:
             session = self._db.cursor()
             result = self._select(ast, session)
 
-        return (
-            DatabaseExceptionStatus(*error) if error else DatabaseSuccessStatus(result)
-        )
+        except Exception as error:
+            return DatabaseExceptionStatus(error)
 
     async def sync_schema(self, models: set[Type[OmmiModel]]) -> DatabaseStatus[Self]:
+        else:
+            return DatabaseSuccessStatus(result)
+
         session = self._db.cursor()
-        with SuppressWithCapture(Exception) as error:
             for model in models:
+        try:
                 self._create_table(model, session)
 
-        if error:
+        except Exception as error:
             self._db.rollback()
-            return DatabaseExceptionStatus(*error)
+            return DatabaseExceptionStatus(error)
 
-        session.close()
-        return DatabaseSuccessStatus(self)
+        else:
+            session.close()
+            return DatabaseSuccessStatus(self)
 
     async def update(self, *items: OmmiModel) -> DatabaseStatus[Self]:
         models = {}
@@ -191,16 +206,17 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
             models.setdefault(type(item), []).append(item)
 
         session = self._db.cursor()
-        for model, items in models.items():
-            with SuppressWithCapture(Exception) as error:
+        try:
+            for model, items in models.items():
                 self._update_rows(model, items, session)
 
-            if error:
-                self._db.rollback()
-                return DatabaseExceptionStatus(*error)
+        except Exception as error:
+            self._db.rollback()
+            return DatabaseExceptionStatus(error)
 
-        session.close()
-        return DatabaseSuccessStatus(self)
+        else:
+            session.close()
+            return DatabaseSuccessStatus(self)
 
     def _build_column(self, field: OmmiField, pk: bool) -> str:
         column = [field.name, self._get_sqlite_type(field.type)]
