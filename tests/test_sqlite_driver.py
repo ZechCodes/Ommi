@@ -19,12 +19,12 @@ async def test_sqlite_driver():
         name: str
 
     with use_driver(SQLiteDriver()) as driver:
-        await driver.connect(SQLiteConfig(filename=":memory:"))
-        await driver.sync_schema(models)
+        await driver.connect(SQLiteConfig(filename=":memory:")).or_raise()
+        await driver.sync_schema(models).or_raise()
 
         model = DummyModel(name="dummy")
         await model.add()
 
-        result = await driver.fetch(DummyModel.name == "dummy")
+        result = await driver.fetch(DummyModel.name == "dummy").or_raise()
         assert isinstance(result, DatabaseStatus.Success)
         assert result.value.name == model.name
