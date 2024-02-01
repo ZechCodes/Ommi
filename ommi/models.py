@@ -98,10 +98,8 @@ class OmmiModel:
         return await cls.get_driver(driver).delete(*items)
 
     @classmethod
-    async def add(
-        cls, *items: "OmmiModel", driver: "drivers.DatabaseDriver | None" = None
-    ) -> "DatabaseStatus[drivers.DatabaseDriver]":
-        return await cls.get_driver(driver).add(*items)
+    async def add(cls, *items: "OmmiModel") -> "DatabaseStatus[drivers.DatabaseDriver]":
+        return await cls.get_driver().add(*items)
 
     @classmethod
     async def count(
