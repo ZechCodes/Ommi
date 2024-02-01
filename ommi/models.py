@@ -1,12 +1,14 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field as dc_field
 from inspect import get_annotations
 from typing import Callable, overload, Type, TypeVar, Any, Generator
+from tramp.results import Result
 
 import ommi.drivers as drivers
 import ommi.query_ast as query_ast
 from ommi.statuses import DatabaseStatus
 from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
+import ommi.model_collections
 
 
 T = TypeVar("T", bound=Type)
@@ -39,6 +41,9 @@ class OmmiField:
 class OmmiMetadata:
     model_name: str
     fields: dict[str, OmmiField]
+    collection: "ommi.model_collections.ModelCollection" = dc_field(
+        default_factory=lambda: ommi.model_collections.ModelCollection()
+    )
 
     def clone(self, **kwargs) -> "OmmiMetadata":
         return OmmiMetadata(
@@ -143,7 +148,9 @@ class OmmiModel:
 
 
 @overload
-def ommi_model(cls: None = None) -> Callable[[T], T | Type[OmmiModel]]:
+def ommi_model(
+    cls: None = None, *, collection: "ommi.model_collections.ModelCollection | None" = None
+) -> Callable[[T], T | Type[OmmiModel]]:
     ...
 
 
@@ -154,34 +161,45 @@ def ommi_model(cls: T) -> T | Type[OmmiModel]:
 
 def ommi_model(
     cls: T | None = None, /, **kwargs
-) -> Callable[[T], T | Type[OmmiModel]] | T | Type[OmmiModel]:
+) -> T | Type[OmmiModel] | Callable[[T], T | Type[OmmiModel]]:
     def wrap_model(c: T) -> T | Type[OmmiModel]:
-        metadata_factory = (
-            c.__ommi_metadata__.clone
-            if hasattr(c, METADATA_DUNDER_NAME)
-            else OmmiMetadata
-        )
-
-        return type.__new__(
-            type(c),
-            f"OmmiModel_{c.__name__}",
-            (c, OmmiModel),
-            {
-                name: QueryableFieldDescriptor(getattr(c, name, None))
-                for name in get_annotations(c)
-                if not name.startswith("_")
-            }
-            | {
-                METADATA_DUNDER_NAME: metadata_factory(
-                    model_name=_get_value(
-                        kwargs,
-                        MODEL_NAME_CLASS_PARAM,
-                        c,
-                        MODEL_NAME_DUNDER_NAME,
-                        c.__name__,
-                    )
-                )
-            },
-        )
+        model = _create_model(c, **kwargs)
+        _register_model(model, Result.Value(kwargs["collection"]) if "collection" in kwargs else Result.Nothing)
+        return model
 
     return wrap_model if cls is None else wrap_model(cls)
+
+
+def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
+    metadata_factory = (
+        c.__ommi_metadata__.clone
+        if hasattr(c, METADATA_DUNDER_NAME)
+        else OmmiMetadata
+    )
+
+    return type.__new__(
+        type(c),
+        f"OmmiModel_{c.__name__}",
+        (c, OmmiModel),
+        {
+            name: QueryableFieldDescriptor(getattr(c, name, None))
+            for name in get_annotations(c)
+            if not name.startswith("_")
+        }
+        | {
+            METADATA_DUNDER_NAME: metadata_factory(
+                model_name=_get_value(
+                    kwargs,
+                    MODEL_NAME_CLASS_PARAM,
+                    c,
+                    MODEL_NAME_DUNDER_NAME,
+                    c.__name__,
+                ),
+                fields={},
+            )
+        },
+    )
+
+
+def _register_model(model: Type[OmmiModel], collection: "Result[ommi.model_collections.ModelCollection]"):
+    collection.value_or(getattr(model, METADATA_DUNDER_NAME).collection).add(model)
