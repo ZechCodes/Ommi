@@ -4,6 +4,7 @@ from datetime import datetime, date, time
 from typing import Type, Any, TypeVar, TypeGuard, Callable, get_origin, Generator, Self
 
 from ommi.drivers import DatabaseDriver, DriverConfig
+from ommi.model_collections import ModelCollection
 from ommi.models import OmmiField, OmmiModel
 from ommi.query_ast import (
     ASTGroupNode,
@@ -183,13 +184,13 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         except Exception as error:
             return DatabaseExceptionStatus(error)
 
-    async def sync_schema(self, models: set[Type[OmmiModel]]) -> DatabaseStatus[Self]:
         else:
             return DatabaseSuccessStatus(result)
 
+    async def sync_schema(self, collection: ModelCollection) -> DatabaseStatus[Self]:
         session = self._db.cursor()
-            for model in models:
         try:
+            for model in collection.models:
                 self._create_table(model, session)
 
         except Exception as error:
