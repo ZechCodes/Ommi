@@ -9,7 +9,7 @@ from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
 
 
-T = TypeVar("T")
+T = TypeVar("T", bound=Type)
 
 DRIVER_DUNDER_NAME = "__ommi_driver__"
 MODEL_NAME_DUNDER_NAME = "__ommi_model_name__"
