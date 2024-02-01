@@ -20,8 +20,9 @@ METADATA_DUNDER_NAME = "__ommi_metadata__"
 
 
 class QueryableFieldDescriptor:
-    def __init__(self, field):
+    def __init__(self, name, field):
         self.field = field
+        self.name = name
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -180,7 +181,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
         f"OmmiModel_{c.__name__}",
         (c, OmmiModel),
         {
-            name: QueryableFieldDescriptor(getattr(c, name, None))
+            name: QueryableFieldDescriptor(name, getattr(c, name, None))
             for name in get_annotations(c)
             if not name.startswith("_")
         }
