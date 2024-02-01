@@ -253,7 +253,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
                     query.model = query.model or model
 
                 case ASTReferenceNode(field, model):
-                    name = f"{model.__model_name__}.{field.name}"
+                    name = f"{model.__ommi_metadata__.model_name}.{field.name}"
                     where.append(name)
                     query.tables.append(model)
                     query.model = query.model or model
