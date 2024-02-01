@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Type, TypeAlias, TypeVar, Callable
+from functools import wraps
+from typing import Type, TypeAlias, TypeVar, Callable, Awaitable, Generator, Any, Generic, ParamSpec
 
 import ommi.model_collections
 from ommi.models import OmmiModel
@@ -11,6 +12,36 @@ DriverName: TypeAlias = str
 DriverNiceName: TypeAlias = str
 M = TypeVar("M")
 T = TypeVar("T")
+P = ParamSpec("P")
+
+
+class DatabaseAction(Generic[T]):
+    def __init__(self, awaitable: Awaitable[T]):
+        self._awaitable = awaitable
+
+    def __await__(self) -> Generator[Any, None, DatabaseStatus[T]]:
+        return self._run().__await__()
+
+    async def or_raise(self) -> DatabaseStatus[T]:
+        return DatabaseStatus.Success(await self._awaitable)
+
+    async def _run(self) -> DatabaseStatus[T]:
+        try:
+            result = await self._awaitable
+
+        except Exception as error:
+            return DatabaseStatus.Exception(error)
+
+        else:
+            return DatabaseStatus.Success(result)
+
+
+def database_action(func: Callable[P, T]) -> Callable[P, DatabaseAction[T]]:
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> DatabaseAction[T]:
+        return DatabaseAction[T](func(*args, **kwargs))
+
+    return wrapper
 
 
 class DriverConfig:
