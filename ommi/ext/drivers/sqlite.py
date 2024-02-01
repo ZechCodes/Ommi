@@ -36,7 +36,7 @@ class SelectQuery:
     where: str = ""
 
 
-class SQLConstraint(Auto):
+class SQLConstraint:
     def __init__(self, name: str, value: str):
         self.name = name
         self.value = value
@@ -207,7 +207,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         if pk:
             column.append("PRIMARY KEY")
 
-        if is_auto(field.default):
+        if isinstance(field.default, SQLConstraint):
             match self.get_value_factory(field):
                 case SQLAutoIncrement():
                     column.append("AUTOINCREMENT")
@@ -305,7 +305,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         data = {
             field.name: value
             for field in fields
-            if not is_auto(value := getattr(item, field.name))
+            if not isinstance(value := getattr(item, field.name), SQLConstraint)
         }
         qs = ", ".join(["?"] * len(data))
         columns = ", ".join(data.keys())
@@ -428,6 +428,3 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         for field, value in zip(item.__ommi_metadata__.fields.values(), result):
             item.__field_values__[field.name] = value
 
-
-def is_auto(obj: Any) -> TypeGuard[Auto]:
-    return isinstance(obj, Auto)
