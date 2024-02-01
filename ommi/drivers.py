@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Type, TypeAlias, TypeVar, Callable
 
+import ommi.model_collections
 from ommi.models import OmmiModel
 from ommi.query_ast import ASTGroupNode
 from ommi.statuses import DatabaseStatus
@@ -62,7 +63,7 @@ class AbstractDatabaseDriver(ABC):
         ...
 
     @abstractmethod
-    async def sync_schema(self, models: set[Type[OmmiModel]]) -> DatabaseStatus:
+    async def sync_schema(self, models: "ommi.model_collections.ModelCollection") -> DatabaseStatus:
         ...
 
     @abstractmethod
