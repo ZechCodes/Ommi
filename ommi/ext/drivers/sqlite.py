@@ -296,6 +296,9 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         )
 
     def _find_primary_key(self, model: Type[OmmiModel]) -> str:
+        if not model.__ommi_metadata__.fields:
+            raise Exception(f"No fields defined on {model}")
+
         fields = list(model.__ommi_metadata__.fields.values())
         if name := next((f.name for f in fields if f.name.lower() == "id"), None):
             return name
