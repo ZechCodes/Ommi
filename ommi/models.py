@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field as dc_field
 from inspect import get_annotations
-from typing import Callable, overload, Type, TypeVar, Any, Generator
+from typing import Callable, overload, Type, TypeVar, Any, Generator, get_origin, Annotated, get_args
 from tramp.results import Result
 
 import ommi.drivers as drivers
 import ommi.query_ast as query_ast
+from ommi.field_metadata import FieldMetadata, AggregateMetadata, FieldType
 from ommi.statuses import DatabaseStatus
 from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
@@ -194,7 +195,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
                     MODEL_NAME_DUNDER_NAME,
                     c.__name__,
                 ),
-                fields={},
+                fields=_get_fields(get_annotations(c)),
             )
         },
     )
@@ -202,3 +203,28 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
 
 def _register_model(model: Type[OmmiModel], collection: "Result[ommi.model_collections.ModelCollection]"):
     collection.value_or(getattr(model, METADATA_DUNDER_NAME).collection).add(model)
+
+
+def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
+    ommi_fields = {}
+    for name, hint in fields.items():
+        ommi_fields[name] = AggregateMetadata()
+        if get_origin(hint) == Annotated:
+            field_type, *annotations = get_args(hint)
+            _annotations = []
+            for annotation in annotations:
+                if isinstance(annotation, FieldMetadata):
+                    ommi_fields[name] |= annotation
+
+                else:
+                    _annotations.append(annotation)
+
+            if _annotations:
+                field_type = Annotated[field_type, *_annotations]
+
+        else:
+            field_type = hint
+
+        ommi_fields[name] |= FieldType(field_type)
+
+    return ommi_fields
