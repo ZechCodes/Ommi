@@ -23,5 +23,6 @@ class UseDriver(Generic[T]):
     def __exit__(self, *_):
         active_driver.reset(self._previous_context_token)
 
+
 def use_driver(driver: T) -> UseDriver[T]:
     return UseDriver(driver)
