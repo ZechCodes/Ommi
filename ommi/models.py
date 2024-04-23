@@ -84,8 +84,8 @@ class OmmiModel:
         return type(self).get_driver()
 
     @get_driver.classmethod
-    def get_driver(cls) -> "drivers.DatabaseDriver | None":
-        return active_driver.get(None)
+    def get_driver(cls, driver: "drivers.DatabaseDrivers | None" = None) -> "drivers.DatabaseDriver | None":
+        return driver or active_driver.get(None)
 
     @contextual_method
     async def delete(
