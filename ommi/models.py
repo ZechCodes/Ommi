@@ -140,6 +140,9 @@ class OmmiModel:
     def _build_column_predicates(
         cls, columns: dict[str, Any]
     ) -> "Generator[query_ast.ASTComparisonNode | bool, None, None]":
+        if not columns:
+            return
+
         for name, value in columns.items():
             if name not in cls.__fields__:
                 raise ValueError(f"Invalid column {name!r} for model {cls.__name__}")
