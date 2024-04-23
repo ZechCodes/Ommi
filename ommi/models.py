@@ -216,11 +216,12 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
             field_type, *annotations = get_args(hint)
             _annotations = []
             for annotation in annotations:
-                if isinstance(annotation, FieldMetadata):
-                    ommi_fields[name] |= annotation
+                match annotation:
+                    case FieldMetadata():
+                        ommi_fields[name] |= annotation
 
-                else:
-                    _annotations.append(annotation)
+                    case _:
+                        _annotations.append(annotation)
 
             if _annotations:
                 field_type = Annotated[field_type, *_annotations]
