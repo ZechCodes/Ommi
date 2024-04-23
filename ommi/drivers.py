@@ -16,6 +16,13 @@ P = ParamSpec("P")
 
 
 class DatabaseAction(Generic[T]):
+    """A coroutine wrapper that wraps the coroutine's return in a DatabaseStatus result. To force exceptions to be
+    raised there is an or_raise coroutine that can be awaited.
+
+        result = await driver.fetch(predicate)  # Can be a DatabaseStatus.Success or a DatabaseStatus.Exception
+        ...
+        result = await driver.fetch(predicate).or_raise()  # DatabaseStatus.Success or raises the exception
+    """
     def __init__(self, awaitable: Awaitable[T]):
         self._awaitable = awaitable
 
