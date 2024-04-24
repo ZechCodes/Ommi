@@ -120,12 +120,6 @@ class OmmiModel:
         return await self.get_driver(driver).update(self)
 
     @classmethod
-    async def update(
-        cls, *items: "DatabaseModel", driver: "drivers.DatabaseDriver | None" = None
-    ) -> "DatabaseStatus[drivers.DatabaseDriver]":
-        return await cls.get_driver(driver).update(*items)
-
-    @classmethod
     def _build_column_predicates(
         cls, columns: dict[str, Any]
     ) -> "Generator[query_ast.ASTComparisonNode | bool, None, None]":
