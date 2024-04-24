@@ -394,7 +394,5 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
     def _sync_with_last_inserted(self, item: OmmiModel, session: sqlite3.Cursor):
         pk = self._find_primary_key(type(item))
         result = session.execute("SELECT last_insert_rowid();").fetchone()
-        result = self._validate_row_values(type(item), result)
-        for field, value in zip(item.__ommi_metadata__.fields.values(), result):
-            item.__field_values__[field.name] = value
+        setattr(item, pk, result[0])
 
