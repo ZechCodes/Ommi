@@ -76,6 +76,8 @@ class OmmiModel:
     def get_driver(cls, driver: "drivers.DatabaseDrivers | None" = None) -> "drivers.DatabaseDriver | None":
         return driver or active_driver.get(None)
 
+        return self.get_driver().add(self)
+
     @contextual_method
     async def delete(
         self, driver: "drivers.DatabaseDriver | None" = None
@@ -88,9 +90,7 @@ class OmmiModel:
     ) -> "DatabaseStatus[drivers.DatabaseDriver]":
         return await cls.get_driver(driver).delete(*items)
 
-    @classmethod
     async def add(cls, *items: "OmmiModel") -> "DatabaseStatus[drivers.DatabaseDriver]":
-        return await cls.get_driver().add(*items)
 
     @classmethod
     async def count(
