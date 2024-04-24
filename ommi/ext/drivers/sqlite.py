@@ -345,9 +345,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
             else:
                 yield value
 
-    def _find_type_validator(
-        self, type_hint: Type[T], value: Any
-    ) -> Callable[[Any], T] | None:
+    def _find_type_validator(self, type_hint: Type[T]) -> Callable[[Any], T] | None:
         hint = get_origin(type_hint) or type_hint
         for validator_type, validator in self.type_validators.items():
             if issubclass(hint, validator_type):
