@@ -6,6 +6,7 @@ from typing import Type, Any, TypeVar, Callable, get_origin, Generator
 from ommi.drivers import DatabaseDriver, DriverConfig, database_action
 from ommi.model_collections import ModelCollection
 from ommi.models import OmmiField, OmmiModel
+from ommi.models import OmmiField, OmmiModel, get_collection
 from ommi.query_ast import (
     ASTGroupNode,
     when,
@@ -139,10 +140,11 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         return result
 
     @database_action
-    async def sync_schema(self, collection: ModelCollection) -> "SQLiteDriver":
+    async def sync_schema(self, collection: ModelCollection | None = None) -> "SQLiteDriver":
         session = self._db.cursor()
+        models = get_collection(Result.Value(collection) if collection else Result.Nothing).models
         try:
-            for model in collection.models:
+            for model in models:
                 self._create_table(model, session)
 
         except:
