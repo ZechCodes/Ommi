@@ -15,4 +15,35 @@ My test suite checks for compatibility with the following model implementations:
 
 ### Included Database Support
 
-- SQLite3 (⚠️Under Construction⚠️)
+- SQLite3 (Basic functionality, ⚠️Under Construction⚠️)
+
+### Defining Models
+
+All models that support Ommi database drivers need to use the `ommi_model` class decorator.
+```python
+from ommi import ommi_model, Key
+from dataclasses import dataclass
+from typing import Annotated
+
+@ommi_model
+@dataclass
+class User:
+    name: str
+    age: int
+    id: Annotated[int, Key] = None  # Optional primary key
+```
+
+### Connecting
+
+```python
+from ommi.ext.drivers.sqlite import SQLiteDriver, SQLiteConfig
+
+
+async def example():
+    async with SQLiteDriver(SQLiteConfig(filename=":memory:")) as db:
+        ...
+```
+
+### Database Actions
+
+The database driver object provides `add`, `delete`, `update`
