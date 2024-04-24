@@ -37,26 +37,6 @@ class SelectQuery:
     where: str = ""
 
 
-class SQLConstraint:
-    def __init__(self, name: str, value: str):
-        self.name = name
-        self.value = value
-
-    def __call__(self, *args, **kwargs):
-        return self
-
-    def __repr__(self):
-        return f"SQL{self.name.title()}Constraint[{self.value}]"
-
-
-class SQLAutoIncrement(SQLConstraint):
-    def __init__(self):
-        super().__init__("", "AUTOINCREMENT")
-
-    def __repr__(self):
-        return type(self).__name__
-
-
 @dataclass
 class SQLiteConfig(DriverConfig):
     filename: str
@@ -75,13 +55,6 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         ASTOperatorNode.GREATER_THAN_OR_EQUAL: ">=",
         ASTOperatorNode.LESS_THAN: "<",
         ASTOperatorNode.LESS_THAN_OR_EQUAL: "<=",
-    }
-
-    auto_value_factories = {
-        int: SQLAutoIncrement(),
-        datetime: SQLConstraint("DEFAULT", "datetime()"),
-        date: SQLConstraint("DEFAULT", "date()"),
-        time: SQLConstraint("DEFAULT", "time()"),
     }
 
     type_validators = {
@@ -212,15 +185,6 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         column = [field.name, self._get_sqlite_type(field.type)]
         if pk:
             column.append("PRIMARY KEY")
-
-        if isinstance(field.default, SQLConstraint):
-            match self.get_value_factory(field):
-                case SQLAutoIncrement():
-                    column.append("AUTOINCREMENT")
-
-                case SQLConstraint() as constraint:
-                    column.append(constraint.name)
-                    column.append(f"({constraint.value})")
 
         return " ".join(column)
 
