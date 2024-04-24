@@ -17,6 +17,7 @@ async def test_sqlite_driver():
     @dataclass
     class DummyModel:
         name: str
+        id: int = None
 
     with use_driver(SQLiteDriver()) as driver:
         await driver.connect(SQLiteConfig(filename=":memory:")).or_raise()
