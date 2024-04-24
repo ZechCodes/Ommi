@@ -296,9 +296,9 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         pk = self._find_primary_key(model)
         fields = list(model.__ommi_metadata__.fields.values())
         for item in items:
-            values = (getattr(item, field.name) for field in fields if field.name != pk)
+            values = (getattr(item, field.get("field_name")) for field in fields if field.get("field_name") != pk)
             assignments = ", ".join(
-                f"{field.name} = ?" for field in fields if field.name != pk
+                f"{field.get('field_name')} = ?" for field in fields if field.get("field_name") != pk
             )
             session.execute(
                 f"UPDATE {model.__ommi_metadata__.model_name} SET {assignments} WHERE {pk} = ?;",
