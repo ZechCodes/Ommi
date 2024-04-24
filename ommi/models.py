@@ -68,7 +68,7 @@ class OmmiModel:
 
     @contextual_method
     def get_driver(
-        self, driver: "drivers.DatabaseDrivers | None"
+        self, driver: "drivers.DatabaseDrivers | None" = None
     ) -> "drivers.DatabaseDriver | None":
         return driver or type(self).get_driver()
 
