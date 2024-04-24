@@ -80,7 +80,7 @@ class AbstractDatabaseDriver(ABC):
         ...
 
     @abstractmethod
-    async def connect(self, config: DriverConfig) -> DatabaseStatus:
+    async def connect(self) -> DatabaseStatus:
         ...
 
     @abstractmethod
@@ -125,6 +125,10 @@ class DatabaseDriver(AbstractDatabaseDriver, ABC):
         super().__init_subclass__(**kwargs)
         cls.add_driver(cls)
 
+    def __init__(self, config: DriverConfig):
+        super().__init__()
+        self.config = config
+
     @classmethod
     def add_driver(cls, driver: "Type[AbstractDatabaseDriver]"):
         cls.__drivers__[driver.driver_name] = driver
@@ -146,4 +150,17 @@ class DatabaseDriver(AbstractDatabaseDriver, ABC):
 
         context = self._driver_context
         del self._driver_context
-        return context.__exit__(*args)
+        try:
+            return context.__exit__(*args)
+        except ValueError:
+            return True
+
+    async def __aenter__(self):
+        await self.connect().or_raise()
+        self.__enter__()
+        return self
+
+    async def __aexit__(self, *args):
+        await self.disconnect().or_raise()
+        self.__exit__(*args)
+        return
