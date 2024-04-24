@@ -182,7 +182,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
             session.close()
 
     def _build_column(self, field: OmmiField, pk: bool) -> str:
-        column = [field.name, self._get_sqlite_type(field.type)]
+        column = [field.get("field_name"), self._get_sqlite_type(field.get("field_type"))]
         if pk:
             column.append("PRIMARY KEY")
 
@@ -252,7 +252,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
     def _create_table(self, model: Type[OmmiModel], session: sqlite3.Cursor):
         pk = self._find_primary_key(model)
         columns = ", ".join(
-            self._build_column(field, field.name == pk)
+            self._build_column(field, field.get("field_name") == pk)
             for field in model.__ommi_metadata__.fields.values()
         )
         session.execute(
@@ -264,21 +264,20 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
             raise Exception(f"No fields defined on {model}")
 
         fields = list(model.__ommi_metadata__.fields.values())
-        if name := next((f.name for f in fields if f.name.lower() == "id"), None):
+        if name := next((f.get("field_name") for f in fields if f.get("field_name").lower() == "id"), None):
             return name
 
         for field in fields:
-            if field.type is int or field.name.casefold() == "id":
-                return field.name
+            if field.get("field_type") is int or field.get("field_name").casefold() == "id":
+                return field.get("field_name")
 
-        return next(iter(fields)).name
+        return next(iter(fields)).get("field_name")
 
     def _insert(self, item: OmmiModel, session: sqlite3.Cursor):
         fields = list(item.__ommi_metadata__.fields.values())
         data = {
-            field.name: value
+            field.get("field_name"): getattr(item, field.get("field_name"))
             for field in fields
-            if not isinstance(value := getattr(item, field.name), SQLConstraint)
         }
         qs = ", ".join(["?"] * len(data))
         columns = ", ".join(data.keys())
@@ -340,7 +339,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         self, model: Type[OmmiModel], row: tuple[Any]
     ) -> Generator[Any, None, None]:
         for field, value in zip(model.__ommi_metadata__.fields.values(), row):
-            if validator := self._find_type_validator(field.type, value):
+            if validator := self._find_type_validator(field.get("field_type", value)):
                 yield validator(value)
             else:
                 yield value
