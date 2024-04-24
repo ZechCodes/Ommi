@@ -20,17 +20,19 @@ class TestModel:
 
 @pytest.fixture
 def sqlite_driver() -> SQLiteDriver:
-    """Need to use a pytest fixture so that the contextvar exists in the same context as the test."""
-    with SQLiteDriver() as driver:
+    """Need to use a pytest fixture so that the contextvar exists in the same context as the test. pytest-asyncio seems
+    to create its own event loop which causes the contextvar to create an entirely new context.
+
+    There may be a more elegan"""
+    with SQLiteDriver(SQLiteConfig(filename=":memory:")) as driver:
         yield driver
 
 
 @pytest_asyncio.fixture
 async def driver(sqlite_driver):
-    await sqlite_driver.connect(SQLiteConfig(filename=":memory:")).or_raise()
-    await sqlite_driver.sync_schema(test_models).or_raise()
-
-    yield sqlite_driver
+    async with sqlite_driver as driver:
+        await driver.sync_schema(test_models).or_raise()
+        yield driver
 
 
 @pytest.mark.asyncio
