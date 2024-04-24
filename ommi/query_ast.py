@@ -67,7 +67,7 @@ class ASTGroupNode(ASTNode):
         if self.frozen:
             return
 
-        if isinstance(item, type) and issubclass(item, models.DatabaseModel):
+        if isinstance(item, type) and issubclass(item, models.OmmiModel):
             item = ASTReferenceNode(None, item)
 
         elif len(self.items) > 0 and getattr(self.items[~0], "field", True) is not None:
