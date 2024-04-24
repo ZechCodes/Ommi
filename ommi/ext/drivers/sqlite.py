@@ -3,9 +3,10 @@ from dataclasses import dataclass, field as dc_field
 from datetime import datetime, date
 from typing import Type, Any, TypeVar, Callable, get_origin, Generator
 
+from tramp.results import Result
+
 from ommi.drivers import DatabaseDriver, DriverConfig, database_action
 from ommi.model_collections import ModelCollection
-from ommi.models import OmmiField, OmmiModel
 from ommi.models import OmmiField, OmmiModel, get_collection
 from ommi.query_ast import (
     ASTGroupNode,
@@ -39,6 +40,8 @@ class SQLiteConfig(DriverConfig):
 
 
 class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
+    config: SQLiteConfig
+
     logical_operator_mapping = {
         ASTLogicalOperatorNode.AND: "AND",
         ASTLogicalOperatorNode.OR: "OR",
@@ -65,7 +68,8 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         bool: "INTEGER",
     }
 
-    def __init__(self):
+    def __init__(self, *args):
+        super().__init__(*args)
         self._connected = False
         self._db: sqlite3.Connection | None = None
 
@@ -74,8 +78,8 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         return self._connected
 
     @database_action
-    async def connect(self, config: SQLiteConfig) -> "SQLiteDriver":
-        self._db = sqlite3.connect(config.filename)
+    async def connect(self) -> "SQLiteDriver":
+        self._db = sqlite3.connect(self.config.filename)
         self._connected = True
         return self
 
