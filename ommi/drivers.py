@@ -102,7 +102,7 @@ class AbstractDatabaseDriver(ABC):
         ...
 
     @abstractmethod
-    async def sync_schema(self, models: "ommi.model_collections.ModelCollection") -> DatabaseStatus:
+    async def sync_schema(self, models: "ommi.model_collections.ModelCollection | None") -> DatabaseStatus:
         ...
 
     @abstractmethod
