@@ -23,8 +23,8 @@ async def test_sqlite_driver():
         await driver.sync_schema(models).or_raise()
 
         model = DummyModel(name="dummy")
-        await model.add()
+        await model.add().or_raise()
 
         result = await driver.fetch(DummyModel.name == "dummy").or_raise()
         assert isinstance(result, DatabaseStatus.Success)
-        assert result.value.name == model.name
+        assert result.value[0].name == model.name
