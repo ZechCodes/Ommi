@@ -351,6 +351,11 @@ def when(
         case _:
             group = ASTGroupNode()
             for c in comparisons:
-                group.add(c)
+                match c:
+                    case ASTComparisonNode():
+                        group.add(c.group)
+
+                    case _:
+                        group.add(c)
 
             return group
