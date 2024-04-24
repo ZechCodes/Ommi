@@ -65,23 +65,12 @@ def _get_value(
 
 class OmmiModel:
     __ommi_metadata__: OmmiMetadata
-    __ommi_driver__: "drivers.DatabaseDriver"
-
-    def bind_driver(self, driver: "drivers.DatabaseDriver"):
-        """Binds a model instance to a driver."""
-        setattr(self, DRIVER_DUNDER_NAME, driver)
 
     @contextual_method
     def get_driver(
         self, driver: "drivers.DatabaseDrivers | None"
     ) -> "drivers.DatabaseDriver | None":
-        if driver:
-            return driver
-
-        if _d := getattr(self, DRIVER_DUNDER_NAME, None):
-            return _d
-
-        return type(self).get_driver()
+        return driver or type(self).get_driver()
 
     @get_driver.classmethod
     def get_driver(cls, driver: "drivers.DatabaseDrivers | None" = None) -> "drivers.DatabaseDriver | None":
