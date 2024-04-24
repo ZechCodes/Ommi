@@ -61,6 +61,7 @@ async def test_sqlite_fetch(driver):
     result = await driver.fetch(TestModel.name == "dummy").or_raise()
     assert result.value[0].name == model.name
 
+
 @pytest.mark.asyncio
 async def test_sqlite_update(driver):
     model = TestModel(name="dummy")
@@ -71,6 +72,7 @@ async def test_sqlite_update(driver):
 
     result = await driver.fetch(TestModel.name == "Dummy").or_raise()
     assert result.value[0].name == model.name
+
 
 @pytest.mark.asyncio
 async def test_sqlite_delete(driver):
