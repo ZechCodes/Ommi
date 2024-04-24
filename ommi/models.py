@@ -20,6 +20,17 @@ MODEL_NAME_CLASS_PARAM = "name"
 METADATA_DUNDER_NAME = "__ommi_metadata__"
 
 
+_global_collection = None
+
+
+def get_global_collection() -> "ommi.model_collections.ModelCollection":
+    global _global_collection
+    if not _global_collection:
+        _global_collection = ommi.model_collections.ModelCollection()
+
+    return _global_collection
+
+
 class QueryableFieldDescriptor:
     def __init__(self, name, field):
         self.field = field
@@ -44,7 +55,7 @@ class OmmiMetadata:
     model_name: str
     fields: dict[str, OmmiField]
     collection: "ommi.model_collections.ModelCollection" = dc_field(
-        default_factory=lambda: ommi.model_collections.ModelCollection()
+        default_factory=get_global_collection
     )
 
     def clone(self, **kwargs) -> "OmmiMetadata":
@@ -185,7 +196,14 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
 
 
 def _register_model(model: Type[OmmiModel], collection: "Result[ommi.model_collections.ModelCollection]"):
-    collection.value_or(getattr(model, METADATA_DUNDER_NAME).collection).add(model)
+    get_collection(collection, model).add(model)
+
+
+def get_collection(
+        collection: "Result[ommi.model_collections.ModelCollection]",
+        model: Type[OmmiModel] | None = None,
+) -> "ommi.model_collections.ModelCollection":
+    return collection.value_or(getattr(model, METADATA_DUNDER_NAME).collection if model else get_global_collection())
 
 
 def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
