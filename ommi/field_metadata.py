@@ -89,7 +89,7 @@ class MetadataFlag(FieldMetadata):
 
 
 class FieldType(FieldMetadata):
-    """Basic field metadata type that allows a custom field to be set."""
+    """Field metadata type for setting the field's data type."""
     def __init__(self, field_type: Any):
         self.metadata = {"field_type": field_type}
 
