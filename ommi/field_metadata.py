@@ -94,6 +94,12 @@ class FieldType(FieldMetadata):
         self.metadata = {"field_type": field_type}
 
 
+class FieldName(FieldMetadata):
+    """Field metadata type for setting a custom name for a field."""
+    def __init__(self, field_name: str):
+        self.metadata = {"field_name": field_name}
+
+
 def create_metadata_type(
     name: str, metadata_type: "Result[Type[FieldMetadata]]" = Nothing(), /, **kwargs
 ) -> Type[FieldMetadata]:
