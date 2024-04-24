@@ -82,3 +82,11 @@ async def test_sqlite_delete(driver):
     await model.delete().or_raise()
     result = await driver.fetch(TestModel).or_raise()
     assert len(result.value) == 0
+
+
+@pytest.mark.asyncio
+async def test_sqlite_count(driver):
+    await driver.add(TestModel(name="dummy1"), TestModel(name="dummy2")).or_raise()
+
+    result = await TestModel.count().or_raise()
+    assert result.value == 2
