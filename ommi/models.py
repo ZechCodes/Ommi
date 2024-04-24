@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field as dc_field
 from inspect import get_annotations
-from typing import Callable, overload, Type, TypeVar, Any, Generator, get_origin, Annotated, get_args
+from typing import Callable, overload, Type, TypeVar, Any, Generator, get_origin, Annotated, get_args, Awaitable
 from tramp.results import Result
 
 import ommi.drivers as drivers
@@ -76,48 +76,45 @@ class OmmiModel:
     def get_driver(cls, driver: "drivers.DatabaseDrivers | None" = None) -> "drivers.DatabaseDriver | None":
         return driver or active_driver.get(None)
 
+    def add(self) -> "drivers.DatabaseAction[DatabaseStatus[OmmiModel]] | Awaitable[DatabaseStatus[OmmiModel]]":
         return self.get_driver().add(self)
 
     @contextual_method
-    async def delete(
+    def delete(
         self, driver: "drivers.DatabaseDriver | None" = None
-    ) -> "DatabaseStatus[drivers.DatabaseDriver]":
-        return await self.get_driver(driver).delete(self)
+    ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
+        return self.get_driver(driver).delete(self)
 
     @delete.classmethod
-    async def delete(
+    def delete(
         cls, *items: "OmmiModel", driver: "drivers.DatabaseDriver | None" = None
-    ) -> "DatabaseStatus[drivers.DatabaseDriver]":
-        return await cls.get_driver(driver).delete(*items)
-
-    async def add(cls, *items: "OmmiModel") -> "DatabaseStatus[drivers.DatabaseDriver]":
+    ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
+        return cls.get_driver(driver).delete(*items)
 
     @classmethod
-    async def count(
+    def count(
         cls,
         *predicates: "ASTGroupNode | DatabaseModel | bool",
         columns: Any | None = None,
         driver: "drivers.DatabaseDriver | None" = None,
-    ) -> DatabaseStatus[int]:
-        return await cls.get_driver(driver).count(
+    ) -> "drivers.DatabaseAction[DatabaseStatus[int]] | Awaitable[DatabaseStatus[int]]":
+        return cls.get_driver(driver).count(
             cls, *predicates, *cls._build_column_predicates(columns)
         )
 
     @classmethod
-    async def fetch(
+    def fetch(
         cls,
         *predicates: "ASTGroupNode | DatabaseModel | bool",
         driver: "drivers.DatabaseDriver | None" = None,
         **columns: Any,
-    ) -> "DatabaseStatus[list[DatabaseModel]]":
-        return await cls.get_driver(driver).fetch(
-            cls, *predicates, *cls._build_column_predicates(columns)
-        )
+    ) -> "drivers.DatabaseAction[DatabaseStatus[list[OmmiModel]]] | Awaitable[DatabaseStatus[list[OmmiModel]]]":
+        return cls.get_driver(driver).fetch(cls, *predicates, *cls._build_column_predicates(columns))
 
-    async def sync(
+    def sync(
         self, driver: "drivers.DatabaseDriver | None" = None
-    ) -> "DatabaseStatus[drivers.DatabaseDriver]":
-        return await self.get_driver(driver).update(self)
+    ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
+        return self.get_driver(driver).update(self)
 
     @classmethod
     def _build_column_predicates(
