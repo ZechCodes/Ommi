@@ -5,7 +5,7 @@ from tramp.results import Result
 
 import ommi.drivers as drivers
 import ommi.query_ast as query_ast
-from ommi.field_metadata import FieldMetadata, AggregateMetadata, FieldType
+from ommi.field_metadata import FieldMetadata, AggregateMetadata, FieldType, FieldName
 from ommi.statuses import DatabaseStatus
 from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
@@ -230,5 +230,7 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
             field_type = hint
 
         ommi_fields[name] |= FieldType(field_type)
+        if not ommi_fields[name].matches(FieldName):
+            ommi_fields[name] |= FieldName(name)
 
     return ommi_fields
