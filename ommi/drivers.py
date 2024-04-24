@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Type, TypeAlias, TypeVar, Callable, Awaitable, Generator, Any, Generic, ParamSpec
 
+import ommi.driver_context
 import ommi.model_collections
 from ommi.models import OmmiModel
 from ommi.query_ast import ASTGroupNode
@@ -131,3 +132,18 @@ class DatabaseDriver(AbstractDatabaseDriver, ABC):
     @classmethod
     def disable_driver(cls, name: DriverName):
         cls.__drivers__.pop(name, None)
+
+    def __enter__(self):
+        if hasattr(self, "_driver_context"):
+            return self
+
+        self._driver_context = ommi.driver_context.UseDriver(self)
+        return self._driver_context.__enter__()
+
+    def __exit__(self, *args):
+        if not hasattr(self, "_driver_context"):
+            return
+
+        context = self._driver_context
+        del self._driver_context
+        return context.__exit__(*args)

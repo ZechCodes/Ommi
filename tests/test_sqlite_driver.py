@@ -3,11 +3,9 @@ from dataclasses import dataclass
 import pytest
 import pytest_asyncio
 
-from ommi.driver_context import use_driver
 from ommi.ext.drivers.sqlite import SQLiteConfig, SQLiteDriver
 from ommi.model_collections import ModelCollection
 from ommi.models import ommi_model
-from ommi.statuses import DatabaseStatus
 
 
 test_models = ModelCollection()
@@ -23,7 +21,7 @@ class TestModel:
 @pytest.fixture
 def sqlite_driver() -> SQLiteDriver:
     """Need to use a pytest fixture so that the contextvar exists in the same context as the test."""
-    with use_driver(SQLiteDriver()) as driver:
+    with SQLiteDriver() as driver:
         yield driver
 
 
