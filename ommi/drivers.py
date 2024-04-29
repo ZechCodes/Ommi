@@ -1,6 +1,16 @@
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Type, TypeAlias, TypeVar, Callable, Awaitable, Generator, Any, Generic, ParamSpec
+from typing import (
+    Type,
+    TypeAlias,
+    TypeVar,
+    Callable,
+    Awaitable,
+    Generator,
+    Any,
+    Generic,
+    ParamSpec,
+)
 
 import ommi.driver_context
 import ommi.model_collections
@@ -24,6 +34,7 @@ class DatabaseAction(Generic[T]):
         ...
         result = await driver.fetch(predicate).or_raise()  # DatabaseStatus.Success or raises the exception
     """
+
     def __init__(self, awaitable: Awaitable[T]):
         self._awaitable = awaitable
 
@@ -102,7 +113,9 @@ class AbstractDatabaseDriver(ABC):
         ...
 
     @abstractmethod
-    async def sync_schema(self, models: "ommi.model_collections.ModelCollection | None") -> DatabaseStatus:
+    async def sync_schema(
+        self, models: "ommi.model_collections.ModelCollection | None"
+    ) -> DatabaseStatus:
         ...
 
     @abstractmethod

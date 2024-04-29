@@ -97,5 +97,3 @@ async def test_model_fetch(driver_mock):
 
     await TestModel.update()
     driver_mock.update.assert_awaited_once()
-
-

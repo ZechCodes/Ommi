@@ -10,6 +10,7 @@ class FieldMetadata:
     """Base type for all field metadata types. Field metadata instances carry the information about how a field on a
     model should be handled by Ommi and the database driver. The union operator can be used on field metadata instances
     to aggregate them into a single metadata object."""
+
     metadata: MutableMapping[str, Any]
 
     def __contains__(self, key: str) -> bool:
@@ -48,6 +49,7 @@ class FieldMetadata:
 class AggregateMetadata(FieldMetadata):
     """Aggregates field metadata instances (usually using the union operator) so a field can have multiple kinds of
     metadata applied simply."""
+
     metadata: ChainMap[str, Any]
 
     def __init__(self, *fields: "FieldMetadata") -> None:
@@ -90,12 +92,14 @@ class MetadataFlag(FieldMetadata):
 
 class FieldType(FieldMetadata):
     """Field metadata type for setting the field's data type."""
+
     def __init__(self, field_type: Any):
         self.metadata = {"field_type": field_type}
 
 
 class FieldName(FieldMetadata):
     """Field metadata type for setting a custom name for a field."""
+
     def __init__(self, field_name: str):
         self.metadata = {"field_name": field_name}
 
@@ -107,11 +111,7 @@ def create_metadata_type(
     field types that don't need values set at creation."""
     return cast(
         Type[FieldMetadata],
-        type(
-            name,
-            (metadata_type.value_or(FieldMetadata),),
-            {"metadata": kwargs}
-        )
+        type(name, (metadata_type.value_or(FieldMetadata),), {"metadata": kwargs}),
     )
 
 

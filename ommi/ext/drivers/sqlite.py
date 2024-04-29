@@ -144,9 +144,13 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         return result
 
     @database_action
-    async def sync_schema(self, collection: ModelCollection | None = None) -> "SQLiteDriver":
+    async def sync_schema(
+        self, collection: ModelCollection | None = None
+    ) -> "SQLiteDriver":
         session = self._db.cursor()
-        models = get_collection(Result.Value(collection) if collection else Result.Nothing).models
+        models = get_collection(
+            Result.Value(collection) if collection else Result.Nothing
+        ).models
         try:
             for model in models:
                 self._create_table(model, session)
@@ -183,7 +187,10 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
             session.close()
 
     def _build_column(self, field: OmmiField, pk: bool) -> str:
-        column = [field.get("field_name"), self._get_sqlite_type(field.get("field_type"))]
+        column = [
+            field.get("field_name"),
+            self._get_sqlite_type(field.get("field_type")),
+        ]
         if pk:
             column.append("PRIMARY KEY")
 
@@ -265,11 +272,21 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
             raise Exception(f"No fields defined on {model}")
 
         fields = list(model.__ommi_metadata__.fields.values())
-        if name := next((f.get("field_name") for f in fields if f.get("field_name").lower() == "id"), None):
+        if name := next(
+            (
+                f.get("field_name")
+                for f in fields
+                if f.get("field_name").lower() == "id"
+            ),
+            None,
+        ):
             return name
 
         for field in fields:
-            if field.get("field_type") is int or field.get("field_name").casefold() == "id":
+            if (
+                field.get("field_type") is int
+                or field.get("field_name").casefold() == "id"
+            ):
                 return field.get("field_name")
 
         return next(iter(fields)).get("field_name")
@@ -297,9 +314,15 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         pk = self._find_primary_key(model)
         fields = list(model.__ommi_metadata__.fields.values())
         for item in items:
-            values = (getattr(item, field.get("field_name")) for field in fields if field.get("field_name") != pk)
+            values = (
+                getattr(item, field.get("field_name"))
+                for field in fields
+                if field.get("field_name") != pk
+            )
             assignments = ", ".join(
-                f"{field.get('field_name')} = ?" for field in fields if field.get("field_name") != pk
+                f"{field.get('field_name')} = ?"
+                for field in fields
+                if field.get("field_name") != pk
             )
             session.execute(
                 f"UPDATE {model.__ommi_metadata__.model_name} SET {assignments} WHERE {pk} = ?;",
@@ -396,4 +419,3 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         pk = self._find_primary_key(type(item))
         result = session.execute("SELECT last_insert_rowid();").fetchone()
         setattr(item, pk, result[0])
-

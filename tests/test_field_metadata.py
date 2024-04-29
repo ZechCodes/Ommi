@@ -1,4 +1,9 @@
-from ommi.field_metadata import AggregateMetadata, create_metadata_flag, create_metadata_type, MetadataFlag
+from ommi.field_metadata import (
+    AggregateMetadata,
+    create_metadata_flag,
+    create_metadata_type,
+    MetadataFlag,
+)
 
 FlagA = create_metadata_flag("FlagA")
 FlagB = create_metadata_flag("FlagB")
