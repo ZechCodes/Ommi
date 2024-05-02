@@ -223,7 +223,7 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
                         _annotations.append(annotation)
 
             if _annotations:
-                field_type = Annotated[field_type, *_annotations]
+                field_type = Annotated.__class_getitem__(field_type, *_annotations)  # Hack to support 3.10
 
         else:
             field_type = hint
