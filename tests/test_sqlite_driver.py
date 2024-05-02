@@ -4,7 +4,7 @@ from typing import Annotated
 import pytest
 import pytest_asyncio
 
-from ommi import FieldName
+from ommi import StoreAs
 from ommi.ext.drivers.sqlite import SQLiteConfig, SQLiteDriver
 from ommi.model_collections import ModelCollection
 from ommi.models import ommi_model
@@ -16,7 +16,7 @@ test_models = ModelCollection()
 @ommi_model(collection=test_models)
 @dataclass
 class TestModel:
-    name: Annotated[str, FieldName("name_alias")]
+    name: Annotated[str, StoreAs("username")]
     id: int = None
 
 

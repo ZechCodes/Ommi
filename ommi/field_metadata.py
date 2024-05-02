@@ -97,11 +97,11 @@ class FieldType(FieldMetadata):
         self.metadata = {"field_type": field_type}
 
 
-class FieldName(FieldMetadata):
-    """Field metadata type for setting a custom name for a field."""
+class StoreAs(FieldMetadata):
+    """Field metadata type for setting the name to use when passing the field to the database backend."""
 
-    def __init__(self, field_name: str):
-        self.metadata = {"field_name": field_name}
+    def __init__(self, store_as: str):
+        self.metadata = {"store_as": store_as}
 
 
 def create_metadata_type(

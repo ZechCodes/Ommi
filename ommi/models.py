@@ -5,7 +5,7 @@ from tramp.results import Result
 
 import ommi.drivers as drivers
 import ommi.query_ast as query_ast
-from ommi.field_metadata import FieldMetadata, AggregateMetadata, FieldType, FieldName
+from ommi.field_metadata import FieldMetadata, AggregateMetadata, FieldType, StoreAs, create_metadata_type
 from ommi.statuses import DatabaseStatus
 from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
@@ -171,12 +171,13 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
         else OmmiMetadata
     )
 
+    fields = _get_fields(get_annotations(c))
     return type.__new__(
         type(c),
         f"OmmiModel_{c.__name__}",
         (c, OmmiModel),
         {
-            name: QueryableFieldDescriptor(name, getattr(c, name, None))
+            name: QueryableFieldDescriptor(fields[name].get("store_as"), getattr(c, name, None))
             for name in get_annotations(c)
             if not name.startswith("_")
         }
@@ -189,7 +190,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
                     MODEL_NAME_DUNDER_NAME,
                     c.__name__,
                 ),
-                fields=_get_fields(get_annotations(c)),
+                fields=fields,
             )
         },
     )
@@ -228,7 +229,9 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
             field_type = hint
 
         ommi_fields[name] |= FieldType(field_type)
-        if not ommi_fields[name].matches(FieldName):
-            ommi_fields[name] |= FieldName(name)
+        if not ommi_fields[name].matches(StoreAs):
+            ommi_fields[name] |= StoreAs(name)
+
+        ommi_fields[name] |= create_metadata_type("FieldMetadata", field_name=name, field_type=field_type)()
 
     return ommi_fields

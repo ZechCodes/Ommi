@@ -188,7 +188,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
 
     def _build_column(self, field: OmmiField, pk: bool) -> str:
         column = [
-            field.get("field_name"),
+            field.get("store_as"),
             self._get_sqlite_type(field.get("field_type")),
         ]
         if pk:
@@ -260,7 +260,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
     def _create_table(self, model: Type[OmmiModel], session: sqlite3.Cursor):
         pk = self._find_primary_key(model)
         columns = ", ".join(
-            self._build_column(field, field.get("field_name") == pk)
+            self._build_column(field, field.get("store_as") == pk)
             for field in model.__ommi_metadata__.fields.values()
         )
         session.execute(
@@ -274,9 +274,9 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         fields = list(model.__ommi_metadata__.fields.values())
         if name := next(
             (
-                f.get("field_name")
+                f.get("store_as")
                 for f in fields
-                if f.get("field_name").lower() == "id"
+                if f.get("store_as", f.get("field_name")).lower() == "id"
             ),
             None,
         ):
@@ -285,16 +285,16 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         for field in fields:
             if (
                 field.get("field_type") is int
-                or field.get("field_name").casefold() == "id"
+                or field.get("store_as").casefold() == "id"
             ):
-                return field.get("field_name")
+                return field.get("store_as")
 
-        return next(iter(fields)).get("field_name")
+        return next(iter(fields)).get("store_as")
 
     def _insert(self, item: OmmiModel, session: sqlite3.Cursor):
         fields = list(item.__ommi_metadata__.fields.values())
         data = {
-            field.get("field_name"): getattr(item, field.get("field_name"))
+            field.get("store_as"): getattr(item, field.get("field_name"))
             for field in fields
         }
         qs = ", ".join(["?"] * len(data))
@@ -317,12 +317,12 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
             values = (
                 getattr(item, field.get("field_name"))
                 for field in fields
-                if field.get("field_name") != pk
+                if field.get("store_as") != pk
             )
             assignments = ", ".join(
-                f"{field.get('field_name')} = ?"
+                f"{field.get('store_as')} = ?"
                 for field in fields
-                if field.get("field_name") != pk
+                if field.get("store_as") != pk
             )
             session.execute(
                 f"UPDATE {model.__ommi_metadata__.model_name} SET {assignments} WHERE {pk} = ?;",
