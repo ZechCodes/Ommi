@@ -1,10 +1,12 @@
 [tool.poetry]
 name = "ommi"
-version = "0.1.0"
-description = "An object model mapper intended to provide a consistent interface for many underlying database implementations using whatever model implementations are desired."
+version = "0.1.1"
+description = "A portable object model mapper that can work with any database and model library (dataclasses, Attrs, Pydantic, etc.). It is designed for the general case to support the largest possible number of databases."
 authors = ["Zech Zimmerman <hi@zech.codes>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/ZechCodes/Ommi"
+keywords = ["database", "orm", "object model mapper", "dataclasses", "attrs", "pydantic", "sqlite"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
