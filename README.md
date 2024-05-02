@@ -1,7 +1,7 @@
 # Ommi
 
 > [!CAUTION]
-> Ommi is under construction and much of the functionality is undergoing frequent revision. There is no guaratee future versions will be backwards compatible.
+> Ommi is under construction and much of the functionality is undergoing frequent revision. There is no guarantee future versions will be backwards compatible.
 
 An object model mapper intended to provide a consistent interface for many underlying database implementations using whatever model implementations are desired.
 
