@@ -83,7 +83,7 @@ async def test_model_fetch(driver_mock):
     class TestModel(pydantic.BaseModel):
         foo: int
 
-    await TestModel.add()
+    await TestModel(foo=0).add()
     driver_mock.add.assert_awaited_once()
 
     await TestModel.count()
@@ -95,5 +95,5 @@ async def test_model_fetch(driver_mock):
     await TestModel.fetch()
     driver_mock.fetch.assert_awaited_once()
 
-    await TestModel.update()
+    await TestModel(foo=0).sync()
     driver_mock.update.assert_awaited_once()

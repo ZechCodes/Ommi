@@ -74,7 +74,8 @@ class AggregateMetadata(FieldMetadata):
 
     def _add_field(self, field: "FieldMetadata") -> None:
         """Adds field metadata to the aggregate metadata. This is done in a non-destructive way so as to prevent changes
-        made to the aggregate metadata mapping from propagating to the the aggregated field metadata instances."""
+        made to the aggregate metadata mapping from propagating to the the aggregated field metadata instances.
+        """
         self._fields.append(field)
         self.metadata.maps.append(field.metadata)
 

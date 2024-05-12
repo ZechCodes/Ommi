@@ -1,11 +1,28 @@
 from dataclasses import dataclass, field as dc_field
 from inspect import get_annotations
-from typing import Callable, overload, Type, TypeVar, Any, Generator, get_origin, Annotated, get_args, Awaitable
+from typing import (
+    Callable,
+    overload,
+    Type,
+    TypeVar,
+    Any,
+    Generator,
+    get_origin,
+    Annotated,
+    get_args,
+    Awaitable,
+)
 from tramp.results import Result
 
 import ommi.drivers as drivers
 import ommi.query_ast as query_ast
-from ommi.field_metadata import FieldMetadata, AggregateMetadata, FieldType, StoreAs, create_metadata_type
+from ommi.field_metadata import (
+    FieldMetadata,
+    AggregateMetadata,
+    FieldType,
+    StoreAs,
+    create_metadata_type,
+)
 from ommi.statuses import DatabaseStatus
 from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
@@ -84,10 +101,14 @@ class OmmiModel:
         return driver or type(self).get_driver()
 
     @get_driver.classmethod
-    def get_driver(cls, driver: "drivers.DatabaseDrivers | None" = None) -> "drivers.DatabaseDriver | None":
+    def get_driver(
+        cls, driver: "drivers.DatabaseDrivers | None" = None
+    ) -> "drivers.DatabaseDriver | None":
         return driver or active_driver.get(None)
 
-    def add(self) -> "drivers.DatabaseAction[DatabaseStatus[OmmiModel]] | Awaitable[DatabaseStatus[OmmiModel]]":
+    def add(
+        self,
+    ) -> "drivers.DatabaseAction[DatabaseStatus[OmmiModel]] | Awaitable[DatabaseStatus[OmmiModel]]":
         return self.get_driver().add(self)
 
     @contextual_method
@@ -120,7 +141,9 @@ class OmmiModel:
         driver: "drivers.DatabaseDriver | None" = None,
         **columns: Any,
     ) -> "drivers.DatabaseAction[DatabaseStatus[list[OmmiModel]]] | Awaitable[DatabaseStatus[list[OmmiModel]]]":
-        return cls.get_driver(driver).fetch(cls, *predicates, *cls._build_column_predicates(columns))
+        return cls.get_driver(driver).fetch(
+            cls, *predicates, *cls._build_column_predicates(columns)
+        )
 
     def sync(
         self, driver: "drivers.DatabaseDriver | None" = None
@@ -143,14 +166,14 @@ class OmmiModel:
 
 @overload
 def ommi_model(
-    cls: None = None, *, collection: "ommi.model_collections.ModelCollection | None" = None
-) -> Callable[[T], T | Type[OmmiModel]]:
-    ...
+    cls: None = None,
+    *,
+    collection: "ommi.model_collections.ModelCollection | None" = None,
+) -> Callable[[T], T | Type[OmmiModel]]: ...
 
 
 @overload
-def ommi_model(cls: T) -> T | Type[OmmiModel]:
-    ...
+def ommi_model(cls: T) -> T | Type[OmmiModel]: ...
 
 
 def ommi_model(
@@ -158,7 +181,14 @@ def ommi_model(
 ) -> T | Type[OmmiModel] | Callable[[T], T | Type[OmmiModel]]:
     def wrap_model(c: T) -> T | Type[OmmiModel]:
         model = _create_model(c, **kwargs)
-        _register_model(model, Result.Value(kwargs["collection"]) if "collection" in kwargs else Result.Nothing)
+        _register_model(
+            model,
+            (
+                Result.Value(kwargs["collection"])
+                if "collection" in kwargs
+                else Result.Nothing
+            ),
+        )
         return model
 
     return wrap_model if cls is None else wrap_model(cls)
@@ -166,9 +196,7 @@ def ommi_model(
 
 def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
     metadata_factory = (
-        c.__ommi_metadata__.clone
-        if hasattr(c, METADATA_DUNDER_NAME)
-        else OmmiMetadata
+        c.__ommi_metadata__.clone if hasattr(c, METADATA_DUNDER_NAME) else OmmiMetadata
     )
 
     fields = _get_fields(get_annotations(c))
@@ -177,7 +205,9 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
         f"OmmiModel_{c.__name__}",
         (c, OmmiModel),
         {
-            name: QueryableFieldDescriptor(fields[name].get("store_as"), getattr(c, name, None))
+            name: QueryableFieldDescriptor(
+                fields[name].get("store_as"), getattr(c, name, None)
+            )
             for name in get_annotations(c)
             if not name.startswith("_")
         }
@@ -196,15 +226,21 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
     )
 
 
-def _register_model(model: Type[OmmiModel], collection: "Result[ommi.model_collections.ModelCollection]"):
+def _register_model(
+    model: Type[OmmiModel], collection: "Result[ommi.model_collections.ModelCollection]"
+):
     get_collection(collection, model).add(model)
 
 
 def get_collection(
-        collection: "Result[ommi.model_collections.ModelCollection]",
-        model: Type[OmmiModel] | None = None,
+    collection: "Result[ommi.model_collections.ModelCollection]",
+    model: Type[OmmiModel] | None = None,
 ) -> "ommi.model_collections.ModelCollection":
-    return collection.value_or(getattr(model, METADATA_DUNDER_NAME).collection if model else get_global_collection())
+    return collection.value_or(
+        getattr(model, METADATA_DUNDER_NAME).collection
+        if model
+        else get_global_collection()
+    )
 
 
 def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
@@ -223,7 +259,9 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
                         _annotations.append(annotation)
 
             if _annotations:
-                field_type = Annotated.__class_getitem__(field_type, *_annotations)  # Hack to support 3.10
+                field_type = Annotated.__class_getitem__(
+                    field_type, *_annotations
+                )  # Hack to support 3.10
 
         else:
             field_type = hint
@@ -232,6 +270,8 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
         if not ommi_fields[name].matches(StoreAs):
             ommi_fields[name] |= StoreAs(name)
 
-        ommi_fields[name] |= create_metadata_type("FieldMetadata", field_name=name, field_type=field_type)()
+        ommi_fields[name] |= create_metadata_type(
+            "FieldMetadata", field_name=name, field_type=field_type
+        )()
 
     return ommi_fields
