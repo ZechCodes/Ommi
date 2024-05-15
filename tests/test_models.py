@@ -6,7 +6,8 @@ import pytest
 
 from ommi.driver_context import use_driver
 from ommi.drivers import AbstractDatabaseDriver
-from ommi.field_metadata import create_metadata_flag
+from ommi.field_metadata import create_metadata_flag, StoreAs, Key
+from ommi.model_collections import ModelCollection
 from ommi.models import ommi_model, OmmiModel
 import attrs
 import pydantic
@@ -97,3 +98,54 @@ async def test_model_fetch(driver_mock):
 
     await TestModel(foo=0).sync()
     driver_mock.update.assert_awaited_once()
+
+
+def test_primary_key_first_field():
+    @ommi_model(collection=ModelCollection())
+    @dataclasses.dataclass
+    class Model:
+        name: str
+        occupation: str
+
+    assert Model.get_primary_key_field().get("field_name") == "name"
+
+
+def test_primary_key_first_int_field():
+    @ommi_model(collection=ModelCollection())
+    @dataclasses.dataclass
+    class Model:
+        name: str
+        model_id: int
+
+    assert Model.get_primary_key_field().get("field_name") == "model_id"
+
+
+def test_primary_key_first_store_as_id():
+    @ommi_model(collection=ModelCollection())
+    @dataclasses.dataclass
+    class Model:
+        name: str
+        model_id: Annotated[int, StoreAs("_id")]
+
+    assert Model.get_primary_key_field().get("field_name") == "model_id"
+
+
+def test_primary_key_annotation():
+    @ommi_model(collection=ModelCollection())
+    @dataclasses.dataclass
+    class Model:
+        name: str
+        model_id: Annotated[str, Key]
+
+    assert Model.get_primary_key_field().get("field_name") == "model_id"
+
+
+def test_primary_key_named_id():
+    @ommi_model(collection=ModelCollection())
+    @dataclasses.dataclass
+    class Model:
+        name: str
+        id: str
+
+    assert Model.get_primary_key_field().get("field_name") == "id"
+

@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field as dc_field
 from inspect import get_annotations
+from pyexpat import model
 from typing import (
     Callable,
     overload,
@@ -21,7 +22,7 @@ from ommi.field_metadata import (
     AggregateMetadata,
     FieldType,
     StoreAs,
-    create_metadata_type,
+    create_metadata_type, Key,
 )
 from ommi.statuses import DatabaseStatus
 from ommi.contextual_method import contextual_method
@@ -149,6 +150,33 @@ class OmmiModel:
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
         return self.get_driver(driver).update(self)
+
+    @classmethod
+    def get_primary_key_field(cls) -> OmmiField:
+        if not cls.__ommi_metadata__.fields:
+            raise Exception(f"No fields defined on {model}")
+
+        fields = list(cls.__ommi_metadata__.fields.values())
+        if field := next((f for f in fields if f.matches(Key)), None):
+            return field
+
+        if field := next(
+            (
+                f
+                for f in fields
+                if f.get("store_as", f.get("field_name")).lower() in {"id", "_id"}
+            ),
+            None,
+        ):
+            return field
+
+        if field := next(
+            (f for f in fields if f.get("field_type") is int), None
+        ):
+            return field
+
+        return next(iter(fields))
+
 
     @classmethod
     def _build_column_predicates(
