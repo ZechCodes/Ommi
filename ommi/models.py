@@ -29,14 +29,12 @@ from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
 import ommi.model_collections
 
-
 T = TypeVar("T", bound=Type)
 
 DRIVER_DUNDER_NAME = "__ommi_driver__"
 MODEL_NAME_DUNDER_NAME = "__ommi_model_name__"
 MODEL_NAME_CLASS_PARAM = "name"
 METADATA_DUNDER_NAME = "__ommi_metadata__"
-
 
 _global_collection = None
 
