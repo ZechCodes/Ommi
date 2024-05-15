@@ -24,6 +24,7 @@ from ommi.field_metadata import (
     StoreAs,
     create_metadata_type, Key,
 )
+from ommi.utils.get_first import first
 from ommi.statuses import DatabaseStatus
 from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
@@ -151,30 +152,23 @@ class OmmiModel:
 
     @classmethod
     def get_primary_key_field(cls) -> OmmiField:
-        if not cls.__ommi_metadata__.fields:
-            raise Exception(f"No fields defined on {model}")
+        fields = cls.__ommi_metadata__.fields
+        if not fields:
+            raise Exception(f"No fields defined on {cls}")
 
-        fields = list(cls.__ommi_metadata__.fields.values())
-        if field := next((f for f in fields if f.matches(Key)), None):
+        def find_field_where(predicate):
+            return first(f for f in fields.values() if predicate(f))
+
+        if field := find_field_where(lambda f: f.matches(Key)):
             return field
 
-        if field := next(
-            (
-                f
-                for f in fields
-                if f.get("store_as", f.get("field_name")).lower() in {"id", "_id"}
-            ),
-            None,
-        ):
+        if field := find_field_where(lambda f: f.get("store_as") in {"id", "_id"}):
             return field
 
-        if field := next(
-            (f for f in fields if f.get("field_type") is int), None
-        ):
+        if field := find_field_where(lambda f: f.get("field_type") is int):
             return field
 
-        return next(iter(fields))
-
+        return first(fields.values())
 
     @classmethod
     def _build_column_predicates(
