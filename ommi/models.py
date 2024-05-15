@@ -165,7 +165,7 @@ class OmmiModel:
         if field := find_field_where(lambda f: f.get("store_as") in {"id", "_id"}):
             return field
 
-        if field := find_field_where(lambda f: f.get("field_type") is int):
+        if field := find_field_where(lambda f: issubclass(f.get("field_type"), int)):
             return field
 
         return first(fields.values())
