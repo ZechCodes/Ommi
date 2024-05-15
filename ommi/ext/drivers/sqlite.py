@@ -258,7 +258,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         }
 
     def _create_table(self, model: Type[OmmiModel], session: sqlite3.Cursor):
-        pk = self._find_primary_key(model)
+        pk = model.get_primary_key_field().get("store_as")
         columns = ", ".join(
             self._build_column(field, field.get("store_as") == pk)
             for field in model.__ommi_metadata__.fields.values()
@@ -266,30 +266,6 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         session.execute(
             f"CREATE TABLE IF NOT EXISTS {model.__ommi_metadata__.model_name} ({columns});"
         )
-
-    def _find_primary_key(self, model: Type[OmmiModel]) -> str:
-        if not model.__ommi_metadata__.fields:
-            raise Exception(f"No fields defined on {model}")
-
-        fields = list(model.__ommi_metadata__.fields.values())
-        if name := next(
-            (
-                f.get("store_as")
-                for f in fields
-                if f.get("store_as", f.get("field_name")).lower() == "id"
-            ),
-            None,
-        ):
-            return name
-
-        for field in fields:
-            if (
-                field.get("field_type") is int
-                or field.get("store_as").casefold() == "id"
-            ):
-                return field.get("store_as")
-
-        return next(iter(fields)).get("store_as")
 
     def _insert(self, item: OmmiModel, session: sqlite3.Cursor):
         fields = list(item.__ommi_metadata__.fields.values())
@@ -311,7 +287,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         items: list[OmmiModel],
         session: sqlite3.Cursor,
     ):
-        pk = self._find_primary_key(model)
+        pk = model.get_primary_key_field().get("store_as")
         fields = list(model.__ommi_metadata__.fields.values())
         for item in items:
             values = (
@@ -335,7 +311,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         items: list[OmmiModel],
         session: sqlite3.Cursor,
     ):
-        pk = self._find_primary_key(model)
+        pk = model.get_primary_key_field().get("store_as")
         keys = [getattr(item, pk) for item in items]
         qs = ", ".join(["?"] * len(items))
         session.execute(
@@ -416,6 +392,6 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         return " ".join(query_builder) + ";"
 
     def _sync_with_last_inserted(self, item: OmmiModel, session: sqlite3.Cursor):
-        pk = self._find_primary_key(type(item))
+        pk = item.get_primary_key_field().get("store_as")
         result = session.execute("SELECT last_insert_rowid();").fetchone()
         setattr(item, pk, result[0])
