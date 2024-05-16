@@ -81,7 +81,13 @@ class ASTGroupNode(ASTNode):
         return self
 
     def sort(self, *on_fields: "ASTReferenceNode") -> Self:
-        self.sorting.extend(field for field in on_fields if field not in self.sorting)
+        # Gotta jump through some hoops to compare ASTReferenceNodes and maintain ordering
+        unique = set(on_fields) | set(self.sorting)
+        for field in on_fields:
+            if field in unique:
+                self.sorting.append(field)
+                unique.remove(field)
+
         return self
 
     def __eq__(self, other):
