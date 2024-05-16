@@ -226,7 +226,7 @@ class ASTReferenceNode(ASTComparableNode):
         self._ordering = ordering
 
     def _eq(self, other):
-        return self.field == other.field and self.model == other.model
+        return self.field == other.field and self.model == other.model and self.ordering == other.ordering
 
     def __iter__(self):
         yield from (self._field, self._model)
