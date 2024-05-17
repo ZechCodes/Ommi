@@ -75,6 +75,10 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
         return self
 
     @database_action
+    async def count(self, *predicates: ASTGroupNode | Type[OmmiModel]) -> int:
+        return 0
+
+    @database_action
     async def delete(self, *items: OmmiModel) -> "MongoDBDriver":
         for item in items:
             await self._db[item.__class__.__name__].delete_one({'_id': item._id})
@@ -86,6 +90,12 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
         cursor = self._db[model.__name__].find()
         result = await cursor.to_list(length=100)
         return [model(**doc) for doc in result]
+
+    @database_action
+    async def sync_schema(
+        self, models: "ommi.model_collections.ModelCollection | None"
+    ) -> "MongoDBDriver":
+        return self
 
     @database_action
     async def update(self, *items: OmmiModel) -> "MongoDBDriver":
