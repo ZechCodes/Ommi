@@ -1,4 +1,5 @@
 from idlelib import query
+from dataclasses import dataclass
 
 import motor.motor_asyncio
 
@@ -11,6 +12,8 @@ from ommi.query_ast import ASTGroupNode, ASTReferenceNode, ASTLiteralNode, ASTLo
     ASTComparisonNode, ASTGroupFlagNode, ResultOrdering
 
 
+
+@dataclass
 class MongoDBConfig(DriverConfig):
     host: str
     port: int
