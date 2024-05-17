@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated
 
+import pymongo.errors
 import pytest
 import pytest_asyncio
 
@@ -19,6 +20,7 @@ skip_if_motor_not_installed = pytest.mark.skipif(
     reason="Could not import motor. Skipping MongoDB tests."
 )
 
+test_mongo_config = MongoDBConfig(host="127.0.0.1", port=27017, database_name="tests", timeout=100)
 test_models = ModelCollection()
 
 
@@ -35,16 +37,20 @@ def mongo_driver() -> MongoDBDriver:
     to create its own event loop which causes the contextvar to create an entirely new context.
 
     There may be a more elegant solution to this, but this works for now."""
-    with MongoDBDriver(MongoDBConfig(host="127.0.0.1", port=27017, database_name="tests", timeout=100)) as driver:
+    with MongoDBDriver(test_mongo_config) as driver:
         yield driver
 
 
 @pytest_asyncio.fixture
 async def driver(mongo_driver):
     async with mongo_driver as driver:
-        await driver._db.drop_collection("TestModel")
-        await driver.sync_schema(test_models).or_raise()
-        yield driver
+        try:
+            await driver._db.drop_collection("TestModel")
+        except pymongo.errors.ServerSelectionTimeoutError as exc:
+            raise RuntimeError(f"Could not connect to MongoDB. Is it running? {test_mongo_config}") from exc
+        else:
+            await driver.sync_schema(test_models).or_raise()
+            yield driver
 
 
 @skip_if_motor_not_installed
