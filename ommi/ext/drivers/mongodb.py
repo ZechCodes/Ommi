@@ -1,9 +1,7 @@
-from idlelib import query
 from dataclasses import dataclass
 
 import motor.motor_asyncio
 
-from ommi import models
 from ommi.drivers import DatabaseDriver, DriverConfig, database_action
 from ommi.models import OmmiModel
 from typing import Type, Any
