@@ -16,6 +16,7 @@ class MongoDBConfig(DriverConfig):
     host: str
     port: int
     database_name: str
+    timeout: int = 20000
 
 
 class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
@@ -55,7 +56,7 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
 
     @database_action
     async def connect(self) -> "MongoDBDriver":
-        self._client = motor.motor_asyncio.AsyncIOMotorClient(self.config.host, self.config.port)
+        self._client = motor.motor_asyncio.AsyncIOMotorClient(self.config.host, self.config.port, timeoutMS=self.config.timeout)
         self._db = self._client.get_database(self.config.database_name)
         self._connected = True
         return self
