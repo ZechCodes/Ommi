@@ -15,6 +15,7 @@ from ommi.query_ast import ASTGroupNode, ASTReferenceNode, ASTLiteralNode, ASTLo
 class MongoDBConfig(DriverConfig):
     host: str
     port: int
+    database_name: str
 
 
 class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
@@ -46,6 +47,7 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
         super().__init__(*args)
         self._connected = False
         self._client = None
+        self._db = None
 
     @property
     def connected(self) -> bool:
@@ -54,6 +56,7 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
     @database_action
     async def connect(self) -> "MongoDBDriver":
         self._client = motor.motor_asyncio.AsyncIOMotorClient(self.config.host, self.config.port)
+        self._db = self._client.get_database(self.config.database_name)
         self._connected = True
         return self
 
