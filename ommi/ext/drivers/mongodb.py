@@ -7,8 +7,7 @@ from ommi.models import OmmiModel
 from typing import Type, Any
 
 from ommi.query_ast import ASTGroupNode, ASTReferenceNode, ASTLiteralNode, ASTLogicalOperatorNode, ASTOperatorNode, \
-    ASTComparisonNode, ASTGroupFlagNode, ResultOrdering
-
+    ASTComparisonNode, ASTGroupFlagNode, ResultOrdering, when
 
 
 @dataclass
@@ -86,10 +85,10 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
         return self
 
     @database_action
-    async def fetch(self, model: Type[OmmiModel]) -> list[OmmiModel]:
-        cursor = self._db[model.__name__].find()
-        result = await cursor.to_list(length=100)
-        return [model(**doc) for doc in result]
+    async def fetch(
+        self, *predicates: ASTGroupNode | Type[OmmiModel]
+    ) -> list[OmmiModel]:
+        return await self._fetch(when(*predicates))
 
     @database_action
     async def sync_schema(
@@ -102,6 +101,26 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
         for item in items:
             await self._db[item.__class__.__name__].replace_one({'_id': item._id}, item.to_dict())
         return self
+
+    async def _fetch(self, ast: ASTGroupNode) -> list[OmmiModel]:
+        pipeline, model = self._process_ast(ast)
+        results = self._db[model.__ommi_metadata__.model_name].aggregate([pipeline])
+        return [self._create_model(result, model) async for result in results]
+
+    def _create_model(self, data: dict[str, Any], model: Type[OmmiModel]) -> OmmiModel:
+        field_mapping = {
+            field.get("store_as"): field.get("field_name")
+            for field in model.__ommi_metadata__.fields.values()
+        }
+        instance = model(
+            **{
+                field_mapping[key]: value
+                for key, value in data.items()
+                if key in field_mapping
+            }
+        )
+        instance.__ommi_mongodb_id__ = data.get("_id")
+        return instance
 
     def _process_ast(self, ast: ASTGroupNode) -> tuple[dict[str, Any], Type[OmmiModel]]:
         pipeline = {
