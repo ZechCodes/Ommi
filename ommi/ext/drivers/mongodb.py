@@ -75,7 +75,13 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
 
     @database_action
     async def count(self, *predicates: ASTGroupNode | Type[OmmiModel]) -> int:
-        return 0
+        pipeline, model = self._process_ast(when(*predicates))
+        pipeline["$count"] = "count"
+        if not pipeline["$match"]:
+            del pipeline["$match"]
+
+        result = await self._db[model.__ommi_metadata__.model_name].aggregate([pipeline]).to_list(1)
+        return result[0].get("count", 0)
 
     @database_action
     async def delete(self, *items: OmmiModel) -> "MongoDBDriver":
