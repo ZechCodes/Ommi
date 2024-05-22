@@ -79,8 +79,10 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
 
     @database_action
     async def connect(self) -> "SQLiteDriver":
-        self._db = sqlite3.connect(self.config.filename)
-        self._connected = True
+        if not self._connected:
+            self._db = sqlite3.connect(self.config.filename)
+            self._connected = True
+
         return self
 
     @database_action
