@@ -105,7 +105,8 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
     @database_action
     async def update(self, *items: OmmiModel) -> "MongoDBDriver":
         for item in items:
-            await self._db[item.__class__.__name__].replace_one({'_id': item._id}, item.to_dict())
+            await self._update(item)
+
         return self
 
     async def _fetch(self, ast: ASTGroupNode) -> list[OmmiModel]:
@@ -132,6 +133,12 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
         data = self._model_to_dict(item)
         result = await self._db[item.__ommi_metadata__.model_name].insert_one(data)
         item.__ommi_mongodb_id__ = result.inserted_id
+
+    async def _update(self, item: OmmiModel):
+        await self._db[item.__ommi_metadata__.model_name].replace_one(
+            {'_id': getattr(item, "__ommi_mongodb_id__")},
+            self._model_to_dict(item)
+        )
 
     def _model_to_dict(self, model: OmmiModel) -> dict[str, Any]:
         fields = list(model.__ommi_metadata__.fields.values())
