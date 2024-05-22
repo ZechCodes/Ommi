@@ -86,7 +86,7 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
     @database_action
     async def delete(self, *items: OmmiModel) -> "MongoDBDriver":
         for item in items:
-            await self._db[item.__class__.__name__].delete_one({'_id': item._id})
+            await self._db[item.__ommi_metadata__.model_name].delete_one({'_id': getattr(item, "__ommi_mongodb_id__")})
 
         return self
 
