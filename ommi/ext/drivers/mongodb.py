@@ -69,7 +69,7 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
     @database_action
     async def add(self, *items: OmmiModel) -> "MongoDBDriver":
         for item in items:
-            await self._db[item.__class__.__name__].insert_one(item.to_dict())
+            await self._insert(item)
 
         return self
 
@@ -121,6 +121,18 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
         )
         instance.__ommi_mongodb_id__ = data.get("_id")
         return instance
+
+    async def _insert(self, item: OmmiModel):
+        data = self._model_to_dict(item)
+        result = await self._db[item.__ommi_metadata__.model_name].insert_one(data)
+        item.__ommi_mongodb_id__ = result.inserted_id
+
+    def _model_to_dict(self, model: OmmiModel) -> dict[str, Any]:
+        fields = list(model.__ommi_metadata__.fields.values())
+        return {
+            field.get("store_as"): getattr(model, field.get("field_name"))
+            for field in fields
+        }
 
     def _process_ast(self, ast: ASTGroupNode) -> tuple[dict[str, Any], Type[OmmiModel]]:
         pipeline = {
