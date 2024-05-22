@@ -149,9 +149,7 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
 
     def _process_ast(self, ast: ASTGroupNode) -> tuple[dict[str, Any], Type[OmmiModel]]:
         pipeline = {
-            "$match": {
-                "$and": []
-            }
+            "$match": {}
         }
 
         if ast.sorting:
@@ -167,11 +165,15 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
                 pipeline["$skip"] = ast.results_page * ast.max_results
 
         collections = []
-        group_stack = [pipeline["$match"]["$and"]]
+        query = []
+        group_stack = [query]
         logical_operator_stack = [ASTLogicalOperatorNode.AND]
         node_stack = [iter(ast)]
         while node_stack:
             match next(node_stack[~0], None):
+                case ASTReferenceNode(field=None, model=model):
+                    collections.append(model)
+
                 case ASTGroupNode() as group:
                     node_stack.append(iter(group))
 
@@ -206,6 +208,9 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
 
                 case node:
                     raise TypeError(f"Unexpected node type: {node}")
+
+        if query:
+            pipeline["$match"]["$and"] = query
 
         return pipeline, collections[0]
 
