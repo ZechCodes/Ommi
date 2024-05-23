@@ -25,7 +25,20 @@ Ommi's test suite checks for compatibility with the following model implementati
 #### SQLite3
 
 - Table creation from models
-- Select, Insert, Update, Delete
+- Select, Insert, Update, Delete, Count
+- No relationships or joins
+
+#### PostgreSQL
+
+- Table creation from models
+- Select, Insert, Update, Delete, Count
+- No relationships or joins
+
+#### MongoDB
+
+- Collection creation from models
+- Fetch, Insert, Update, Delete, Count
+- No relationships or nested documents
 
 ## Usage
 
