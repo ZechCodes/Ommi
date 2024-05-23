@@ -1,11 +1,11 @@
 import sqlite3
 from dataclasses import dataclass, field as dc_field
 from datetime import datetime, date
-from typing import Type, Any, TypeVar, Callable, get_origin, Generator
+from typing import Type, Any, TypeVar, Callable, get_origin, Generator, Protocol, runtime_checkable
 
 from tramp.results import Result
 
-from ommi.drivers import DatabaseDriver, DriverConfig, database_action
+from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol
 from ommi.model_collections import ModelCollection
 from ommi.models import OmmiField, OmmiModel, get_collection
 from ommi.query_ast import (
@@ -39,9 +39,19 @@ class SQLiteConfig(DriverConfig):
     filename: str
 
 
-class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
-    config: SQLiteConfig
+@runtime_checkable
+class SQLiteConnection(Protocol):
+    def close(self) -> None:
+        ...
 
+    def cursor(self) -> sqlite3.Cursor:
+        ...
+
+    def rollback(self) -> None:
+        ...
+
+@enforce_connection_protocol
+class SQLiteDriver(DatabaseDriver[SQLiteConnection], driver_name="sqlite", nice_name="SQLite"):
     logical_operator_mapping = {
         ASTLogicalOperatorNode.AND: "AND",
         ASTLogicalOperatorNode.OR: "OR",
@@ -68,39 +78,22 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         bool: "INTEGER",
     }
 
-    def __init__(self, *args):
-        super().__init__(*args)
-        self._connected = False
-        self._db: sqlite3.Connection | None = None
-
-    @property
-    def connected(self) -> bool:
-        return self._connected
-
-    @database_action
-    async def connect(self) -> "SQLiteDriver":
-        if not self._connected:
-            self._db = sqlite3.connect(self.config.filename)
-            self._connected = True
-
-        return self
-
     @database_action
     async def disconnect(self) -> "SQLiteDriver":
-        self._db.close()
+        self._connection.close()
         self._connected = False
         return self
 
     @database_action
     async def add(self, *items: OmmiModel) -> "SQLiteDriver":
-        session = self._db.cursor()
+        session = self._connection.cursor()
         try:
             for item in items:
                 self._insert(item, session)
                 self._sync_with_last_inserted(item, session)
 
         except:
-            self._db.rollback()
+            self._connection.rollback()
             raise
 
         else:
@@ -112,7 +105,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
     @database_action
     async def count(self, *predicates: ASTGroupNode | Type[OmmiModel]) -> int:
         ast = when(*predicates)
-        session = self._db.cursor()
+        session = self._connection.cursor()
         return self._count(ast, session)
 
     @database_action
@@ -121,13 +114,13 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         for item in items:
             models.setdefault(type(item), []).append(item)
 
-        session = self._db.cursor()
+        session = self._connection.cursor()
         try:
             for model, items in models.items():
                 self._delete_rows(model, items, session)
 
         except:
-            self._db.rollback()
+            self._connection.rollback()
             raise
 
         else:
@@ -141,7 +134,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         self, *predicates: ASTGroupNode | Type[OmmiModel]
     ) -> list[OmmiModel]:
         ast = when(*predicates)
-        session = self._db.cursor()
+        session = self._connection.cursor()
         result = self._select(ast, session)
         return result
 
@@ -149,7 +142,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
     async def sync_schema(
         self, collection: ModelCollection | None = None
     ) -> "SQLiteDriver":
-        session = self._db.cursor()
+        session = self._connection.cursor()
         models = get_collection(
             Result.Value(collection) if collection else Result.Nothing
         ).models
@@ -158,7 +151,7 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
                 self._create_table(model, session)
 
         except:
-            self._db.rollback()
+            self._connection.rollback()
             raise
 
         else:
@@ -173,13 +166,13 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
         for item in items:
             models.setdefault(type(item), []).append(item)
 
-        session = self._db.cursor()
+        session = self._connection.cursor()
         try:
             for model, items in models.items():
                 self._update_rows(model, items, session)
 
         except:
-            self._db.rollback()
+            self._connection.rollback()
             raise
 
         else:
@@ -187,6 +180,10 @@ class SQLiteDriver(DatabaseDriver, driver_name="sqlite", nice_name="SQLite"):
 
         finally:
             session.close()
+
+    @classmethod
+    async def from_config(cls, config: SQLiteConfig) -> "SQLiteDriver":
+        return cls(sqlite3.connect(config.filename))
 
     def _build_column(self, field: OmmiField, pk: bool) -> str:
         column = [

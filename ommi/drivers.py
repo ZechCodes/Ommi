@@ -6,6 +6,7 @@ from typing import (
     Callable,
     Generator,
     Generic,
+    get_args,
     ParamSpec,
     Type,
     TypeAlias,
@@ -24,6 +25,7 @@ DriverNiceName: TypeAlias = str
 M = TypeVar("M")
 T = TypeVar("T")
 P = ParamSpec("P")
+ConnectionProtocol = TypeVar("ConnectionProtocol")
 
 
 class DatabaseAction(Generic[T]):
@@ -83,15 +85,16 @@ class AbstractDatabaseDriver(ABC):
 
     @property
     @abstractmethod
+    def connection(self) -> Any:
+        ...
+
+    @property
+    @abstractmethod
     def connected(self) -> bool:
         ...
 
     @abstractmethod
     async def add(self, *items: M) -> DatabaseStatus[M]:
-        ...
-
-    @abstractmethod
-    async def connect(self) -> DatabaseStatus:
         ...
 
     @abstractmethod
@@ -122,8 +125,13 @@ class AbstractDatabaseDriver(ABC):
     async def update(self, *items: OmmiModel) -> DatabaseStatus:
         ...
 
+    @classmethod
+    @abstractmethod
+    async def from_config(cls, config: DriverConfig) -> "AbstractDatabaseDriver":
+        ...
 
-class DatabaseDriver(AbstractDatabaseDriver, ABC):
+
+class DatabaseDriver(Generic[ConnectionProtocol], AbstractDatabaseDriver, ABC):
     __drivers__ = {}
     driver_name: DriverName
     nice_name: DriverNiceName
@@ -138,9 +146,19 @@ class DatabaseDriver(AbstractDatabaseDriver, ABC):
         super().__init_subclass__(**kwargs)
         cls.add_driver(cls)
 
-    def __init__(self, config: DriverConfig):
+    def __init__(self, connection: ConnectionProtocol):
         super().__init__()
-        self.config = config
+        self._connection = connection
+        self._connected = True
+
+
+    @property
+    def connection(self) -> Any:
+        return self._connection
+
+    @property
+    def connected(self) -> bool:
+        return self._connected
 
     @classmethod
     def add_driver(cls, driver: "Type[AbstractDatabaseDriver]"):
@@ -169,7 +187,6 @@ class DatabaseDriver(AbstractDatabaseDriver, ABC):
             return True
 
     async def __aenter__(self):
-        await self.connect().or_raise()
         self.__enter__()
         return self
 
@@ -177,3 +194,24 @@ class DatabaseDriver(AbstractDatabaseDriver, ABC):
         await self.disconnect().or_raise()
         self.__exit__(*args)
         return
+
+
+def enforce_connection_protocol(driver: Type[AbstractDatabaseDriver]):
+    init = driver.__init__
+    connection_protocol = get_args(driver.__orig_bases__[0])[0]
+    if connection_protocol is ConnectionProtocol:
+        raise TypeError(
+            f"Expected a connection protocol to be defined on the driver class {driver.__qualname__}."
+        )
+
+    @wraps(driver.__init__)
+    def __init__(self, connection, *args, **kwargs):
+        if connection_protocol and not isinstance(connection, connection_protocol):
+            raise TypeError(
+                f"Expected connection implementing the {connection_protocol.__qualname__} protocol, {type(connection)} does not."
+            )
+
+        init(self, connection, *args, **kwargs)
+
+    driver.__init__ = __init__
+    return driver

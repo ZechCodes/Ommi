@@ -1,11 +1,11 @@
 import psycopg
 from dataclasses import dataclass, field as dc_field
 from datetime import datetime, date
-from typing import Type, Any, TypeVar, Callable, get_origin, Generator, Sequence
+from typing import Type, Any, TypeVar, Callable, get_origin, Generator, Sequence, Protocol, runtime_checkable
 
 from tramp.results import Result
 
-from ommi.drivers import DatabaseDriver, DriverConfig, database_action
+from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol
 from ommi.model_collections import ModelCollection
 from ommi.models import OmmiField, OmmiModel, get_collection
 from ommi.query_ast import (
@@ -46,9 +46,23 @@ class PostgreSQLConfig(DriverConfig):
         return f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.database_name}"
 
 
-class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="PostgreSQL"):
-    config: PostgreSQLConfig
+@runtime_checkable
+class PostgreSQLConnection(Protocol):
+    def cursor(self) -> psycopg.AsyncCursor:
+        ...
 
+    def close(self) -> None:
+        ...
+
+    async def commit(self) -> None:
+        ...
+
+    async def rollback(self) -> None:
+        ...
+
+
+@enforce_connection_protocol
+class PostgreSQLDriver(DatabaseDriver[PostgreSQLConnection], driver_name="postgresql", nice_name="PostgreSQL"):
     logical_operator_mapping = {
         ASTLogicalOperatorNode.AND: "AND",
         ASTLogicalOperatorNode.OR: "OR",
@@ -75,37 +89,23 @@ class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="Post
         bool: "INTEGER",
     }
 
-    def __init__(self, *args):
-        super().__init__(*args)
-        self._connected = False
-        self._db: psycopg.AsyncConnection | None = None
-
-    @property
-    def connected(self) -> bool:
-        return self._connected
-
-    @database_action
-    async def connect(self) -> "PostgreSQLDriver":
-        if not self._connected:
-            self._db = await psycopg.AsyncConnection.connect(self.config.to_uri())
-            self._connected = True
-
-        return self
+    def __init__(self, connection: PostgreSQLConnection):
+        super().__init__(connection)
 
     @database_action
     async def disconnect(self) -> "PostgreSQLDriver":
-        await self._db.close()
+        await self.connection.close()
         self._connected = False
         return self
 
     @database_action
     async def add(self, *items: OmmiModel) -> "PostgreSQLDriver":
-        session = self._db.cursor()
+        session = self._connection.cursor()
         try:
             await self._insert(items, session, type(items[0]))
 
         except:
-            await self._db.rollback()
+            await self._connection.rollback()
             raise
 
         else:
@@ -117,7 +117,7 @@ class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="Post
     @database_action
     async def count(self, *predicates: ASTGroupNode | Type[OmmiModel]) -> int:
         ast = when(*predicates)
-        session = self._db.cursor()
+        session = self._connection.cursor()
         return await self._count(ast, session)
 
     @database_action
@@ -126,13 +126,13 @@ class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="Post
         for item in items:
             models.setdefault(type(item), []).append(item)
 
-        session = self._db.cursor()
+        session = self._connection.cursor()
         try:
             for model, items in models.items():
                 await self._delete_rows(model, items, session)
 
         except:
-            await self._db.rollback()
+            await self._connection.rollback()
             raise
 
         else:
@@ -146,7 +146,7 @@ class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="Post
         self, *predicates: ASTGroupNode | Type[OmmiModel]
     ) -> list[OmmiModel]:
         ast = when(*predicates)
-        session = self._db.cursor()
+        session = self._connection.cursor()
         result = await self._select(ast, session)
         return result
 
@@ -154,7 +154,7 @@ class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="Post
     async def sync_schema(
         self, collection: ModelCollection | None = None
     ) -> "PostgreSQLDriver":
-        session = self._db.cursor()
+        session = self._connection.cursor()
         models = get_collection(
             Result.Value(collection) if collection else Result.Nothing
         ).models
@@ -163,7 +163,7 @@ class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="Post
                 await self._create_table(model, session)
 
         except:
-            await self._db.rollback()
+            await self._connection.rollback()
             raise
 
         else:
@@ -178,13 +178,13 @@ class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="Post
         for item in items:
             models.setdefault(type(item), []).append(item)
 
-        session = self._db.cursor()
+        session = self._connection.cursor()
         try:
             for model, items in models.items():
                 await self._update_rows(model, items, session)
 
         except:
-            await self._db.rollback()
+            await self._connection.rollback()
             raise
 
         else:
@@ -192,6 +192,11 @@ class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="Post
 
         finally:
             await session.close()
+
+    @classmethod
+    async def from_config(cls, config: PostgreSQLConfig) -> "PostgreSQLDriver":
+        connection = await psycopg.AsyncConnection.connect(config.to_uri())
+        return cls(connection)
 
     def _build_column(self, field: OmmiField, pk: bool) -> str:
         column = [
@@ -341,7 +346,7 @@ class PostgreSQLDriver(DatabaseDriver, driver_name="postgresql", nice_name="Post
     async def _select(self, predicates: ASTGroupNode, session: psycopg.AsyncCursor):
         query = self._process_ast(predicates)
         query_str = self._build_select_query(query)
-        result = await session.execute(query_str, query.values)
+        result = await session.execute(query_str.encode(), query.values)
         return [
             query.model(*self._validate_row_values(query.model, row)) async for row in result
         ]

@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 import motor.motor_asyncio
 
-from ommi.drivers import DatabaseDriver, DriverConfig, database_action
+from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol
 from ommi.models import OmmiModel
-from typing import Type, Any
+from typing import Type, Any, Protocol, runtime_checkable
 
 from ommi.query_ast import ASTGroupNode, ASTReferenceNode, ASTLiteralNode, ASTLogicalOperatorNode, ASTOperatorNode, \
     ASTComparisonNode, ASTGroupFlagNode, ResultOrdering, when
@@ -18,9 +18,13 @@ class MongoDBConfig(DriverConfig):
     timeout: int = 20000
 
 
-class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
-    config: MongoDBConfig
+@runtime_checkable
+class MongoDBConnection(Protocol):
+    ...
 
+
+@enforce_connection_protocol
+class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", nice_name="MongoDB"):
     logical_operator_mapping = {
         ASTLogicalOperatorNode.AND: "$and",
         ASTLogicalOperatorNode.OR: "$or",
@@ -43,26 +47,17 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
         ASTOperatorNode.LESS_THAN_OR_EQUAL: "$gte",
     }
 
-    def __init__(self, *args):
-        super().__init__(*args)
-        self._connected = False
-        self._client = None
-        self._db = None
+    def __init__(self, connection: MongoDBConnection, database):
+        super().__init__(connection,)
+        self._db = database
 
     @property
     def connected(self) -> bool:
         return self._connected
 
     @database_action
-    async def connect(self) -> "MongoDBDriver":
-        self._client = motor.motor_asyncio.AsyncIOMotorClient(self.config.host, self.config.port, timeoutMS=self.config.timeout)
-        self._db = self._client.get_database(self.config.database_name)
-        self._connected = True
-        return self
-
-    @database_action
     async def disconnect(self) -> "MongoDBDriver":
-        self._client.close()
+        self.connection.close()
         self._connected = False
         return self
 
@@ -108,6 +103,14 @@ class MongoDBDriver(DatabaseDriver, driver_name="mongodb", nice_name="MongoDB"):
             await self._update(item)
 
         return self
+
+    @classmethod
+    async def from_config(cls, config: MongoDBConfig) -> "MongoDBDriver":
+        connection = motor.motor_asyncio.AsyncIOMotorClient(
+            config.host, config.port, timeoutMS=config.timeout
+        )
+        db = connection.get_database(config.database_name)
+        return cls(connection, db)
 
     async def _fetch(self, ast: ASTGroupNode) -> list[OmmiModel]:
         pipeline, model = self._process_ast(ast)

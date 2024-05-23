@@ -38,20 +38,19 @@ class DriverFactory:
 
 @DriverFactory
 async def sqlite():
-    driver = SQLiteDriver(SQLiteConfig(filename=":memory:"))
-    await driver.connect().or_raise()
+    driver = await SQLiteDriver.from_config(SQLiteConfig(filename=":memory:"))
     await driver.sync_schema(test_models).or_raise()
     return driver
 
 
 @DriverFactory
 async def mongo():
-    driver = MongoDBDriver(MongoDBConfig(host="127.0.0.1", port=27017, database_name="tests", timeout=100))
+    config = MongoDBConfig(host="127.0.0.1", port=27017, database_name="tests", timeout=100)
     try:
-        await driver.connect().or_raise()
+        driver = await MongoDBDriver.from_config(config)
         await driver._db.drop_collection("TestModel")
     except pymongo.errors.ServerSelectionTimeoutError as exc:
-        raise RuntimeError(f"Could not connect to MongoDB. Is it running? {driver.config}") from exc
+        raise RuntimeError(f"Could not connect to MongoDB. Is it running? {config}") from exc
     else:
         await driver.sync_schema(test_models).or_raise()
         return driver
@@ -59,20 +58,18 @@ async def mongo():
 
 @DriverFactory
 async def postgresql():
-    driver = PostgreSQLDriver(
-        PostgreSQLConfig(
-            host="127.0.0.1",
-            port=5432,
-            database_name="postgres",
-            username="postgres",
-            password="password"
-        )
+    config = PostgreSQLConfig(
+        host="127.0.0.1",
+        port=5432,
+        database_name="postgres",
+        username="postgres",
+        password="password"
     )
     try:
-        await driver.connect().or_raise()
-        await driver._db.execute("DROP TABLE IF EXISTS TestModel")
+        driver = await PostgreSQLDriver.from_config(config)
+        await driver.connection.execute("DROP TABLE IF EXISTS TestModel")
     except psycopg.OperationalError as exc:
-        raise RuntimeError(f"Could not connect to PostgreSQL. Is it running? {driver.config}") from exc
+        raise RuntimeError(f"Could not connect to PostgreSQL. Is it running? {config}") from exc
     else:
         await driver.sync_schema(test_models).or_raise()
         return driver
