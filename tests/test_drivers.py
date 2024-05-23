@@ -170,6 +170,22 @@ async def test_count(driver):
 
 
 @pytest.mark.asyncio
+@parametrize_drivers()
+async def test_sync_schema(driver):
+    async with driver as connection:
+        await connection.sync_schema(test_models).or_raise()
+
+        await connection.add(
+            a := TestModel(name="dummy1"),
+            b := TestModel(name="dummy2"),
+        ).or_raise()
+
+        assert isinstance(a.id, int)
+        assert isinstance(b.id, int)
+        assert a.id != b.id
+
+
+@pytest.mark.asyncio
 async def test_async_with_connection():
     async with SQLiteDriver.from_config(SQLiteConfig(filename=":memory:")) as connection:
         assert isinstance(connection, SQLiteDriver)
