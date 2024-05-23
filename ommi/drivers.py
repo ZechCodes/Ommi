@@ -215,3 +215,28 @@ def enforce_connection_protocol(driver: Type[AbstractDatabaseDriver]):
 
     driver.__init__ = __init__
     return driver
+
+
+def connection_context_manager(func: Callable[[DriverConfig], Awaitable[AbstractDatabaseDriver]]):
+    @wraps(func)
+    def wrapper(cls, config: DriverConfig) -> ConnectionFromConfigContextManager:
+        return ConnectionFromConfigContextManager(func(cls, config))
+
+    return wrapper
+
+
+class ConnectionFromConfigContextManager:
+    def __init__(self, awaitable: Awaitable[AbstractDatabaseDriver]):
+        self.awaitable = awaitable
+        self.connection = None
+
+    def __await__(self):
+        return self.awaitable.__await__()
+
+    async def __aenter__(self):
+        self.connection = await self.awaitable
+        await self.connection.__aenter__()
+        return self.connection
+
+    async def __aexit__(self, *args):
+        return await self.connection.__aexit__(*args)

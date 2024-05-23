@@ -5,7 +5,7 @@ from typing import Type, Any, TypeVar, Callable, get_origin, Generator, Sequence
 
 from tramp.results import Result
 
-from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol
+from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol, connection_context_manager
 from ommi.model_collections import ModelCollection
 from ommi.models import OmmiField, OmmiModel, get_collection
 from ommi.query_ast import (
@@ -194,6 +194,7 @@ class PostgreSQLDriver(DatabaseDriver[PostgreSQLConnection], driver_name="postgr
             await session.close()
 
     @classmethod
+    @connection_context_manager
     async def from_config(cls, config: PostgreSQLConfig) -> "PostgreSQLDriver":
         connection = await psycopg.AsyncConnection.connect(config.to_uri())
         return cls(connection)

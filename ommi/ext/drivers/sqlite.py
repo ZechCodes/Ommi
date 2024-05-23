@@ -5,7 +5,7 @@ from typing import Type, Any, TypeVar, Callable, get_origin, Generator, Protocol
 
 from tramp.results import Result
 
-from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol
+from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol, connection_context_manager
 from ommi.model_collections import ModelCollection
 from ommi.models import OmmiField, OmmiModel, get_collection
 from ommi.query_ast import (
@@ -182,6 +182,7 @@ class SQLiteDriver(DatabaseDriver[SQLiteConnection], driver_name="sqlite", nice_
             session.close()
 
     @classmethod
+    @connection_context_manager
     async def from_config(cls, config: SQLiteConfig) -> "SQLiteDriver":
         return cls(sqlite3.connect(config.filename))
 

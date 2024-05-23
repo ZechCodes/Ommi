@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import motor.motor_asyncio
 
-from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol
+from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol, connection_context_manager
 from ommi.models import OmmiModel
 from typing import Type, Any, Protocol, runtime_checkable
 
@@ -105,6 +105,7 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
         return self
 
     @classmethod
+    @connection_context_manager
     async def from_config(cls, config: MongoDBConfig) -> "MongoDBDriver":
         connection = motor.motor_asyncio.AsyncIOMotorClient(
             config.host, config.port, timeoutMS=config.timeout
