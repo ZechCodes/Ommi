@@ -81,7 +81,7 @@ from ommi.ext.drivers.sqlite import SQLiteDriver, SQLiteConfig
 
 
 async def example():
-    async with SQLiteDriver(SQLiteConfig(filename=":memory:")) as db:
+    async with SQLiteDriver.from_config(SQLiteConfig(filename=":memory:")) as db:
         ...
 ```
 
