@@ -1,3 +1,4 @@
+from contextlib import suppress
 from dataclasses import dataclass
 
 import motor.motor_asyncio
@@ -137,6 +138,83 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
         data = self._model_to_dict(item)
         result = await self._db[item.__ommi_metadata__.model_name].insert_one(data)
         item.__ommi_mongodb_id__ = result.inserted_id
+        await self._set_auto_increment_pk(item)
+
+    async def _set_auto_increment_pk(self, item: OmmiModel):
+        pk = item.get_primary_key_field()
+        if not issubclass(pk.get("field_type"), int) or getattr(item, pk.get("field_name")) is not None:
+            return
+
+        name = pk.get("store_as")
+        with suppress(StopAsyncIteration):
+            await self._db[item.__ommi_metadata__.model_name].aggregate(
+                [
+                    {
+                        "$lookup": {
+                            "from": item.__ommi_metadata__.model_name,
+                            "pipeline": [
+                                {
+                                    "$match": {
+                                        name: {
+                                            "$exists": True,
+                                        },
+                                    },
+                                },
+                                {
+                                    "$sort": {
+                                        name: 1,
+                                    },
+                                },
+                                {
+                                    "$addFields": {
+                                        "next_id": {
+                                            "$add": [f"${name}", 1],
+                                        },
+                                    },
+                                },
+                            ],
+                            "as": "__ommi_autoincrement",
+                        },
+                    },
+                    {
+                        "$unwind": {
+                            "path": "$__ommi_autoincrement",
+                            "preserveNullAndEmptyArrays": True,
+                        },
+                    },
+                    {
+                        "$match": {
+                            "_id": item.__ommi_mongodb_id__,
+                        },
+                    },
+                    {
+                        "$addFields": {
+                            name: {
+                                "$ifNull": [
+                                    "$__ommi_autoincrement.next_id",
+                                    0,
+                                ],
+                            },
+                        },
+                    },
+                    {
+                        "$unset": ["__ommi_autoincrement"],
+                    },
+                    {
+                        "$match": {
+                            name: {
+                                "$exists": True,
+                            },
+                        },
+                    },
+                    {
+                        "$merge": item.__ommi_metadata__.model_name,
+                    },
+                ]
+            ).next()
+
+        result = await self._db[item.__ommi_metadata__.model_name].find_one({"_id": item.__ommi_mongodb_id__}, {"_id": 0, name: 1})
+        setattr(item, pk.get("field_name"), result[name])
 
     async def _update(self, item: OmmiModel):
         await self._db[item.__ommi_metadata__.model_name].replace_one(
@@ -146,9 +224,11 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
 
     def _model_to_dict(self, model: OmmiModel) -> dict[str, Any]:
         fields = list(model.__ommi_metadata__.fields.values())
+        pk = model.get_primary_key_field()
         return {
             field.get("store_as"): getattr(model, field.get("field_name"))
             for field in fields
+            if field is not pk
         }
 
     def _process_ast(self, ast: ASTGroupNode) -> tuple[dict[str, Any], Type[OmmiModel]]:
