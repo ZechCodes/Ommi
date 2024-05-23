@@ -48,7 +48,7 @@ async def mongo():
     config = MongoDBConfig(host="127.0.0.1", port=27017, database_name="tests", timeout=100)
     try:
         driver = await MongoDBDriver.from_config(config)
-        await driver._db.drop_collection("TestModel")
+        await driver._db.drop_collection(TestModel.__ommi_metadata__.model_name)
     except pymongo.errors.ServerSelectionTimeoutError as exc:
         raise RuntimeError(f"Could not connect to MongoDB. Is it running? {config}") from exc
     else:
@@ -70,8 +70,7 @@ async def postgresql():
         await driver.connection.execute("DROP TABLE IF EXISTS TestModel")
     except psycopg.OperationalError as exc:
         raise RuntimeError(f"Could not connect to PostgreSQL. Is it running? {config}") from exc
-    else:
-        await driver.sync_schema(test_models).or_raise()
+    else:        await driver.sync_schema(test_models).or_raise()
         return driver
 
 
