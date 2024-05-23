@@ -1,15 +1,15 @@
 from abc import ABC, abstractmethod
 from functools import wraps
 from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Generator,
+    Generic,
+    ParamSpec,
     Type,
     TypeAlias,
     TypeVar,
-    Callable,
-    Awaitable,
-    Generator,
-    Any,
-    Generic,
-    ParamSpec,
 )
 
 import ommi.driver_context
