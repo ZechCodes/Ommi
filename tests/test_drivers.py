@@ -67,7 +67,7 @@ async def postgresql():
     )
     try:
         driver = await PostgreSQLDriver.from_config(config)
-        await driver.connection.execute("DROP TABLE IF EXISTS TestModel")
+        await driver.connection.execute(f"DROP TABLE IF EXISTS {TestModel.__ommi_metadata__.model_name}")
     except psycopg.OperationalError as exc:
         raise RuntimeError(f"Could not connect to PostgreSQL. Is it running? {config}") from exc
     else:        await driver.sync_schema(test_models).or_raise()
@@ -76,7 +76,6 @@ async def postgresql():
 
 def id_factory(param):
     return param.name
-
 
 def parametrize_drivers():
     return pytest.mark.parametrize("driver", connections, ids=id_factory)
