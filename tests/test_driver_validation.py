@@ -1,10 +1,7 @@
-import contextlib
 from dataclasses import dataclass
 from typing import Annotated
 
-import pymongo.errors
 import pytest
-import pytest_asyncio
 
 from ommi import StoreAs
 from ommi.ext.drivers.sqlite import SQLiteDriver, SQLiteConfig
@@ -60,6 +57,27 @@ async def mongo():
         return driver
 
 
+@DriverFactory
+async def postgresql():
+    driver = PostgreSQLDriver(
+        PostgreSQLConfig(
+            host="127.0.0.1",
+            port=5432,
+            database_name="postgres",
+            username="postgres",
+            password="password"
+        )
+    )
+    try:
+        await driver.connect().or_raise()
+        await driver._db.execute("DROP TABLE IF EXISTS TestModel")
+    except psycopg.OperationalError as exc:
+        raise RuntimeError(f"Could not connect to PostgreSQL. Is it running? {driver.config}") from exc
+    else:
+        await driver.sync_schema(test_models).or_raise()
+        return driver
+
+
 def id_factory(param):
     return param.name
 
@@ -72,10 +90,19 @@ connections = [sqlite,]
 
 try:
     from ommi.ext.drivers.mongodb import MongoDBDriver, MongoDBConfig
+    import pymongo.errors
 except ImportError:
-    MongoDBDriver = MongoDBConfig = None
+    MongoDBDriver = MongoDBConfig = pymongo = None
 else:
     connections.append(mongo)
+
+try:
+    from ommi.ext.drivers.postgresql import PostgreSQLConfig, PostgreSQLDriver
+    import psycopg
+except ImportError:
+    PostgreSQLConfig = PostgreSQLDriver = psycopg = None
+else:
+    connections.append(postgresql)
 
 
 @pytest.mark.asyncio
