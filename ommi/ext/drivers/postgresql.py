@@ -137,25 +137,11 @@ class PostgreSQLDriver(
         return await self._count(ast, session)
 
     @database_action
-    async def delete(self, *items: OmmiModel) -> "PostgreSQLDriver":
-        models = {}
-        for item in items:
-            models.setdefault(type(item), []).append(item)
-
+    async def delete(self, *predicates: ASTGroupNode | Type[OmmiModel]) -> "PostgreSQLDriver":
+        ast = when(*predicates)
         session = self._connection.cursor()
-        try:
-            for model, items in models.items():
-                await self._delete_rows(model, items, session)
-
-        except:
-            await self._connection.rollback()
-            raise
-
-        else:
-            return self
-
-        finally:
-            await session.close()
+        await self._delete(ast, session)
+        return self
 
     @database_action
     async def fetch(
@@ -355,18 +341,15 @@ class PostgreSQLDriver(
                 (*values, getattr(item, pk)),
             )
 
-    async def _delete_rows(
+    async def _delete(
         self,
-        model: Type[OmmiModel],
-        items: list[OmmiModel],
+        ast: ASTGroupNode,
         session: psycopg.AsyncCursor,
     ):
-        pk = model.get_primary_key_field().get("store_as")
-        keys = [getattr(item, pk) for item in items]
-        qs = ", ".join(["%s"] * len(items))
+        query = self._process_ast(ast)
         await session.execute(
-            f"DELETE FROM {model.__ommi_metadata__.model_name} WHERE {pk} IN ({qs});",
-            keys,
+            f"DELETE FROM {query.model.__ommi_metadata__.model_name} WHERE {query.where};",
+            query.values,
         )
 
     async def _select(self, predicates: ASTGroupNode, session: psycopg.AsyncCursor):
