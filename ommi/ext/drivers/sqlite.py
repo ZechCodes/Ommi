@@ -124,25 +124,11 @@ class SQLiteDriver(
         return self._count(ast, session)
 
     @database_action
-    async def delete(self, *items: OmmiModel) -> "SQLiteDriver":
-        models = {}
-        for item in items:
-            models.setdefault(type(item), []).append(item)
-
+    async def delete(self, *predicates: ASTGroupNode | Type[OmmiModel]) -> "SQLiteDriver":
+        ast = when(*predicates)
         session = self._connection.cursor()
-        try:
-            for model, items in models.items():
-                self._delete_rows(model, items, session)
-
-        except:
-            self._connection.rollback()
-            raise
-
-        else:
-            return self
-
-        finally:
-            session.close()
+        self._delete(ast, session)
+        return self
 
     @database_action
     async def fetch(
@@ -320,18 +306,15 @@ class SQLiteDriver(
                 (*values, getattr(item, pk)),
             )
 
-    def _delete_rows(
+    def _delete(
         self,
-        model: Type[OmmiModel],
-        items: list[OmmiModel],
+        ast: ASTGroupNode,
         session: sqlite3.Cursor,
     ):
-        pk = model.get_primary_key_field().get("store_as")
-        keys = [getattr(item, pk) for item in items]
-        qs = ", ".join(["?"] * len(items))
+        query = self._process_ast(ast)
         session.execute(
-            f"DELETE FROM {model.__ommi_metadata__.model_name} WHERE {pk} IN ({qs});",
-            keys,
+            f"DELETE FROM {query.model.__ommi_metadata__.model_name} WHERE {query.where};",
+            query.values,
         )
 
     def _select(self, predicates: ASTGroupNode, session: sqlite3.Cursor):
