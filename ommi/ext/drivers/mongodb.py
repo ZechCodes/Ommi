@@ -137,13 +137,9 @@ class MongoDBDriver(
         return cls(connection, db)
 
     async def _delete(self, item: OmmiModel) -> None:
-        if hasattr(item, "__ommi_mongodb_id__"):
-            query = {"_id": item.__ommi_mongodb_id__}
-        else:
-            pk = item.get_primary_key_field()
-            query = {pk.get("store_as"): getattr(item, pk.get("field_name"))}
-
-        await self._db[item.__ommi_metadata__.model_name].delete_one(query)
+        await self._db[item.__ommi_metadata__.model_name].delete_one(
+            self._create_key_query(item)
+        )
 
     async def _fetch(self, ast: ASTGroupNode) -> list[OmmiModel]:
         pipeline, model = self._process_ast(ast)
@@ -253,15 +249,16 @@ class MongoDBDriver(
         setattr(item, pk.get("field_name"), result[name])
 
     async def _update(self, item: OmmiModel):
-        if hasattr(item, "__ommi_mongodb_id__"):
-            query = {"_id": item.__ommi_mongodb_id__}
-        else:
-            pk = item.get_primary_key_field()
-            query = {pk.get("store_as"): getattr(item, pk.get("field_name"))}
-
         await self._db[item.__ommi_metadata__.model_name].replace_one(
-            query, self._model_to_dict(item)
+            self._create_key_query(item), self._model_to_dict(item)
         )
+
+    def _create_key_query(self, item: OmmiModel) -> dict[str, Any]:
+        if hasattr(item, "__ommi_mongodb_id__"):
+            return {"_id": item.__ommi_mongodb_id__}
+
+        pk = item.get_primary_key_field()
+        return {pk.get("store_as"): getattr(item, pk.get("field_name"))}
 
     def _model_to_dict(self, model: OmmiModel) -> dict[str, Any]:
         fields = list(model.__ommi_metadata__.fields.values())
