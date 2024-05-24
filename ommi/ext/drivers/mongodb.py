@@ -246,9 +246,14 @@ class MongoDBDriver(
         setattr(item, pk.get("field_name"), result[name])
 
     async def _update(self, item: OmmiModel):
+        if hasattr(item, "__ommi_mongodb_id__"):
+            query = {"_id": item.__ommi_mongodb_id__}
+        else:
+            pk = item.get_primary_key_field()
+            query = {pk.get("store_as"): getattr(item, pk.get("field_name"))}
+
         await self._db[item.__ommi_metadata__.model_name].replace_one(
-            {'_id': getattr(item, "__ommi_mongodb_id__")},
-            self._model_to_dict(item)
+            query, self._model_to_dict(item)
         )
 
     def _model_to_dict(self, model: OmmiModel) -> dict[str, Any]:

@@ -173,7 +173,9 @@ async def test_delete(driver):
 @parametrize_drivers()
 async def test_count(driver):
     async with driver as connection:
-        await connection.add(TestModel(name="dummy1"), TestModel(name="dummy2")).or_raise()
+        await connection.add(
+            TestModel(name="dummy1"), TestModel(name="dummy2")
+        ).or_raise()
 
         result = await TestModel.count().or_raise()
         assert result.value == 2
