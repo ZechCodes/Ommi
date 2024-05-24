@@ -175,25 +175,11 @@ class PostgreSQLDriver(
             await session.close()
 
     @database_action
-    async def update(self, *items: OmmiModel) -> "PostgreSQLDriver":
-        models = {}
-        for item in items:
-            models.setdefault(type(item), []).append(item)
-
+    async def update(self, *predicates: ASTGroupNode | Type[OmmiModel], **kwargs) -> "PostgreSQLDriver":
+        ast = when(*predicates)
         session = self._connection.cursor()
-        try:
-            for model, items in models.items():
-                await self._update_rows(model, items, session)
-
-        except:
-            await self._connection.rollback()
-            raise
-
-        else:
-            return self
-
-        finally:
-            await session.close()
+        await self._update(ast, kwargs, session)
+        return self
 
     @classmethod
     @connection_context_manager
@@ -317,29 +303,19 @@ class PostgreSQLDriver(
             item = next(item_stack)
             setattr(item, pk.get("field_name"), record[0])
 
-    async def _update_rows(
+    async def _update(
         self,
-        model: Type[OmmiModel],
-        items: list[OmmiModel],
+        ast: ASTGroupNode,
+        set_fields: dict[str, Any],
         session: psycopg.AsyncCursor,
     ):
-        pk = model.get_primary_key_field().get("store_as")
-        fields = list(model.__ommi_metadata__.fields.values())
-        for item in items:
-            values = (
-                getattr(item, field.get("field_name"))
-                for field in fields
-                if field.get("store_as") != pk
-            )
-            assignments = ", ".join(
-                f"{field.get('store_as')} = %s"
-                for field in fields
-                if field.get("store_as") != pk
-            )
-            await session.execute(
-                f"UPDATE {model.__ommi_metadata__.model_name} SET {assignments} WHERE {pk} = %s;",
-                (*values, getattr(item, pk)),
-            )
+        query = self._process_ast(ast)
+        fields = query.model.__ommi_metadata__.fields
+        assignments = ", ".join(f"{fields[name].get('store_as')} = %s" for name in set_fields.keys())
+        await session.execute(
+            f"UPDATE {query.model.__ommi_metadata__.model_name} SET {assignments} WHERE {query.where};",
+            (*set_fields.values(), *query.values),
+        )
 
     async def _delete(
         self,
