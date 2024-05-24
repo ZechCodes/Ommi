@@ -116,7 +116,8 @@ class OmmiModel:
     def delete(
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
-        return self.get_driver(driver).delete(self)
+        pk_name = self.get_primary_key_field().get("field_name")
+        return self.get_driver(driver).delete(query_ast.when(getattr(type(self), pk_name) == getattr(self, pk_name)))
 
     @delete.classmethod
     def delete(
