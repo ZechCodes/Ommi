@@ -224,6 +224,22 @@ async def test_detached_model_delete(driver):
 
 
 @pytest.mark.asyncio
+@parametrize_drivers()
+async def test_driver_delete_query(driver):
+    async with driver as connection:
+        await connection.add(
+            a := TestModel(name="dummy1"),
+            b := TestModel(name="dummy2"),
+        ).or_raise()
+
+        await connection.delete(TestModel.name == "dummy1").or_raise()
+
+        r = await connection.fetch(TestModel).or_raise()
+        assert len(r.value) == 1
+        assert r.value[0].name == "dummy2"
+
+
+@pytest.mark.asyncio
 async def test_async_with_connection():
     async with SQLiteDriver.from_config(
         SQLiteConfig(filename=":memory:")
