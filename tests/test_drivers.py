@@ -199,7 +199,7 @@ async def test_sync_schema(driver):
 
 @pytest.mark.asyncio
 @parametrize_drivers()
-async def test_detatched_model_sync(driver):
+async def test_detached_model_sync(driver):
     async with driver as connection:
         await connection.add(a := TestModel(name="dummy")).or_raise()
 
@@ -212,7 +212,7 @@ async def test_detatched_model_sync(driver):
 
 @pytest.mark.asyncio
 @parametrize_drivers()
-async def test_detatched_model_delete(driver):
+async def test_detached_model_delete(driver):
     async with driver as connection:
         await connection.add(a := TestModel(name="dummy")).or_raise()
 
