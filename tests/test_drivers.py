@@ -45,12 +45,16 @@ async def sqlite():
 
 @DriverFactory
 async def mongo():
-    config = MongoDBConfig(host="127.0.0.1", port=27017, database_name="tests", timeout=100)
+    config = MongoDBConfig(
+        host="127.0.0.1", port=27017, database_name="tests", timeout=100
+    )
     try:
         driver = await MongoDBDriver.from_config(config)
         await driver._db.drop_collection(TestModel.__ommi_metadata__.model_name)
     except pymongo.errors.ServerSelectionTimeoutError as exc:
-        raise RuntimeError(f"Could not connect to MongoDB. Is it running? {config}") from exc
+        raise RuntimeError(
+            f"Could not connect to MongoDB. Is it running? {config}"
+        ) from exc
     else:
         await driver.sync_schema(test_models).or_raise()
         return driver
@@ -63,13 +67,17 @@ async def postgresql():
         port=5432,
         database_name="postgres",
         username="postgres",
-        password="password"
+        password="password",
     )
     try:
         driver = await PostgreSQLDriver.from_config(config)
-        await driver.connection.execute(f"DROP TABLE IF EXISTS {TestModel.__ommi_metadata__.model_name}")
+        await driver.connection.execute(
+            f"DROP TABLE IF EXISTS {TestModel.__ommi_metadata__.model_name}"
+        )
     except psycopg.OperationalError as exc:
-        raise RuntimeError(f"Could not connect to PostgreSQL. Is it running? {config}") from exc
+        raise RuntimeError(
+            f"Could not connect to PostgreSQL. Is it running? {config}"
+        ) from exc
     else:
         await driver.sync_schema(test_models).or_raise()
         return driver
@@ -83,7 +91,9 @@ def parametrize_drivers():
     return pytest.mark.parametrize("driver", connections, ids=id_factory)
 
 
-connections = [sqlite,]
+connections = [
+    sqlite,
+]
 
 try:
     from ommi.ext.drivers.mongodb import MongoDBDriver, MongoDBConfig
@@ -186,6 +196,21 @@ async def test_sync_schema(driver):
 
 
 @pytest.mark.asyncio
+@parametrize_drivers()
+async def test_detatched_model_sync(driver):
+    async with driver as connection:
+        await connection.add(a := TestModel(name="dummy")).or_raise()
+
+        b = TestModel(name="Dummy", id=a.id)
+        await b.sync().or_raise()
+
+        r = await connection.fetch(TestModel).or_raise()
+        assert r.value[0].name == "Dummy"
+
+
+@pytest.mark.asyncio
 async def test_async_with_connection():
-    async with SQLiteDriver.from_config(SQLiteConfig(filename=":memory:")) as connection:
+    async with SQLiteDriver.from_config(
+        SQLiteConfig(filename=":memory:")
+    ) as connection:
         assert isinstance(connection, SQLiteDriver)

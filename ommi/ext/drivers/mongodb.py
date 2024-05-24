@@ -3,12 +3,27 @@ from dataclasses import dataclass
 
 import motor.motor_asyncio
 
-from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol, connection_context_manager
+from ommi.drivers import (
+    DatabaseDriver,
+    DriverConfig,
+    database_action,
+    enforce_connection_protocol,
+    connection_context_manager,
+)
 from ommi.models import OmmiModel
 from typing import Type, Any, Protocol, runtime_checkable
 
-from ommi.query_ast import ASTGroupNode, ASTReferenceNode, ASTLiteralNode, ASTLogicalOperatorNode, ASTOperatorNode, \
-    ASTComparisonNode, ASTGroupFlagNode, ResultOrdering, when
+from ommi.query_ast import (
+    ASTGroupNode,
+    ASTReferenceNode,
+    ASTLiteralNode,
+    ASTLogicalOperatorNode,
+    ASTOperatorNode,
+    ASTComparisonNode,
+    ASTGroupFlagNode,
+    ResultOrdering,
+    when,
+)
 
 
 @dataclass
@@ -20,12 +35,13 @@ class MongoDBConfig(DriverConfig):
 
 
 @runtime_checkable
-class MongoDBConnection(Protocol):
-    ...
+class MongoDBConnection(Protocol): ...
 
 
 @enforce_connection_protocol
-class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", nice_name="MongoDB"):
+class MongoDBDriver(
+    DatabaseDriver[MongoDBConnection], driver_name="mongodb", nice_name="MongoDB"
+):
     logical_operator_mapping = {
         ASTLogicalOperatorNode.AND: "$and",
         ASTLogicalOperatorNode.OR: "$or",
@@ -49,7 +65,9 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
     }
 
     def __init__(self, connection: MongoDBConnection, database):
-        super().__init__(connection,)
+        super().__init__(
+            connection,
+        )
         self._db = database
 
     @property
@@ -76,13 +94,19 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
         if not pipeline["$match"]:
             del pipeline["$match"]
 
-        result = await self._db[model.__ommi_metadata__.model_name].aggregate([pipeline]).to_list(1)
+        result = (
+            await self._db[model.__ommi_metadata__.model_name]
+            .aggregate([pipeline])
+            .to_list(1)
+        )
         return result[0].get("count", 0)
 
     @database_action
     async def delete(self, *items: OmmiModel) -> "MongoDBDriver":
         for item in items:
-            await self._db[item.__ommi_metadata__.model_name].delete_one({'_id': getattr(item, "__ommi_mongodb_id__")})
+            await self._db[item.__ommi_metadata__.model_name].delete_one(
+                {"_id": getattr(item, "__ommi_mongodb_id__")}
+            )
 
         return self
 
@@ -142,7 +166,10 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
 
     async def _set_auto_increment_pk(self, item: OmmiModel):
         pk = item.get_primary_key_field()
-        if not issubclass(pk.get("field_type"), int) or getattr(item, pk.get("field_name")) is not None:
+        if (
+            not issubclass(pk.get("field_type"), int)
+            or getattr(item, pk.get("field_name")) is not None
+        ):
             return
 
         name = pk.get("store_as")
@@ -213,7 +240,9 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
                 ]
             ).next()
 
-        result = await self._db[item.__ommi_metadata__.model_name].find_one({"_id": item.__ommi_mongodb_id__}, {"_id": 0, name: 1})
+        result = await self._db[item.__ommi_metadata__.model_name].find_one(
+            {"_id": item.__ommi_mongodb_id__}, {"_id": 0, name: 1}
+        )
         setattr(item, pk.get("field_name"), result[name])
 
     async def _update(self, item: OmmiModel):
@@ -232,13 +261,13 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
         }
 
     def _process_ast(self, ast: ASTGroupNode) -> tuple[dict[str, Any], Type[OmmiModel]]:
-        pipeline = {
-            "$match": {}
-        }
+        pipeline = {"$match": {}}
 
         if ast.sorting:
             pipeline["$sort"] = {
-                reference.field.name: 1 if reference.ordering == ResultOrdering.ASCENDING else -1
+                reference.field.name: (
+                    1 if reference.ordering == ResultOrdering.ASCENDING else -1
+                )
                 for reference in ast.sorting
             }
 
@@ -262,7 +291,9 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
                     node_stack.append(iter(group))
 
                 case ASTComparisonNode(left, right, op):
-                    expression, collections_ = self._process_comparison_ast(left, op, right)
+                    expression, collections_ = self._process_comparison_ast(
+                        left, op, right
+                    )
                     group_stack[~0].append(expression)
                     collections.extend(collections_)
 
@@ -272,12 +303,16 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
 
                     if logical_operator_stack[~0] is None:
                         logical_operator_stack[~0] = op
-                        group_stack[~1].append({self.logical_operator_mapping[op]: group_stack[~0]})
+                        group_stack[~1].append(
+                            {self.logical_operator_mapping[op]: group_stack[~0]}
+                        )
 
                     elif logical_operator_stack[~0] != op:
                         logical_operator_stack.append(op)
                         group_stack.append([])
-                        group_stack[~1].append({self.logical_operator_mapping[op]: group_stack[~0]})
+                        group_stack[~1].append(
+                            {self.logical_operator_mapping[op]: group_stack[~0]}
+                        )
 
                 case ASTGroupFlagNode.OPEN:
                     if len(node_stack) > 1:
@@ -299,21 +334,29 @@ class MongoDBDriver(DatabaseDriver[MongoDBConnection], driver_name="mongodb", ni
         return pipeline, collections[0]
 
     def _process_comparison_ast(
-            self,
-            left: ASTLiteralNode | ASTReferenceNode,
-            op: ASTOperatorNode,
-            right: ASTLiteralNode | ASTReferenceNode
+        self,
+        left: ASTLiteralNode | ASTReferenceNode,
+        op: ASTOperatorNode,
+        right: ASTLiteralNode | ASTReferenceNode,
     ) -> tuple[dict[str, Any], list[Type[OmmiModel]]]:
         expr = {}
         collections = []
         match left, right:
-            case (ASTReferenceNode(field=field, model=model), ASTLiteralNode(value=value)):
+            case (
+                ASTReferenceNode(field=field, model=model),
+                ASTLiteralNode(value=value),
+            ):
                 collections.append(model)
                 expr = {field.name: {self.operator_mapping.get(op, "$eq"): value}}
 
-            case (ASTLiteralNode(value=value), ASTReferenceNode(field=field, model=model)):
+            case (
+                ASTLiteralNode(value=value),
+                ASTReferenceNode(field=field, model=model),
+            ):
                 collections.append(model)
-                expr = {field.name: {self.flipped_operator_mapping.get(op, "$eq"): value}}
+                expr = {
+                    field.name: {self.flipped_operator_mapping.get(op, "$eq"): value}
+                }
 
             case _:
                 raise TypeError(f"Unexpected node type: {left} or {right}")

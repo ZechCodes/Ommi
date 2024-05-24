@@ -22,7 +22,8 @@ from ommi.field_metadata import (
     AggregateMetadata,
     FieldType,
     StoreAs,
-    create_metadata_type, Key,
+    create_metadata_type,
+    Key,
 )
 from ommi.utils.get_first import first
 from ommi.statuses import DatabaseStatus

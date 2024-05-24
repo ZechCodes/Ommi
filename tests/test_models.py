@@ -148,4 +148,3 @@ def test_primary_key_named_id():
         id: str
 
     assert Model.get_primary_key_field().get("field_name") == "id"
-

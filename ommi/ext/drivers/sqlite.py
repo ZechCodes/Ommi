@@ -1,11 +1,26 @@
 import sqlite3
 from dataclasses import dataclass, field as dc_field
 from datetime import datetime, date
-from typing import Type, Any, TypeVar, Callable, get_origin, Generator, Protocol, runtime_checkable
+from typing import (
+    Type,
+    Any,
+    TypeVar,
+    Callable,
+    get_origin,
+    Generator,
+    Protocol,
+    runtime_checkable,
+)
 
 from tramp.results import Result
 
-from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol, connection_context_manager
+from ommi.drivers import (
+    DatabaseDriver,
+    DriverConfig,
+    database_action,
+    enforce_connection_protocol,
+    connection_context_manager,
+)
 from ommi.model_collections import ModelCollection
 from ommi.models import OmmiField, OmmiModel, get_collection
 from ommi.query_ast import (
@@ -41,17 +56,17 @@ class SQLiteConfig(DriverConfig):
 
 @runtime_checkable
 class SQLiteConnection(Protocol):
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
-    def cursor(self) -> sqlite3.Cursor:
-        ...
+    def cursor(self) -> sqlite3.Cursor: ...
 
-    def rollback(self) -> None:
-        ...
+    def rollback(self) -> None: ...
+
 
 @enforce_connection_protocol
-class SQLiteDriver(DatabaseDriver[SQLiteConnection], driver_name="sqlite", nice_name="SQLite"):
+class SQLiteDriver(
+    DatabaseDriver[SQLiteConnection], driver_name="sqlite", nice_name="SQLite"
+):
     logical_operator_mapping = {
         ASTLogicalOperatorNode.AND: "AND",
         ASTLogicalOperatorNode.OR: "OR",

@@ -75,60 +75,50 @@ class AbstractDatabaseDriver(ABC):
 
     @classmethod
     @abstractmethod
-    def add_driver(cls, driver: "Type[AbstractDatabaseDriver]"):
-        ...
+    def add_driver(cls, driver: "Type[AbstractDatabaseDriver]"): ...
 
     @classmethod
     @abstractmethod
-    def disable_driver(cls, name: DriverName):
-        ...
+    def disable_driver(cls, name: DriverName): ...
 
     @property
     @abstractmethod
-    def connection(self) -> Any:
-        ...
+    def connection(self) -> Any: ...
 
     @property
     @abstractmethod
-    def connected(self) -> bool:
-        ...
+    def connected(self) -> bool: ...
 
     @abstractmethod
-    async def add(self, *items: M) -> DatabaseStatus[M]:
-        ...
+    async def add(self, *items: M) -> DatabaseStatus[M]: ...
 
     @abstractmethod
-    async def count(self, *predicates: ASTGroupNode | Type[M]) -> DatabaseStatus[int]:
-        ...
+    async def count(
+        self, *predicates: ASTGroupNode | Type[M]
+    ) -> DatabaseStatus[int]: ...
 
     @abstractmethod
-    async def delete(self, *items: OmmiModel) -> DatabaseStatus:
-        ...
+    async def delete(self, *items: OmmiModel) -> DatabaseStatus: ...
 
     @abstractmethod
-    async def disconnect(self) -> DatabaseStatus:
-        ...
+    async def disconnect(self) -> DatabaseStatus: ...
 
     @abstractmethod
     async def fetch(
         self, *predicates: ASTGroupNode | Type[OmmiModel]
-    ) -> DatabaseStatus:
-        ...
+    ) -> DatabaseStatus: ...
 
     @abstractmethod
     async def sync_schema(
         self, models: "ommi.model_collections.ModelCollection | None"
-    ) -> DatabaseStatus:
-        ...
+    ) -> DatabaseStatus: ...
 
     @abstractmethod
-    async def update(self, *items: OmmiModel) -> DatabaseStatus:
-        ...
+    async def update(self, *items: OmmiModel) -> DatabaseStatus: ...
 
     @classmethod
     @abstractmethod
-    async def from_config(cls, config: DriverConfig) -> "AbstractDatabaseDriver":
-        ...
+    async def from_config(cls, config: DriverConfig) -> "AbstractDatabaseDriver": ...
 
 
 class DatabaseDriver(Generic[ConnectionProtocol], AbstractDatabaseDriver, ABC):
@@ -150,7 +140,6 @@ class DatabaseDriver(Generic[ConnectionProtocol], AbstractDatabaseDriver, ABC):
         super().__init__()
         self._connection = connection
         self._connected = True
-
 
     @property
     def connection(self) -> Any:
@@ -217,7 +206,9 @@ def enforce_connection_protocol(driver: Type[AbstractDatabaseDriver]):
     return driver
 
 
-def connection_context_manager(func: Callable[[DriverConfig], Awaitable[AbstractDatabaseDriver]]):
+def connection_context_manager(
+    func: Callable[[DriverConfig], Awaitable[AbstractDatabaseDriver]]
+):
     @wraps(func)
     def wrapper(cls, config: DriverConfig) -> ConnectionFromConfigContextManager:
         return ConnectionFromConfigContextManager(func(cls, config))

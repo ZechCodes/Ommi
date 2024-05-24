@@ -1,11 +1,27 @@
 import psycopg
 from dataclasses import dataclass, field as dc_field
 from datetime import datetime, date
-from typing import Type, Any, TypeVar, Callable, get_origin, Generator, Sequence, Protocol, runtime_checkable
+from typing import (
+    Type,
+    Any,
+    TypeVar,
+    Callable,
+    get_origin,
+    Generator,
+    Sequence,
+    Protocol,
+    runtime_checkable,
+)
 
 from tramp.results import Result
 
-from ommi.drivers import DatabaseDriver, DriverConfig, database_action, enforce_connection_protocol, connection_context_manager
+from ommi.drivers import (
+    DatabaseDriver,
+    DriverConfig,
+    database_action,
+    enforce_connection_protocol,
+    connection_context_manager,
+)
 from ommi.model_collections import ModelCollection
 from ommi.models import OmmiField, OmmiModel, get_collection
 from ommi.query_ast import (
@@ -48,21 +64,21 @@ class PostgreSQLConfig(DriverConfig):
 
 @runtime_checkable
 class PostgreSQLConnection(Protocol):
-    def cursor(self) -> psycopg.AsyncCursor:
-        ...
+    def cursor(self) -> psycopg.AsyncCursor: ...
 
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
-    async def commit(self) -> None:
-        ...
+    async def commit(self) -> None: ...
 
-    async def rollback(self) -> None:
-        ...
+    async def rollback(self) -> None: ...
 
 
 @enforce_connection_protocol
-class PostgreSQLDriver(DatabaseDriver[PostgreSQLConnection], driver_name="postgresql", nice_name="PostgreSQL"):
+class PostgreSQLDriver(
+    DatabaseDriver[PostgreSQLConnection],
+    driver_name="postgresql",
+    nice_name="PostgreSQL",
+):
     logical_operator_mapping = {
         ASTLogicalOperatorNode.AND: "AND",
         ASTLogicalOperatorNode.OR: "OR",
@@ -280,7 +296,12 @@ class PostgreSQLDriver(DatabaseDriver[PostgreSQLConnection], driver_name="postgr
             f"CREATE TABLE IF NOT EXISTS {model.__ommi_metadata__.model_name} ({columns});"
         )
 
-    async def _insert(self, items: Sequence[OmmiModel], session: psycopg.AsyncCursor, model: Type[OmmiModel]):
+    async def _insert(
+        self,
+        items: Sequence[OmmiModel],
+        session: psycopg.AsyncCursor,
+        model: Type[OmmiModel],
+    ):
         query = [f"INSERT INTO {model.__ommi_metadata__.model_name}"]
 
         fields = list(model.__ommi_metadata__.fields.values())
@@ -293,7 +314,11 @@ class PostgreSQLDriver(DatabaseDriver[PostgreSQLConnection], driver_name="postgr
         for item in items:
             qs = ",".join(["%s"] * len(columns))
             inserts.append(f"({qs})")
-            values.extend(getattr(item, field.get("field_name")) for field in fields if field != pk)
+            values.extend(
+                getattr(item, field.get("field_name"))
+                for field in fields
+                if field != pk
+            )
 
         query.append(f"VALUES {','.join(inserts)}")
         query.append(f"RETURNING {pk.get('store_as')};")
@@ -349,13 +374,16 @@ class PostgreSQLDriver(DatabaseDriver[PostgreSQLConnection], driver_name="postgr
         query_str = self._build_select_query(query)
         result = await session.execute(query_str.encode(), query.values)
         return [
-            query.model(*self._validate_row_values(query.model, row)) async for row in result
+            query.model(*self._validate_row_values(query.model, row))
+            async for row in result
         ]
 
     async def _count(self, predicates: ASTGroupNode, session: psycopg.AsyncCursor):
         query = self._process_ast(predicates)
         query_str = self._build_count_query(query)
-        result = await (await session.execute(query_str.encode(), query.values)).fetchone()
+        result = await (
+            await session.execute(query_str.encode(), query.values)
+        ).fetchone()
         return result[0]
 
     def _validate_row_values(
