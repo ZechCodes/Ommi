@@ -102,10 +102,8 @@ class MongoDBDriver(
         return result[0].get("count", 0)
 
     @database_action
-    async def delete(self, *items: OmmiModel) -> "MongoDBDriver":
-        for item in items:
-            await self._delete(item)
-
+    async def delete(self, *predicates: ASTGroupNode | Type[OmmiModel]) -> "MongoDBDriver":
+        await self._delete(when(*predicates))
         return self
 
     @database_action
@@ -136,10 +134,14 @@ class MongoDBDriver(
         db = connection.get_database(config.database_name)
         return cls(connection, db)
 
-    async def _delete(self, item: OmmiModel) -> None:
-        await self._db[item.__ommi_metadata__.model_name].delete_one(
-            self._create_key_query(item)
-        )
+    async def _delete(self, predicates: ASTGroupNode) -> None:
+        pipeline, model = self._process_ast(predicates)
+        query = pipeline["$match"]
+        if len(query) == 1 and len(query["$and"]) == 0:
+            query = {}
+
+        print(">>>", query)
+        await self._db[model.__ommi_metadata__.model_name].delete_many(query)
 
     async def _fetch(self, ast: ASTGroupNode) -> list[OmmiModel]:
         pipeline, model = self._process_ast(ast)
