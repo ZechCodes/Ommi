@@ -150,7 +150,15 @@ class OmmiModel:
     def sync(
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
-        return self.get_driver(driver).update(self)
+        pk_name = self.get_primary_key_field().get("field_name")
+        return self.get_driver(driver).update(
+            query_ast.when(getattr(type(self), pk_name) == getattr(self, pk_name)),
+            **{
+                name: getattr(self, name)
+                for name in self.__ommi_metadata__.fields.keys()
+                if name != pk_name
+            },
+        )
 
     @classmethod
     def get_primary_key_field(cls) -> OmmiField:
