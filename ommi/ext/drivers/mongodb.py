@@ -104,9 +104,7 @@ class MongoDBDriver(
     @database_action
     async def delete(self, *items: OmmiModel) -> "MongoDBDriver":
         for item in items:
-            await self._db[item.__ommi_metadata__.model_name].delete_one(
-                {"_id": getattr(item, "__ommi_mongodb_id__")}
-            )
+            await self._delete(item)
 
         return self
 
@@ -137,6 +135,15 @@ class MongoDBDriver(
         )
         db = connection.get_database(config.database_name)
         return cls(connection, db)
+
+    async def _delete(self, item: OmmiModel) -> None:
+        if hasattr(item, "__ommi_mongodb_id__"):
+            query = {"_id": item.__ommi_mongodb_id__}
+        else:
+            pk = item.get_primary_key_field()
+            query = {pk.get("store_as"): getattr(item, pk.get("field_name"))}
+
+        await self._db[item.__ommi_metadata__.model_name].delete_one(query)
 
     async def _fetch(self, ast: ASTGroupNode) -> list[OmmiModel]:
         pipeline, model = self._process_ast(ast)
