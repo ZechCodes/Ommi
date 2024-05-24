@@ -228,8 +228,8 @@ async def test_detached_model_delete(driver):
 async def test_driver_delete_query(driver):
     async with driver as connection:
         await connection.add(
-            a := TestModel(name="dummy1"),
-            b := TestModel(name="dummy2"),
+            TestModel(name="dummy1"),
+            TestModel(name="dummy2"),
         ).or_raise()
 
         await connection.delete(TestModel.name == "dummy1").or_raise()
