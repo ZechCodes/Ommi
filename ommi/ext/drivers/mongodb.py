@@ -250,7 +250,7 @@ class MongoDBDriver(
 
     async def _update(self, item: OmmiModel):
         await self._db[item.__ommi_metadata__.model_name].replace_one(
-            self._create_key_query(item), self._model_to_dict(item)
+            self._create_key_query(item), self._model_to_dict(item, preserve_pk=True)
         )
 
     def _create_key_query(self, item: OmmiModel) -> dict[str, Any]:
@@ -260,13 +260,13 @@ class MongoDBDriver(
         pk = item.get_primary_key_field()
         return {pk.get("store_as"): getattr(item, pk.get("field_name"))}
 
-    def _model_to_dict(self, model: OmmiModel) -> dict[str, Any]:
+    def _model_to_dict(self, model: OmmiModel, *, preserve_pk: bool = False) -> dict[str, Any]:
         fields = list(model.__ommi_metadata__.fields.values())
         pk = model.get_primary_key_field()
         return {
             field.get("store_as"): getattr(model, field.get("field_name"))
             for field in fields
-            if field is not pk
+            if field is not pk or preserve_pk
         }
 
     def _process_ast(self, ast: ASTGroupNode) -> tuple[dict[str, Any], Type[OmmiModel]]:
