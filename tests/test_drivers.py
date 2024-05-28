@@ -173,8 +173,8 @@ async def test_count(driver):
             TestModel(name="dummy1"), TestModel(name="dummy2")
         ).or_raise_errors()
 
-        result = await TestModel.count().or_raise_errors()
-        assert result.value == 2
+        result = await TestModel.count().value
+        assert result == 2
 
 
 @pytest.mark.asyncio
