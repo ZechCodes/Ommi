@@ -1,13 +1,13 @@
-from typing import Type
+from typing import Type, Generic
 
-import ommi.models
+from ommi.drivers.driver_types import TModel
 
 
-class ModelCollection:
+class ModelCollection(Generic[TModel]):
     def __init__(self):
         self.models = set()
 
-    def add(self, model: "Type[ommi.models.OmmiModel]"):
+    def add(self, model: "Type[TModel]"):
         self.models.add(model)
 
     def __repr__(self):
