@@ -147,6 +147,24 @@ class OmmiModel:
             cls, *predicates, *cls._build_column_predicates(columns)
         )
 
+    def load_changes(
+        self, driver: "drivers.DatabaseDriver | None" = None
+    ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]]":
+        pk_name = self.get_primary_key_field().get("field_name")
+        pk_reference = getattr(type(self), pk_name)
+
+        @drivers.database_action
+        async def load():
+            result = (
+                await self.get_driver(driver)
+                .fetch(query_ast.when(pk_reference == getattr(self, pk_name)))
+                .then_get_one()
+            )
+            for name in self.__ommi_metadata__.fields.keys():
+                setattr(self, name, getattr(result, name))
+
+        return load()
+
     def save_changes(
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":

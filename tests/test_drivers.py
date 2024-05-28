@@ -266,6 +266,19 @@ async def test_driver_update_query(driver):
 
 
 @pytest.mark.asyncio
+@parametrize_drivers()
+async def test_load_changes(driver):
+    async with driver as connection:
+        await connection.add(m := TestModel(name="dummy")).or_raise()
+
+        await connection.update(TestModel.name == "dummy", name="Dummy").or_raise()
+        assert m.name == "dummy"
+
+        await m.load_changes().or_raise()
+        assert m.name == "Dummy"
+
+
+@pytest.mark.asyncio
 async def test_async_with_connection():
     async with SQLiteDriver.from_config(
         SQLiteConfig(filename=":memory:")

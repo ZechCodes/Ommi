@@ -99,6 +99,9 @@ async def test_model_fetch(driver_mock):
     await TestModel(foo=0).save_changes()
     driver_mock.update.assert_awaited_once()
 
+    await TestModel(foo=0).load_changes()
+    driver_mock.fetch.assert_awaited_once()
+
 
 def test_primary_key_first_field():
     @ommi_model(collection=ModelCollection())
