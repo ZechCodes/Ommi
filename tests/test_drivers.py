@@ -39,7 +39,7 @@ class DriverFactory:
 @DriverFactory
 async def sqlite():
     driver = await SQLiteDriver.from_config(SQLiteConfig(filename=":memory:"))
-    await driver.sync_schema(test_models).or_raise()
+    await driver.schema(test_models).create_models().or_raise_errors()
     return driver
 
 
@@ -56,7 +56,7 @@ async def mongo():
             f"Could not connect to MongoDB. Is it running? {config}"
         ) from exc
     else:
-        await driver.sync_schema(test_models).or_raise()
+        await driver.schema(test_models).create_models().or_raise_errors()
         return driver
 
 
@@ -79,7 +79,7 @@ async def postgresql():
             f"Could not connect to PostgreSQL. Is it running? {config}"
         ) from exc
     else:
-        await driver.sync_schema(test_models).or_raise()
+        await driver.schema(test_models).create_models().or_raise_errors()
         return driver
 
 
@@ -116,19 +116,18 @@ else:
 @parametrize_drivers()
 async def test_driver(driver):
     async with driver as connection:
-        model = TestModel(name="dummy")
-        await model.add().or_raise()
+        await connection.add(model := TestModel(name="dummy")).or_raise_errors()
 
-        result = await connection.fetch(TestModel.name == "dummy").then_get_one()
+        result = await connection.find(TestModel.name == "dummy").fetch.first()
         assert result.name == model.name
 
         model.name = "Dummy"
-        await model.save_changes().or_raise()
-        result = await connection.fetch(TestModel.name == "Dummy").then_get_one()
+        await model.save_changes()
+        result = await connection.find(TestModel.name == "Dummy").fetch.first()
         assert result.name == model.name
 
-        await model.delete().or_raise()
-        result = await connection.fetch(TestModel.name == "Dummy").then_get_all()
+        await model.delete().or_raise_errors()
+        result = await connection.find(TestModel.name == "Dummy").fetch.all()
         assert len(result) == 0
 
 
@@ -136,10 +135,9 @@ async def test_driver(driver):
 @parametrize_drivers()
 async def test_fetch(driver):
     async with driver as connection:
-        model = TestModel(name="dummy")
-        await model.add().or_raise()
+        await connection.add(model := TestModel(name="dummy")).or_raise_errors()
 
-        result = await connection.fetch(TestModel.name == "dummy").then_get_one()
+        result = await connection.find(TestModel.name == "dummy").fetch.first()
         assert result.name == model.name
 
 
@@ -147,13 +145,12 @@ async def test_fetch(driver):
 @parametrize_drivers()
 async def test_update(driver):
     async with driver as connection:
-        model = TestModel(name="dummy")
-        await model.add().or_raise()
+        await connection.add(model := TestModel(name="dummy")).or_raise_errors()
 
         model.name = "Dummy"
-        await model.save_changes().or_raise()
+        await model.save_changes().or_raise_errors()
 
-        result = await connection.fetch(TestModel.name == "Dummy").then_get_one()
+        result = await connection.find(TestModel.name == "Dummy").fetch.first()
         assert result.name == model.name
 
 
@@ -161,11 +158,10 @@ async def test_update(driver):
 @parametrize_drivers()
 async def test_delete(driver):
     async with driver as connection:
-        model = TestModel(name="dummy")
-        await model.add().or_raise()
+        await connection.add(model := TestModel(name="dummy")).or_raise_errors()
 
-        await model.delete().or_raise()
-        result = await connection.fetch(TestModel).or_raise()
+        await model.delete().or_raise_errors()
+        result = await connection.find(TestModel).fetch()
         assert len(result.value) == 0
 
 
@@ -175,9 +171,9 @@ async def test_count(driver):
     async with driver as connection:
         await connection.add(
             TestModel(name="dummy1"), TestModel(name="dummy2")
-        ).or_raise()
+        ).or_raise_errors()
 
-        result = await TestModel.count().or_raise()
+        result = await TestModel.count().or_raise_errors()
         assert result.value == 2
 
 
@@ -185,12 +181,12 @@ async def test_count(driver):
 @parametrize_drivers()
 async def test_sync_schema(driver):
     async with driver as connection:
-        await connection.sync_schema(test_models).or_raise()
+        await connection.schema(test_models).create_models().or_raise_errors()
 
         await connection.add(
             a := TestModel(name="dummy1"),
             b := TestModel(name="dummy2"),
-        ).or_raise()
+        ).or_raise_errors()
 
         assert isinstance(a.id, int)
         assert isinstance(b.id, int)
@@ -201,12 +197,12 @@ async def test_sync_schema(driver):
 @parametrize_drivers()
 async def test_detached_model_sync(driver):
     async with driver as connection:
-        await connection.add(a := TestModel(name="dummy")).or_raise()
+        await connection.add(a := TestModel(name="dummy")).or_raise_errors()
 
         b = TestModel(name="Dummy", id=a.id)
-        await b.save_changes().or_raise()
+        await b.save_changes().or_raise_errors()
 
-        r = await connection.fetch(TestModel).then_get_one()
+        r = await connection.find(TestModel).fetch.first()
         assert r.name == "Dummy"
 
 
@@ -214,12 +210,12 @@ async def test_detached_model_sync(driver):
 @parametrize_drivers()
 async def test_detached_model_delete(driver):
     async with driver as connection:
-        await connection.add(a := TestModel(name="dummy")).or_raise()
+        await connection.add(a := TestModel(name="dummy")).or_raise_errors()
 
         b = TestModel(name="Dummy", id=a.id)
-        await b.delete().or_raise()
+        await b.delete().or_raise_errors()
 
-        r = await connection.fetch(TestModel).or_raise()
+        r = await connection.find(TestModel).fetch()
         assert len(r.value) == 0
 
 
@@ -230,11 +226,11 @@ async def test_driver_delete_query(driver):
         await connection.add(
             TestModel(name="dummy1"),
             TestModel(name="dummy2"),
-        ).or_raise()
+        ).or_raise_errors()
 
-        await connection.delete(TestModel.name == "dummy1").or_raise()
+        await connection.find(TestModel.name == "dummy1").delete().or_raise_errors()
 
-        r = await connection.fetch(TestModel).then_get_all()
+        r = await connection.find(TestModel).fetch.all()
         assert len(r) == 1
         assert r[0].name == "dummy2"
 
@@ -248,18 +244,20 @@ async def test_driver_update_query(driver):
             TestModel(name="dummy2"),
             TestModel(name="dummy3"),
             TestModel(name="dummy4"),
-        ).or_raise()
+        ).or_raise_errors()
 
         ignore_id, new_name = 2, "dummy"
-        await connection.update(TestModel.id != ignore_id, name=new_name).or_raise()
-        result = await connection.fetch(TestModel.name == new_name).then_get_all()
+        await connection.find(TestModel.id != ignore_id).set(name=new_name).or_raise_errors()
+        result = await connection.find(TestModel.name == new_name).fetch.all()
         assert len(result) > 1
         assert all(m.name == new_name for m in result)
         assert all(m.id != ignore_id for m in result)
 
         ignore_id, new_name = 1, "DUMMY"
-        await connection.update((TestModel.id != ignore_id).And(TestModel.name == "dummy"), name=new_name).or_raise()
-        result = await connection.fetch(TestModel.name == new_name).then_get_all()
+        await connection.find(
+            (TestModel.id != ignore_id).And(TestModel.name == "dummy")
+        ).set(name=new_name).or_raise_errors()
+        result = await connection.find(TestModel.name == new_name).fetch.all()
         assert len(result) > 1
         assert all(m.name == new_name for m in result)
         assert all(m.id != ignore_id for m in result)
@@ -269,12 +267,12 @@ async def test_driver_update_query(driver):
 @parametrize_drivers()
 async def test_load_changes(driver):
     async with driver as connection:
-        await connection.add(m := TestModel(name="dummy")).or_raise()
+        await connection.add(m := TestModel(name="dummy")).or_raise_errors()
 
-        await connection.update(TestModel.name == "dummy", name="Dummy").or_raise()
+        await connection.find(TestModel.name == "dummy").set(name="Dummy").or_raise_errors()
         assert m.name == "dummy"
 
-        await m.load_changes().or_raise()
+        await m.load_changes().or_raise_errors()
         assert m.name == "Dummy"
 
 
