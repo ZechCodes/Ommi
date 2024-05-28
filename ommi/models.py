@@ -14,7 +14,7 @@ from typing import (
 from tramp.results import Result
 
 import ommi.query_ast as query_ast
-from ommi.drivers.database_results import async_result
+from ommi.drivers.database_results import async_result, AsyncResultWrapper
 from ommi.field_metadata import (
     FieldMetadata,
     AggregateMetadata,
@@ -117,7 +117,7 @@ class OmmiModel:
     @delete.classmethod
     def delete(
         cls, *items: "OmmiModel", driver: "drivers.DatabaseDriver | None" = None
-    ) -> "delete_actions.DeleteAction":
+    ) -> AsyncResultWrapper[bool]:
         driver = cls.get_driver(driver)
         query = query_ast.when()
         for item in items:
@@ -132,7 +132,7 @@ class OmmiModel:
         *predicates: "ASTGroupNode | DatabaseModel | bool",
         columns: Any | None = None,
         driver: "drivers.DatabaseDriver | None" = None,
-    ) -> "count_actions.CountAction":
+    ) -> AsyncResultWrapper[int]:
         driver = cls.get_driver(driver)
         if not predicates and not columns:
             predicates = (cls,)
