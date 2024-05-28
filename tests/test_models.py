@@ -96,7 +96,7 @@ async def test_model_fetch(driver_mock):
     await TestModel.fetch()
     driver_mock.fetch.assert_awaited_once()
 
-    await TestModel(foo=0).sync()
+    await TestModel(foo=0).save_changes()
     driver_mock.update.assert_awaited_once()
 
 

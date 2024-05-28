@@ -147,7 +147,7 @@ class OmmiModel:
             cls, *predicates, *cls._build_column_predicates(columns)
         )
 
-    def sync(
+    def save_changes(
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
         pk_name = self.get_primary_key_field().get("field_name")

@@ -144,8 +144,8 @@ Update takes any number of predicates and fields to set as keyword arguments. Th
 await db.update(User.id == 20, name="Bob").or_raise()
 ```
 
-Additionally, models provide a `sync` method that does an `update` querying the model's key.
+Additionally, models provide a `save_changes` method that does an `update` querying the model's key.
 
 ```python
-await user.sync().or_raise()
+await user.save_changes().or_raise()
 ```
