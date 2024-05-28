@@ -50,6 +50,15 @@ class DatabaseAction(Generic[T]):
     async def then_get_all(self) -> Sequence[T]:
         return await self._awaitable
 
+    async def then_get_one(self) -> T:
+        return (await self.then_get_all())[0]
+
+    async def then_get_one_or(self, default: T) -> T:
+        try:
+            return await self.then_get_one()
+        except IndexError:
+            return default
+
     async def _run(self) -> DatabaseStatus[T]:
         try:
             result = await self._awaitable
