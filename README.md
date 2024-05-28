@@ -138,9 +138,14 @@ await db.sync_schema().or_raise()
 
 #### Update
 
-Update takes any number of model instances and syncs their changes to the database.
+Update takes any number of predicates and fields to set as keyword arguments. The predicates will be ANDed together.
 
 ```python
-user.name = "Bob"
-await db.update(user).or_raise()
+await db.update(User.id == 20, name="Bob").or_raise()
+```
+
+Additionally, models provide a `sync` method that does an `update` querying the model's key.
+
+```python
+await user.sync().or_raise()
 ```
