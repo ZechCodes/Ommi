@@ -62,16 +62,9 @@ class QueryableFieldDescriptor:
 
 
 @dataclass
-class OmmiField:
-    name: str
-    annotation: Any
-    default: Any | None = None
-
-
-@dataclass
 class OmmiMetadata:
     model_name: str
-    fields: dict[str, OmmiField]
+    fields: dict[str, FieldMetadata]
     collection: "ommi.model_collections.ModelCollection" = dc_field(
         default_factory=get_global_collection
     )
@@ -179,7 +172,7 @@ class OmmiModel:
         )
 
     @classmethod
-    def get_primary_key_field(cls) -> OmmiField:
+    def get_primary_key_field(cls) -> FieldMetadata:
         fields = cls.__ommi_metadata__.fields
         if not fields:
             raise Exception(f"No fields defined on {cls}")

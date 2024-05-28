@@ -22,8 +22,9 @@ from ommi.drivers import (
     enforce_connection_protocol,
     connection_context_manager,
 )
+from ommi.field_metadata import FieldMetadata
 from ommi.model_collections import ModelCollection
-from ommi.models import OmmiField, OmmiModel, get_collection
+from ommi.models import OmmiModel, get_collection
 from ommi.query_ast import (
     ASTGroupNode,
     when,
@@ -187,7 +188,7 @@ class PostgreSQLDriver(
         connection = await psycopg.AsyncConnection.connect(config.to_uri())
         return cls(connection)
 
-    def _build_column(self, field: OmmiField, pk: bool) -> str:
+    def _build_column(self, field: FieldMetadata, pk: bool) -> str:
         column = [
             field.get("store_as"),
             self._get_postgresql_type(field.get("field_type"), pk),
