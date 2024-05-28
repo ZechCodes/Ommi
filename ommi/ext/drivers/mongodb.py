@@ -357,7 +357,14 @@ class MongoDBDriver(
                 ASTLiteralNode(value=value),
             ):
                 collections.append(model)
-                expr = {field.name: {self.operator_mapping.get(op, "$eq"): value}}
+                expr = {
+                    field.name:
+                    (
+                        value
+                        if op == ASTOperatorNode.EQUALS
+                        else {self.operator_mapping[op]: value}
+                    )
+                }
 
             case (
                 ASTLiteralNode(value=value),
