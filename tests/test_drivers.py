@@ -122,7 +122,7 @@ async def test_driver(driver):
         assert result.name == model.name
 
         model.name = "Dummy"
-        await model.save_changes()
+        await model.save()
         result = await connection.find(TestModel.name == "Dummy").fetch.first()
         assert result.name == model.name
 
@@ -148,7 +148,7 @@ async def test_update(driver):
         await connection.add(model := TestModel(name="dummy")).or_raise_errors()
 
         model.name = "Dummy"
-        await model.save_changes().or_raise_errors()
+        await model.save().or_raise_errors()
 
         result = await connection.find(TestModel.name == "Dummy").fetch.first()
         assert result.name == model.name
@@ -200,7 +200,7 @@ async def test_detached_model_sync(driver):
         await connection.add(a := TestModel(name="dummy")).or_raise_errors()
 
         b = TestModel(name="Dummy", id=a.id)
-        await b.save_changes().or_raise_errors()
+        await b.save().or_raise_errors()
 
         r = await connection.find(TestModel).fetch.first()
         assert r.name == "Dummy"
@@ -272,7 +272,7 @@ async def test_load_changes(driver):
         await connection.find(TestModel.name == "dummy").set(name="Dummy").or_raise_errors()
         assert m.name == "dummy"
 
-        await m.load_changes().or_raise_errors()
+        await m.reload().or_raise_errors()
         assert m.name == "Dummy"
 
 
