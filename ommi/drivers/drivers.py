@@ -115,7 +115,7 @@ class DatabaseDriver(AbstractDatabaseDriver[TConn, TModel], ABC):
         return self
 
     async def __aexit__(self, *args):
-        await self.disconnect().or_raise_errors()
+        await self.disconnect().raise_on_errors()
         self.__exit__(*args)
         return
 

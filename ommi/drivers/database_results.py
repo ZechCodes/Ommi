@@ -71,7 +71,7 @@ class AsyncResultWrapper(Generic[T]):
     def __await__(self):
         return self._await_and_wrap().__await__()
 
-    async def or_raise_errors(self):
+    async def raise_on_errors(self):
         match await self._await_and_wrap():
             case DatabaseResult.Failure(error):
                 raise error
