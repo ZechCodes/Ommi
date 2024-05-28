@@ -40,9 +40,9 @@ class SQLiteDriver(
         return SQLiteFindAction(self._connection, predicates)
 
     def schema(
-        self, collection: ModelCollection[Type[OmmiModel]] | None = None
+        self, model_collection: ModelCollection[Type[OmmiModel]] | None = None
     ) -> SQLiteSchemaAction:
-        return SQLiteSchemaAction(self._connection, collection)
+        return SQLiteSchemaAction(self._connection, model_collection)
 
     @classmethod
     @connection_context_manager

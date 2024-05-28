@@ -10,6 +10,7 @@ import ommi.drivers.schema_actions as schema_action
 from ommi.drivers.database_results import AsyncResultWrapper
 from ommi.drivers.driver_configs import DriverConfig
 from ommi.drivers.driver_types import TConn, TModel
+from ommi.model_collections import ModelCollection
 from ommi.query_ast import ASTGroupNode
 
 DriverName: TypeAlias = str
@@ -49,10 +50,9 @@ class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
     @abstractmethod
     def find(self, *predicates: Predicate) -> "find_action.FindAction[TConn, TModel]": ...
 
-    @property
     @abstractmethod
     def schema(
-        self
+        self, model_collection: ModelCollection[Type[TModel]] | None = None
     ) -> "schema_action.SchemaAction[TConn, TModel]": ...
 
     # ---------------------------- #
