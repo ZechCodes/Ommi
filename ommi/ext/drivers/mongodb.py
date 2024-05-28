@@ -140,7 +140,6 @@ class MongoDBDriver(
         if len(query) == 1 and len(query["$and"]) == 0:
             query = {}
 
-        print(">>>", query)
         await self._db[model.__ommi_metadata__.model_name].delete_many(query)
 
     async def _fetch(self, ast: ASTGroupNode) -> list[OmmiModel]:
