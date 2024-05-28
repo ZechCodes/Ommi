@@ -10,12 +10,11 @@ from typing import (
     get_origin,
     Annotated,
     get_args,
-    Awaitable,
 )
 from tramp.results import Result
 
-import ommi.drivers as drivers
 import ommi.query_ast as query_ast
+from ommi.drivers.database_results import async_result
 from ommi.field_metadata import (
     FieldMetadata,
     AggregateMetadata,
@@ -25,10 +24,18 @@ from ommi.field_metadata import (
     Key,
 )
 from ommi.utils.get_first import first
-from ommi.statuses import DatabaseStatus
 from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
 import ommi.model_collections
+
+import ommi.drivers.count_actions as count_actions
+import ommi.drivers.delete_actions as delete_actions
+import ommi.drivers.fetch_actions as fetch_actions
+
+try:
+    from typing import Self
+except ImportError:
+    Self = Any
 
 T = TypeVar("T", bound=Type)
 
@@ -99,23 +106,25 @@ class OmmiModel:
     ) -> "drivers.DatabaseDriver | None":
         return driver or active_driver.get(None)
 
-    def add(
-        self,
-    ) -> "drivers.DatabaseAction[DatabaseStatus[OmmiModel]] | Awaitable[DatabaseStatus[OmmiModel]]":
-        return self.get_driver().add(self)
-
     @contextual_method
     def delete(
         self, driver: "drivers.DatabaseDriver | None" = None
-    ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
+    ) -> "delete_actions.DeleteAction":
+        driver = self.get_driver(driver)
         pk_name = self.get_primary_key_field().get("field_name")
-        return self.get_driver(driver).delete(query_ast.when(getattr(type(self), pk_name) == getattr(self, pk_name)))
+        return driver.find(getattr(type(self), pk_name) == getattr(self, pk_name)).delete()
 
     @delete.classmethod
     def delete(
         cls, *items: "OmmiModel", driver: "drivers.DatabaseDriver | None" = None
-    ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
-        return cls.get_driver(driver).delete(*items)
+    ) -> "delete_actions.DeleteAction":
+        driver = cls.get_driver(driver)
+        query = query_ast.when()
+        for item in items:
+            pk_name = item.get_primary_key_field().get("field_name")
+            query = query.Or(getattr(cls, pk_name) == getattr(item, pk_name))
+
+        return driver.find(query).delete
 
     @classmethod
     def count(
@@ -123,10 +132,12 @@ class OmmiModel:
         *predicates: "ASTGroupNode | DatabaseModel | bool",
         columns: Any | None = None,
         driver: "drivers.DatabaseDriver | None" = None,
-    ) -> "drivers.DatabaseAction[DatabaseStatus[int]] | Awaitable[DatabaseStatus[int]]":
-        return cls.get_driver(driver).count(
-            cls, *predicates, *cls._build_column_predicates(columns)
-        )
+    ) -> "count_actions.CountAction":
+        driver = cls.get_driver(driver)
+        if not predicates and not columns:
+            predicates = (cls,)
+
+        return driver.find(*predicates, *cls._build_column_predicates(columns)).count()
 
     @classmethod
     def fetch(
@@ -134,41 +145,46 @@ class OmmiModel:
         *predicates: "ASTGroupNode | DatabaseModel | bool",
         driver: "drivers.DatabaseDriver | None" = None,
         **columns: Any,
-    ) -> "drivers.DatabaseAction[DatabaseStatus[list[OmmiModel]]] | Awaitable[DatabaseStatus[list[OmmiModel]]]":
-        return cls.get_driver(driver).fetch(
-            cls, *predicates, *cls._build_column_predicates(columns)
-        )
+    ) -> "fetch_actions.FetchAction[OmmiModel]":
+        driver = cls.get_driver(driver)
+        return driver.find(*predicates, *cls._build_column_predicates(columns)).fetch
 
-    def load_changes(
+    @async_result
+    async def reload(
         self, driver: "drivers.DatabaseDriver | None" = None
-    ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]]":
+    ) -> Self:
         pk_name = self.get_primary_key_field().get("field_name")
         pk_reference = getattr(type(self), pk_name)
 
-        @drivers.database_action
-        async def load():
-            result = (
-                await self.get_driver(driver)
-                .fetch(query_ast.when(pk_reference == getattr(self, pk_name)))
-                .then_get_one()
-            )
-            for name in self.__ommi_metadata__.fields.keys():
-                setattr(self, name, getattr(result, name))
-
-        return load()
-
-    def save_changes(
-        self, driver: "drivers.DatabaseDriver | None" = None
-    ) -> "drivers.DatabaseAction[DatabaseStatus[drivers.DatabaseDriver]] | Awaitable[DatabaseStatus[drivers.DatabaseDriver]]":
-        pk_name = self.get_primary_key_field().get("field_name")
-        return self.get_driver(driver).update(
-            query_ast.when(getattr(type(self), pk_name) == getattr(self, pk_name)),
-            **{
-                name: getattr(self, name)
-                for name in self.__ommi_metadata__.fields.keys()
-                if name != pk_name
-            },
+        result = await (
+            self.get_driver(driver)
+            .find(query_ast.when(pk_reference == getattr(self, pk_name)))
+            .fetch
+            .first()
         )
+        for name in self.__ommi_metadata__.fields.keys():
+            setattr(self, name, getattr(result, name))
+
+        return self
+
+    @async_result
+    async def save(
+        self, driver: "drivers.DatabaseDriver | None" = None
+    ) -> bool:
+        pk_name = self.get_primary_key_field().get("field_name")
+        driver = self.get_driver(driver)
+        await (
+            driver
+            .find(getattr(type(self), pk_name) == getattr(self, pk_name))
+            .set(
+                **{
+                    name: getattr(self, name)
+                    for name in self.__ommi_metadata__.fields.keys()
+                    if name != pk_name
+                }
+            )
+        )
+        return True
 
     @classmethod
     def get_primary_key_field(cls) -> FieldMetadata:
