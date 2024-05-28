@@ -119,10 +119,8 @@ class MongoDBDriver(
         return self
 
     @database_action
-    async def update(self, *items: OmmiModel) -> "MongoDBDriver":
-        for item in items:
-            await self._update(item)
-
+    async def update(self, *predicates: ASTGroupNode | Type[OmmiModel], **kwargs) -> "MongoDBDriver":
+        await self._update(when(*predicates), kwargs)
         return self
 
     @classmethod
@@ -249,9 +247,16 @@ class MongoDBDriver(
         )
         setattr(item, pk.get("field_name"), result[name])
 
-    async def _update(self, item: OmmiModel):
-        await self._db[item.__ommi_metadata__.model_name].replace_one(
-            self._create_key_query(item), self._model_to_dict(item, preserve_pk=True)
+    async def _update(self, ast: ASTGroupNode, set_fields: dict[str, Any]) -> None:
+        pipeline, model = self._process_ast(ast)
+        await self._db[model.__ommi_metadata__.model_name].update_many(
+            pipeline["$match"],
+            {
+                "$set": {
+                    model.__ommi_metadata__.fields[name].get("store_as"): value
+                    for name, value in set_fields.items()
+                },
+            },
         )
 
     def _create_key_query(self, item: OmmiModel) -> dict[str, Any]:
