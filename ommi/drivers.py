@@ -46,6 +46,9 @@ class DatabaseAction(Generic[T]):
     async def or_raise(self) -> DatabaseStatus[T]:
         return DatabaseStatus.Success(await self._awaitable)
 
+    async def then_get_result(self) -> T:
+        return await self._awaitable
+
     async def _run(self) -> DatabaseStatus[T]:
         try:
             result = await self._awaitable
