@@ -199,7 +199,7 @@ class OmmiModel:
             return
 
         for name, value in columns.items():
-            if name not in cls.__fields__:
+            if name not in cls.__ommi_metadata__.fields:
                 raise ValueError(f"Invalid column {name!r} for model {cls.__name__}")
 
             yield getattr(cls, name) == value
