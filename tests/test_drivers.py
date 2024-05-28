@@ -247,13 +247,22 @@ async def test_driver_update_query(driver):
             TestModel(name="dummy1"),
             TestModel(name="dummy2"),
             TestModel(name="dummy3"),
+            TestModel(name="dummy4"),
         ).or_raise()
 
-        await connection.update(TestModel.id < 2, name="dummy").or_raise()
+        ignore_id, new_name = 2, "dummy"
+        await connection.update(TestModel.id != ignore_id, name=new_name).or_raise()
+        r = await connection.fetch(TestModel.name == new_name).or_raise()
+        assert len(r.value) > 1
+        assert all(m.name == new_name for m in r.value)
+        assert all(m.id != ignore_id for m in r.value)
 
-        r = await connection.fetch(TestModel.name == "dummy").or_raise()
-        assert all(m.name == "dummy" for m in r.value)
-        assert all(m.id < 2 for m in r.value)
+        ignore_id, new_name = 1, "DUMMY"
+        await connection.update((TestModel.id != ignore_id).And(TestModel.name == "dummy"), name=new_name).or_raise()
+        r = await connection.fetch(TestModel.name == new_name).or_raise()
+        assert len(r.value) > 1
+        assert all(m.name == new_name for m in r.value)
+        assert all(m.id != ignore_id for m in r.value)
 
 
 @pytest.mark.asyncio
