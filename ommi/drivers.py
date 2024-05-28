@@ -8,6 +8,7 @@ from typing import (
     Generic,
     get_args,
     ParamSpec,
+    Sequence,
     Type,
     TypeAlias,
     TypeVar,
@@ -46,7 +47,7 @@ class DatabaseAction(Generic[T]):
     async def or_raise(self) -> DatabaseStatus[T]:
         return DatabaseStatus.Success(await self._awaitable)
 
-    async def then_get_result(self) -> T:
+    async def then_get_all(self) -> Sequence[T]:
         return await self._awaitable
 
     async def _run(self) -> DatabaseStatus[T]:
