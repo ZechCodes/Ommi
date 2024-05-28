@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field as dc_field
 from inspect import get_annotations
-from pyexpat import model
 from typing import (
     Callable,
     overload,
