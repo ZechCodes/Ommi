@@ -76,9 +76,6 @@ class AsyncResultWrapper(Generic[T]):
             case DatabaseResult.Failure(error):
                 raise error
 
-            case result:
-                return result
-
     @property
     async def value(self) -> T:
         return (await self._await_and_wrap()).value
