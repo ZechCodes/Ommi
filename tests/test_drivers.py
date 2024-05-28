@@ -119,17 +119,17 @@ async def test_driver(driver):
         model = TestModel(name="dummy")
         await model.add().or_raise()
 
-        result = await connection.fetch(TestModel.name == "dummy").or_raise()
-        assert result.value[0].name == model.name
+        result = await connection.fetch(TestModel.name == "dummy").then_get_one()
+        assert result.name == model.name
 
         model.name = "Dummy"
         await model.save_changes().or_raise()
-        result = await connection.fetch(TestModel.name == "Dummy").or_raise()
-        assert result.value[0].name == model.name
+        result = await connection.fetch(TestModel.name == "Dummy").then_get_one()
+        assert result.name == model.name
 
         await model.delete().or_raise()
-        result = await connection.fetch(TestModel.name == "Dummy").or_raise()
-        assert len(result.value) == 0
+        result = await connection.fetch(TestModel.name == "Dummy").then_get_all()
+        assert len(result) == 0
 
 
 @pytest.mark.asyncio
@@ -139,8 +139,8 @@ async def test_fetch(driver):
         model = TestModel(name="dummy")
         await model.add().or_raise()
 
-        result = await connection.fetch(TestModel.name == "dummy").or_raise()
-        assert result.value[0].name == model.name
+        result = await connection.fetch(TestModel.name == "dummy").then_get_one()
+        assert result.name == model.name
 
 
 @pytest.mark.asyncio
@@ -153,8 +153,8 @@ async def test_update(driver):
         model.name = "Dummy"
         await model.save_changes().or_raise()
 
-        result = await connection.fetch(TestModel.name == "Dummy").or_raise()
-        assert result.value[0].name == model.name
+        result = await connection.fetch(TestModel.name == "Dummy").then_get_one()
+        assert result.name == model.name
 
 
 @pytest.mark.asyncio
@@ -206,8 +206,8 @@ async def test_detached_model_sync(driver):
         b = TestModel(name="Dummy", id=a.id)
         await b.save_changes().or_raise()
 
-        r = await connection.fetch(TestModel).or_raise()
-        assert r.value[0].name == "Dummy"
+        r = await connection.fetch(TestModel).then_get_one()
+        assert r.name == "Dummy"
 
 
 @pytest.mark.asyncio
@@ -234,9 +234,9 @@ async def test_driver_delete_query(driver):
 
         await connection.delete(TestModel.name == "dummy1").or_raise()
 
-        r = await connection.fetch(TestModel).or_raise()
-        assert len(r.value) == 1
-        assert r.value[0].name == "dummy2"
+        r = await connection.fetch(TestModel).then_get_all()
+        assert len(r) == 1
+        assert r[0].name == "dummy2"
 
 
 @pytest.mark.asyncio
