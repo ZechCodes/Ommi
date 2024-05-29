@@ -15,11 +15,11 @@ class FetchAction(Generic[TConn, TModel], ABC):
         self._connection = connection
         self._predicates = predicates
 
-    def __call__(self) -> AsyncResultWrapper[Iterable[TModel]]:
+    def __call__(self) -> AsyncResultWrapper[list[TModel]]:
         return self.fetch()
 
     @abstractmethod
-    def fetch(self) -> AsyncResultWrapper[Iterable[TModel]]:
+    def fetch(self) -> AsyncResultWrapper[list[TModel]]:
         ...
 
     @abstractmethod
@@ -30,7 +30,7 @@ class FetchAction(Generic[TConn, TModel], ABC):
     async def last(self) -> TModel:
         ...
 
-    async def all(self) -> Iterable[TModel]:
+    async def all(self) -> list[TModel]:
         match await self.fetch():
             case DatabaseResult.Success(result):
                 return result

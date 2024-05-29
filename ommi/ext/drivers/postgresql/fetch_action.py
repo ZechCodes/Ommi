@@ -1,11 +1,12 @@
-import sqlite3
+from typing import Type, Any, Generator, TypeVar, Callable, get_origin, Iterator
 from datetime import datetime, date
-from typing import Type, Any, Generator, TypeVar, Callable, get_origin
+
+import psycopg
 
 from ommi.drivers.database_results import async_result
 from ommi.drivers.fetch_actions import FetchAction
-from ommi.ext.drivers.sqlite.connection_protocol import SQLiteConnection
-from ommi.ext.drivers.sqlite.utils import build_query, SelectQuery
+from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
+from ommi.ext.drivers.postgresql.utils import build_query, SelectQuery
 from ommi.models import OmmiModel
 from ommi.query_ast import when, ASTGroupNode, ResultOrdering
 
@@ -13,11 +14,7 @@ from ommi.query_ast import when, ASTGroupNode, ResultOrdering
 T = TypeVar("T")
 
 
-class Iteratable:
-    pass
-
-
-class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
+class PostgreSQLFetchAction(FetchAction[PostgreSQLConnection, OmmiModel]):
     type_validators = {
         datetime: lambda value: value,  # No-op to avoid type conflict with date
         date: lambda value: value.split()[0],
@@ -27,7 +24,7 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
     async def fetch(self) -> list[OmmiModel]:
         ast = when(*self._predicates)
         session = self._connection.cursor()
-        result = self._select(ast, session)
+        result = await self._select(ast, session)
         return result
 
     async def first(self) -> OmmiModel:
@@ -36,13 +33,13 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
     async def last(self) -> OmmiModel:
         return (await self.all())[-1]
 
-    def _select(self, predicates: ASTGroupNode, session: sqlite3.Cursor):
+    async def _select(self, predicates: ASTGroupNode, session: psycopg.AsyncCursor):
         query = build_query(predicates)
         query_str = self._build_select_query(query)
-        session.execute(query_str, query.values)
-        result = session.fetchall()
+        result = await session.execute(query_str.encode(), query.values)
         return [
-            query.model(*self._validate_row_values(query.model, row)) for row in result
+            query.model(*self._validate_row_values(query.model, row))
+            async for row in result
         ]
 
     def _build_select_query(self, query: SelectQuery):
