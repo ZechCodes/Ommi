@@ -1,3 +1,5 @@
+import sys
+from collections import defaultdict
 from dataclasses import dataclass, field as dc_field
 from inspect import get_annotations
 from typing import (
@@ -22,13 +24,13 @@ from ommi.field_metadata import (
     StoreAs,
     create_metadata_type,
     Key,
+    ReferenceTo,
 )
 from ommi.utils.get_first import first
 from ommi.contextual_method import contextual_method
 from ommi.driver_context import active_driver
 import ommi.model_collections
 
-import ommi.drivers.count_actions as count_actions
 import ommi.drivers.delete_actions as delete_actions
 import ommi.drivers.fetch_actions as fetch_actions
 
@@ -68,9 +70,66 @@ class QueryableFieldDescriptor:
 
 
 @dataclass
+class FieldReference:
+    from_model: "Type[OmmiModel]"
+    from_field: FieldMetadata
+    to_model: "Type[OmmiModel]"
+    to_field: FieldMetadata
+
+
+class LazyReferenceBuilder:
+    def __init__(self, fields: dict[str, FieldMetadata], model: "Type[OmmiModel]", namespace: dict[str, Any]):
+        self._built = False
+        self._fields = fields
+        self._model = model
+        self._namespace = namespace
+        self._references: dict[Type[OmmiModel], list[FieldReference]] = defaultdict(list)
+
+    def __getitem__(self, model: "Type[OmmiModel]") -> list[FieldReference]:
+        if not self._built:
+            self._build_references()
+
+        return self._references[model]
+
+    def get(self, model: "Type[OmmiModel]", default: list[FieldReference] | None = None) -> list[FieldReference]:
+        if not self._built:
+            self._build_references()
+
+        return self._references.get(model, default)
+
+    def _build_references(self) -> None:
+        for name, metadata in self._fields.items():
+            if metadata.matches(ReferenceTo):
+                match metadata.get("reference_to"):
+                    case query_ast.ASTReferenceNode(to_field, to_model):
+                        self._references[to_model].append(
+                            FieldReference(
+                                from_model=self._model,
+                                from_field=metadata,
+                                to_model=to_model,
+                                to_field=to_field.metadata,
+                            )
+                        )
+
+                    case str() as ref:
+                        reference: query_ast.ASTReferenceNode = eval(ref, vars(self._namespace))
+                        self._references[reference.model].append(
+                            FieldReference(
+                                from_model=self._model,
+                                from_field=metadata,
+                                to_model=reference.model,
+                                to_field=reference.field.metadata,
+                            )
+                        )
+
+        self._built = True
+
+
+@dataclass
 class OmmiMetadata:
     model_name: str
     fields: dict[str, FieldMetadata]
+    references: LazyReferenceBuilder
     collection: "ommi.model_collections.ModelCollection" = dc_field(
         default_factory=get_global_collection
     )
@@ -256,7 +315,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
     )
 
     fields = _get_fields(get_annotations(c))
-    return type.__new__(
+    model_type = type.__new__(
         type(c),
         f"OmmiModel_{c.__name__}",
         (c, OmmiModel),
@@ -277,9 +336,12 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
                     c.__name__,
                 ),
                 fields=fields,
+                references=LazyReferenceBuilder(fields, c, sys.modules[c.__module__]),
             )
         },
     )
+    getattr(model_type, METADATA_DUNDER_NAME).references._model = model_type
+    return model_type
 
 
 def _register_model(
