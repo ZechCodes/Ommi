@@ -1,7 +1,7 @@
 import dataclasses
 from typing import Annotated
 
-from ommi.field_metadata import create_metadata_flag, StoreAs, Key
+from ommi.field_metadata import create_metadata_flag, StoreAs, Key, ReferenceTo
 from ommi.model_collections import ModelCollection
 from ommi.models import ommi_model, OmmiModel
 import attrs
@@ -115,3 +115,54 @@ def test_primary_key_named_id():
         id: str
 
     assert Model.get_primary_key_field().get("field_name") == "id"
+
+
+def test_reference_fields():
+    collection = ModelCollection()
+
+    @ommi_model(collection=collection)
+    @dataclasses.dataclass
+    class ModelA:
+        id: Annotated[int, StoreAs("_id")]
+
+    @ommi_model(collection=collection)
+    @dataclasses.dataclass
+    class ModelB:
+        model_a_id: Annotated[str, ReferenceTo(ModelA.id)]
+
+    reference = ModelB.__ommi_metadata__.references[ModelA][0]
+    assert reference.from_model == ModelB
+    assert reference.to_model == ModelA
+    assert reference.from_field == ModelB.__ommi_metadata__.fields["model_a_id"]
+    assert reference.to_field == ModelA.__ommi_metadata__.fields["id"]
+
+
+circular_collection = ModelCollection()
+
+
+@ommi_model(collection=circular_collection)
+@dataclasses.dataclass
+class CircularModelA:
+    id: Annotated[int, StoreAs("_id")]
+    model_b_id: Annotated[str, ReferenceTo("CircularModelB.id")]
+
+
+@ommi_model(collection=circular_collection)
+@dataclasses.dataclass
+class CircularModelB:
+    id: int
+    model_a_id: Annotated[str, ReferenceTo(CircularModelA.id)]
+
+
+def test_circular_references():
+    reference = CircularModelA.__ommi_metadata__.references[CircularModelB][0]
+    assert reference.from_model == CircularModelA
+    assert reference.to_model == CircularModelB
+    assert reference.from_field == CircularModelA.__ommi_metadata__.fields["model_b_id"]
+    assert reference.to_field == CircularModelB.__ommi_metadata__.fields["id"]
+
+    reference = CircularModelB.__ommi_metadata__.references[CircularModelA][0]
+    assert reference.from_model == CircularModelB
+    assert reference.to_model == CircularModelA
+    assert reference.from_field == CircularModelB.__ommi_metadata__.fields["model_a_id"]
+    assert reference.to_field == CircularModelA.__ommi_metadata__.fields["id"]
