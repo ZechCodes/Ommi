@@ -57,7 +57,7 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 query.model = query.model or model
 
             case ASTReferenceNode(field, model):
-                name = f"{model.__ommi_metadata__.model_name}.{field.name}"
+                name = f"{model.__ommi_metadata__.model_name}.{field.metadata.get('store_as')}"
                 where.append(name)
                 query.tables.append(model)
                 query.model = query.model or model

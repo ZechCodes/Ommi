@@ -56,9 +56,9 @@ def get_global_collection() -> "ommi.model_collections.ModelCollection":
 
 
 class QueryableFieldDescriptor:
-    def __init__(self, name, field):
+    def __init__(self, field, metadata):
         self.field = field
-        self.name = name
+        self.metadata = metadata
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -262,7 +262,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
         (c, OmmiModel),
         {
             name: QueryableFieldDescriptor(
-                fields[name].get("store_as"), getattr(c, name, None)
+                getattr(c, name, None), fields[name]
             )
             for name in get_annotations(c)
             if not name.startswith("_")

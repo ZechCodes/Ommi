@@ -132,7 +132,7 @@ def _process_comparison_ast(
         ):
             collections.append(model)
             expr = {
-                field.name:
+                field.metadata.get("store_as"):
                 (
                     value
                     if op == ASTOperatorNode.EQUALS
