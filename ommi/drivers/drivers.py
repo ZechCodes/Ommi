@@ -10,7 +10,7 @@ import ommi.drivers.schema_actions as schema_action
 from ommi.drivers.database_results import AsyncResultWrapper
 from ommi.drivers.driver_configs import DriverConfig
 from ommi.drivers.driver_types import TConn, TModel
-from ommi.model_collections import ModelCollection
+from ommi.models.collections import ModelCollection
 from ommi.query_ast import ASTGroupNode
 
 DriverName: TypeAlias = str

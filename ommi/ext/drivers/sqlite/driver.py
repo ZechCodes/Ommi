@@ -10,7 +10,7 @@ from ommi.ext.drivers.sqlite.add_action import SQLiteAddAction
 from ommi.ext.drivers.sqlite.connection_protocol import SQLiteConnection
 from ommi.ext.drivers.sqlite.find_action import SQLiteFindAction
 from ommi.ext.drivers.sqlite.schema_action import SQLiteSchemaAction
-from ommi.model_collections import ModelCollection
+from ommi.models.collections import ModelCollection
 from ommi.models import OmmiModel
 from ommi.query_ast import ASTGroupNode
 

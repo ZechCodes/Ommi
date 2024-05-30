@@ -1,10 +1,10 @@
-from typing import Type, Iterable, Any
+from typing import Type, Iterable
 
 from ommi.drivers.database_results import async_result
 from ommi.drivers.driver_types import TModel
 from ommi.drivers.schema_actions import SchemaAction
 from ommi.ext.drivers.mongodb.connection_protocol import MongoDBConnection
-from ommi.model_collections import ModelCollection
+from ommi.models.collections import ModelCollection
 from ommi.models import OmmiModel
 
 

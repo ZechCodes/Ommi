@@ -1,8 +1,8 @@
 import dataclasses
 from typing import Annotated
 
-from ommi.field_metadata import create_metadata_flag, StoreAs, Key, ReferenceTo
-from ommi.model_collections import ModelCollection
+from ommi.models.field_metadata import create_metadata_flag, StoreAs, Key, ReferenceTo
+from ommi.models.collections import ModelCollection
 from ommi.models import ommi_model, OmmiModel
 import attrs
 import pydantic

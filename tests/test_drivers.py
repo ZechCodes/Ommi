@@ -5,7 +5,7 @@ import pytest
 
 from ommi import StoreAs
 from ommi.ext.drivers.sqlite import SQLiteDriver, SQLiteConfig
-from ommi.model_collections import ModelCollection
+from ommi.models.collections import ModelCollection
 from ommi.models import ommi_model
 
 

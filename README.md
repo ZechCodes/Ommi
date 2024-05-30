@@ -63,9 +63,10 @@ Models can be assigned to model collections. Any model not assigned a collection
 collection which can be accessed by calling `ommi.models.get_global_collection()`.
 
 ```python
-from ommi.model_collections import ModelCollection
+from ommi.models.collections import ModelCollection
 
 collection = ModelCollection()
+
 
 @ommi_model(collection=collection)
 @dataclass

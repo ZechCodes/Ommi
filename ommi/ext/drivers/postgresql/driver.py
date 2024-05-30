@@ -10,7 +10,7 @@ from ommi.ext.drivers.postgresql.add_action import PostgreSQLAddAction
 from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
 from ommi.ext.drivers.postgresql.find_action import PostgreSQLFindAction
 from ommi.ext.drivers.postgresql.schema_action import PostgreSQLSchemaAction
-from ommi.model_collections import ModelCollection
+from ommi.models.collections import ModelCollection
 from ommi.models import OmmiModel
 from ommi.query_ast import ASTGroupNode
 

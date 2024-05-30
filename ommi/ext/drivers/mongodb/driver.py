@@ -1,4 +1,4 @@
-from typing import Type, cast, TypeAlias
+from typing import Type, TypeAlias
 from dataclasses import dataclass
 
 import motor.motor_asyncio
@@ -11,7 +11,7 @@ from ommi.ext.drivers.mongodb.add_action import MongoDBAddAction
 from ommi.ext.drivers.mongodb.connection_protocol import MongoDBConnection
 from ommi.ext.drivers.mongodb.find_action import MongoDBFindAction
 from ommi.ext.drivers.mongodb.schema_action import MongoDBSchemaAction
-from ommi.model_collections import ModelCollection
+from ommi.models.collections import ModelCollection
 from ommi.models import OmmiModel
 from ommi.query_ast import ASTGroupNode
 

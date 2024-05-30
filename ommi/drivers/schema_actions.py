@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 from ommi.drivers.database_results import AsyncResultWrapper
 from ommi.drivers.driver_types import TConn, TModel
-from ommi.model_collections import ModelCollection
+from ommi.models.collections import ModelCollection
 
 
 class SchemaAction(Generic[TConn, TModel], ABC):

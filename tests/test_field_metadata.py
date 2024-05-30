@@ -1,4 +1,4 @@
-from ommi.field_metadata import (
+from ommi.models.field_metadata import (
     AggregateMetadata,
     create_metadata_flag,
     create_metadata_type,
