@@ -3,6 +3,8 @@ from typing import Any, TypeVar, Type, cast, MutableMapping
 from tramp.results import Result, Value, Nothing
 from itertools import zip_longest
 
+import ommi.query_ast as query_ast
+
 T = TypeVar("T")
 
 
@@ -96,6 +98,13 @@ class FieldType(FieldMetadata):
 
     def __init__(self, field_type: Any):
         self.metadata = {"field_type": field_type}
+
+
+class ReferenceTo(FieldMetadata):
+    """Field metadata type for setting the model that the field references."""
+
+    def __init__(self, reference_to: "query_ast.ASTReferenceNode | str | Any"):
+        self.metadata = {"reference_to": reference_to}
 
 
 class StoreAs(FieldMetadata):
