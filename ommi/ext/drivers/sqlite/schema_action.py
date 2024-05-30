@@ -5,7 +5,8 @@ from ommi.drivers.database_results import async_result
 from ommi.drivers.schema_actions import SchemaAction
 from ommi.ext.drivers.sqlite.connection_protocol import SQLiteConnection
 from ommi.models.field_metadata import FieldMetadata
-from ommi.models import OmmiModel, get_collection
+from ommi.models import OmmiModel
+from ommi.models.models import get_collection
 from tramp.results import Result
 
 
