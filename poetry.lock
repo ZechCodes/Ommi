@@ -476,13 +476,13 @@ files = [
 
 [[package]]
 name = "tramp"
-version = "0.1.0"
+version = "0.1.1"
 description = "No idea but we have a result type!"
 optional = false
-python-versions = ">=3.10,<4.0"
+python-versions = "<4.0,>=3.10"
 files = [
-    {file = "tramp-0.1.0-py3-none-any.whl", hash = "sha256:f2ec302ae146d1b0ffb770650d009a48c496f0b2fd66ad4716762f1f57bca452"},
-    {file = "tramp-0.1.0.tar.gz", hash = "sha256:cfe873709205539e17ff1943b28b32f7ee960e62b689d72c5b5cfc5313d94164"},
+    {file = "tramp-0.1.1-py3-none-any.whl", hash = "sha256:2f84f3d8218a905f72f05826ab26eaf78c51610b311bc8caa85a9dfc1abfe3fd"},
+    {file = "tramp-0.1.1.tar.gz", hash = "sha256:fa9621cdbd721b0a1aac2b7026bf7a09f2f9568f0dc7b4e238e6132c517fbde0"},
 ]
 
 [[package]]

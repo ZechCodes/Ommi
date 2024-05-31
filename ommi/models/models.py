@@ -296,7 +296,7 @@ from typing import (
     Annotated,
     get_args,
 )
-from tramp.results import Result
+from tramp.optionals import Optional
 
 import ommi.query_ast as query_ast
 from ommi.drivers.database_results import async_result, AsyncResultWrapper
@@ -491,9 +491,9 @@ def ommi_model(
         _register_model(
             model,
             (
-                Result.Value(kwargs["collection"])
+                Optional.Value(kwargs["collection"])
                 if "collection" in kwargs
-                else Result.Nothing
+                else Optional.Nothing
             ),
         )
         return model
@@ -537,13 +537,13 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
 
 
 def _register_model(
-    model: Type[OmmiModel], collection: "Result[ommi.models.collections.ModelCollection]"
+    model: Type[OmmiModel], collection: "Optional[ommi.models.collections.ModelCollection]"
 ):
     get_collection(collection, model).add(model)
 
 
 def get_collection(
-    collection: "Result[ommi.models.collections.ModelCollection]",
+    collection: "Optional[ommi.models.collections.ModelCollection]",
     model: Type[OmmiModel] | None = None,
 ) -> "ommi.models.collections.ModelCollection":
     return collection.value_or(

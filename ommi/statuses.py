@@ -1,6 +1,6 @@
 from typing import Generic, Type, TypeVar
 
-from tramp.results import Value, Nothing
+from tramp.optionals import Value, Nothing
 
 
 V = TypeVar("V")

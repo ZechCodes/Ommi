@@ -1,6 +1,6 @@
 from collections import ChainMap
 from typing import Any, TypeVar, Type, cast, MutableMapping
-from tramp.results import Result, Value, Nothing
+from tramp.optionals import Optional, Value, Nothing
 from itertools import zip_longest
 
 import ommi.query_ast as query_ast
@@ -115,7 +115,7 @@ class StoreAs(FieldMetadata):
 
 
 def create_metadata_type(
-    name: str, metadata_type: "Result[Type[FieldMetadata]]" = Nothing(), /, **kwargs
+    name: str, metadata_type: "Optional[Type[FieldMetadata]]" = Nothing(), /, **kwargs
 ) -> Type[FieldMetadata]:
     """Helper function for creating a simple field metadata type that has preloaded default values. Useful for creating
     field types that don't need values set at creation."""

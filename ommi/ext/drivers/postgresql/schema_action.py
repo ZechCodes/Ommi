@@ -7,7 +7,7 @@ from ommi.drivers.schema_actions import SchemaAction
 from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
 from ommi.models.field_metadata import FieldMetadata
 from ommi.models import OmmiModel, get_collection
-from tramp.results import Result
+from tramp.optionals import Optional
 
 
 class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
@@ -22,7 +22,7 @@ class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
     async def create_models(self) -> Iterable[Type[OmmiModel]]:
         session = self._connection.cursor()
         models = get_collection(
-            Result.Value(self._model_collection) if self._model_collection else Result.Nothing
+            Optional.Value(self._model_collection) if self._model_collection else Optional.Nothing
         ).models
 
         try:

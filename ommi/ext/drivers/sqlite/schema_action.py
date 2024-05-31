@@ -7,7 +7,7 @@ from ommi.ext.drivers.sqlite.connection_protocol import SQLiteConnection
 from ommi.models.field_metadata import FieldMetadata
 from ommi.models import OmmiModel
 from ommi.models.models import get_collection
-from tramp.results import Result
+from tramp.optionals import Optional
 
 
 class SQLiteSchemaAction(SchemaAction[SQLiteConnection, OmmiModel]):
@@ -22,7 +22,7 @@ class SQLiteSchemaAction(SchemaAction[SQLiteConnection, OmmiModel]):
     async def create_models(self) -> Iterable[Type[OmmiModel]]:
         session = self._connection.cursor()
         models = get_collection(
-            Result.Value(self._model_collection) if self._model_collection else Result.Nothing
+            Optional.Value(self._model_collection) if self._model_collection else Optional.Nothing
         ).models
 
         try:
