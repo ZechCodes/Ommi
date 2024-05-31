@@ -17,6 +17,7 @@ from ommi.query_ast import search
 class ModelA:
     id: int
 
+
 @ommi_model
 @dataclass
 class ModelB:
