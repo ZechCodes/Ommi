@@ -2,15 +2,15 @@ from abc import ABC, abstractmethod
 from typing import TypeVar, Generic
 from tramp.results import Result
 
-from ommi import active_driver
-from ommi.drivers.drivers import AbstractDatabaseDriver
-from ommi.query_ast import search, ASTGroupNode
+import ommi
+import ommi.drivers.drivers
+import ommi.query_ast
 
 T = TypeVar("T")
 
 
 class LazyQueryField(ABC):
-    def __init__(self, query: ASTGroupNode, driver: AbstractDatabaseDriver | None = None):
+    def __init__(self, query: "ommi.query_ast.ASTGroupNode", driver: "ommi.drivers.drivers.AbstractDatabaseDriver | None" = None):
         self._query = query
         self._driver = driver
 
@@ -58,7 +58,7 @@ class LazyQueryField(ABC):
                 return self._cache
 
     def _get_driver(self):
-        return self._driver or active_driver.get()
+        return self._driver or ommi.active_driver.get()
 
 
 class LazyLoadTheRelated(Generic[T], LazyQueryField):
