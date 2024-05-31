@@ -5,13 +5,13 @@ from ommi.drivers.delete_actions import DeleteAction
 from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
 from ommi.ext.drivers.postgresql.utils import build_query
 from ommi.models import OmmiModel
-from ommi.query_ast import when, ASTGroupNode
+from ommi.query_ast import search, ASTGroupNode
 
 
 class PostgreSQLDeleteAction(DeleteAction[PostgreSQLConnection, OmmiModel]):
     @async_result
     async def delete(self) -> bool:
-        ast = when(*self._predicates)
+        ast = search(*self._predicates)
         session = self._connection.cursor()
         await self._delete(ast, session)
         return self

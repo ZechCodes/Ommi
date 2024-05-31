@@ -7,7 +7,7 @@ from ommi.drivers.database_results import async_result
 from ommi.drivers.driver_types import TModel
 from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
 from ommi.models import OmmiModel
-from ommi.query_ast import when, ASTGroupNode
+from ommi.query_ast import search, ASTGroupNode
 from ommi.ext.drivers.postgresql.utils import build_query, SelectQuery
 
 Predicate: TypeAlias = ASTGroupNode | Type[TModel] | bool
@@ -16,7 +16,7 @@ Predicate: TypeAlias = ASTGroupNode | Type[TModel] | bool
 class PostgreSQLCountAction(CountAction[PostgreSQLConnection, OmmiModel]):
     @async_result
     async def count(self) -> int:
-        ast = when(*self._predicates)
+        ast = search(*self._predicates)
         session = self._connection.cursor()
         return await self._count(ast, session)
 

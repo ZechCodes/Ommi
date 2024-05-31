@@ -68,7 +68,7 @@ class OmmiModel:
         cls, *items: "OmmiModel", driver: "drivers.DatabaseDriver | None" = None
     ) -> AsyncResultWrapper[bool]:
         driver = cls.get_driver(driver)
-        query = query_ast.when()
+        query = query_ast.search()
         for item in items:
             pk_name = item.get_primary_key_field().get("field_name")
             query = query.Or(getattr(cls, pk_name) == getattr(item, pk_name))
@@ -107,7 +107,7 @@ class OmmiModel:
 
         result = await (
             self.get_driver(driver)
-            .find(query_ast.when(pk_reference == getattr(self, pk_name)))
+            .find(query_ast.search(pk_reference == getattr(self, pk_name)))
             .fetch
             .first()
         )
@@ -370,7 +370,7 @@ class OmmiModel:
         cls, *items: "OmmiModel", driver: "drivers.DatabaseDriver | None" = None
     ) -> AsyncResultWrapper[bool]:
         driver = cls.get_driver(driver)
-        query = query_ast.when()
+        query = query_ast.search()
         for item in items:
             pk_name = item.get_primary_key_field().get("field_name")
             query = query.Or(getattr(cls, pk_name) == getattr(item, pk_name))
@@ -409,7 +409,7 @@ class OmmiModel:
 
         result = await (
             self.get_driver(driver)
-            .find(query_ast.when(pk_reference == getattr(self, pk_name)))
+            .find(query_ast.search(pk_reference == getattr(self, pk_name)))
             .fetch
             .one()
         )

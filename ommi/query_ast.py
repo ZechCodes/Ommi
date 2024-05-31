@@ -136,10 +136,10 @@ class ASTGroupNode(ASTNode):
         return f"{type(self).__name__}({self.items!r})"
 
     def And(self, *comparisons: "SearchGroup | ASTComparisonNode | bool"):
-        return self._add_node_or_group(when(*comparisons), ASTLogicalOperatorNode.AND)
+        return self._add_node_or_group(search(*comparisons), ASTLogicalOperatorNode.AND)
 
     def Or(self, *comparisons: "SearchGroup | ASTComparisonNode | bool"):
-        return self._add_node_or_group(when(*comparisons), ASTLogicalOperatorNode.OR)
+        return self._add_node_or_group(search(*comparisons), ASTLogicalOperatorNode.OR)
 
     def _add_node_or_group(
         self,
@@ -348,7 +348,7 @@ class ASTComparisonNode(ASTComparableNode):
                 return ASTLiteralNode(value)
 
 
-def when(
+def search(
     *comparisons: "ASTComparisonNode | Type[models.DatabaseModel] | bool",
 ) -> ASTGroupNode:
     match comparisons:
