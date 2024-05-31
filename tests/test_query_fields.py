@@ -3,7 +3,7 @@ from typing import Annotated
 from unittest.mock import MagicMock, AsyncMock, Mock
 
 import pytest
-from tramp.results import Result
+from tramp.results import Result, ResultWasAnErrorException
 
 from ommi import ommi_model
 from ommi.drivers.drivers import AbstractDatabaseDriver
@@ -62,7 +62,7 @@ async def test_load_relation_fails(loader):
 
     assert await relation.get("default") == "default"
 
-    with pytest.raises(Exception):
+    with pytest.raises(ResultWasAnErrorException):
         await relation.value
 
     assert driver_mock.find.call_count == 3
