@@ -23,11 +23,7 @@ class FetchAction(Generic[TConn, TModel], ABC):
         ...
 
     @abstractmethod
-    async def first(self) -> TModel:
-        ...
-
-    @abstractmethod
-    async def last(self) -> TModel:
+    async def one(self) -> TModel:
         ...
 
     async def all(self) -> list[TModel]:
@@ -38,14 +34,8 @@ class FetchAction(Generic[TConn, TModel], ABC):
             case DatabaseResult.Failure(error):
                 raise error
 
-    async def first_or(self, default: TModel) -> TModel:
+    async def one_or(self, default: TModel) -> TModel:
         with suppress(Exception):
-            return await self.first()
-
-        return default
-
-    async def last_or(self, default: TModel) -> TModel:
-        with suppress(Exception):
-            return await self.last()
+            return await self.one()
 
         return default

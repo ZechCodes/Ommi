@@ -30,11 +30,8 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
         result = self._select(ast, session)
         return result
 
-    async def first(self) -> OmmiModel:
+    async def one(self) -> OmmiModel:
         return (await self.all())[0]
-
-    async def last(self) -> OmmiModel:
-        return (await self.all())[-1]
 
     def _select(self, predicates: ASTGroupNode, session: sqlite3.Cursor):
         query = build_query(predicates)

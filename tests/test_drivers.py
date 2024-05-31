@@ -118,12 +118,12 @@ async def test_driver(driver):
     async with driver as connection:
         await connection.add(model := TestModel(name="dummy")).raise_on_errors()
 
-        result = await connection.find(TestModel.name == "dummy").fetch.first()
+        result = await connection.find(TestModel.name == "dummy").fetch.one()
         assert result.name == model.name
 
         model.name = "Dummy"
         await model.save()
-        result = await connection.find(TestModel.name == "Dummy").fetch.first()
+        result = await connection.find(TestModel.name == "Dummy").fetch.one()
         assert result.name == model.name
 
         await model.delete().raise_on_errors()
@@ -137,7 +137,7 @@ async def test_fetch(driver):
     async with driver as connection:
         await connection.add(model := TestModel(name="dummy")).raise_on_errors()
 
-        result = await connection.find(TestModel.name == "dummy").fetch.first()
+        result = await connection.find(TestModel.name == "dummy").fetch.one()
         assert result.name == model.name
 
 
@@ -150,7 +150,7 @@ async def test_update(driver):
         model.name = "Dummy"
         await model.save().raise_on_errors()
 
-        result = await connection.find(TestModel.name == "Dummy").fetch.first()
+        result = await connection.find(TestModel.name == "Dummy").fetch.one()
         assert result.name == model.name
 
 
@@ -202,7 +202,7 @@ async def test_detached_model_sync(driver):
         b = TestModel(name="Dummy", id=a.id)
         await b.save().raise_on_errors()
 
-        r = await connection.find(TestModel).fetch.first()
+        r = await connection.find(TestModel).fetch.one()
         assert r.name == "Dummy"
 
 

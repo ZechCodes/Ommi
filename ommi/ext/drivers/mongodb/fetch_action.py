@@ -29,11 +29,8 @@ class MongoDBFetchAction(FetchAction[MongoDBConnection, OmmiModel]):
         results = self._db[model.__ommi_metadata__.model_name].aggregate([pipeline])
         return [self._create_model(result, model) async for result in results]
 
-    async def first(self) -> OmmiModel:
+    async def one(self) -> OmmiModel:
         return (await self.all())[0]
-
-    async def last(self) -> OmmiModel:
-        return (await self.all())[-1]
 
     def _create_model(self, data: dict[str, Any], model: Type[OmmiModel]) -> OmmiModel:
         field_mapping = {

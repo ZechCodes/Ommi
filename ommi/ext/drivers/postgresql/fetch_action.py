@@ -27,11 +27,8 @@ class PostgreSQLFetchAction(FetchAction[PostgreSQLConnection, OmmiModel]):
         result = await self._select(ast, session)
         return result
 
-    async def first(self) -> OmmiModel:
+    async def one(self) -> OmmiModel:
         return (await self.all())[0]
-
-    async def last(self) -> OmmiModel:
-        return (await self.all())[-1]
 
     async def _select(self, predicates: ASTGroupNode, session: psycopg.AsyncCursor):
         query = build_query(predicates)

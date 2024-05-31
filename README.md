@@ -131,9 +131,9 @@ await db.find(User.id == user.id).delete().raise_on_errors()
 
 #### Fetch
 
-Fetch is an action of `find` that returns all models that match the predicates passed to `find`. It provides `all`,
-`first`, and `last` helper methods to help with value unpacking, they all raise on errors. Calling `fetch` directly will
-return an `AsyncResultWrapper` that contains the list of models.
+Fetch is an action of `find` that returns all models that match the predicates passed to `find`. It provides `all` and
+`one` helper methods to help with value unpacking, they both raise on errors. Calling `fetch` directly will  return an
+`AsyncResultWrapper` that contains the list of models.
 
 ```python
 users = await db.find(User.name == "Alice").fetch().value
@@ -144,11 +144,7 @@ users = await db.find(User.name == "Alice").fetch.all()
 ```
 
 ```python
-user = await db.find(User.name == "Alice").fetch.first()
-```
-
-```python
-user = await db.find(User.name == "Alice").fetch.last()
+user = await db.find(User.name == "Alice").fetch.one()
 ```
 
 Models provide a `reload` method that will pull the latest data from the database. It returns an `AsyncResultWrapper`.

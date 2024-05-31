@@ -411,7 +411,7 @@ class OmmiModel:
             self.get_driver(driver)
             .find(query_ast.when(pk_reference == getattr(self, pk_name)))
             .fetch
-            .first()
+            .one()
         )
         for name in self.__ommi_metadata__.fields.keys():
             setattr(self, name, getattr(result, name))
