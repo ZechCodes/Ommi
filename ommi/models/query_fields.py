@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Any, Type
 from tramp.results import Result
 
 import ommi
@@ -60,6 +60,11 @@ class LazyQueryField(ABC):
     def _get_driver(self):
         return self._driver or ommi.active_driver.get()
 
+    @classmethod
+    @abstractmethod
+    def create(cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]) -> "LazyQueryField":
+        ...
+
 
 class LazyLoadTheRelated(Generic[T], LazyQueryField):
     async def get(self, default: T | None = None) -> T | None:
@@ -83,6 +88,11 @@ class LazyLoadTheRelated(Generic[T], LazyQueryField):
 
         return builder.result
 
+    @classmethod
+    def create(cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]) -> "LazyQueryField":
+        contains, *_ = args
+        return cls(_build_query(model, contains))
+
 
 class LazyLoadEveryRelated(Generic[T], LazyQueryField):
     async def get(self, default: list[T] | None = None) -> list[T] | None:
@@ -105,3 +115,24 @@ class LazyLoadEveryRelated(Generic[T], LazyQueryField):
             )
 
         return builder.result
+
+    @classmethod
+    def create(cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]) -> "LazyQueryField":
+        contains, *_ = args
+        return cls(_build_query(model, contains))
+
+
+def _build_query(model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]") -> "ommi.query_ast.ASTGroupNode":
+    if ref := model.__ommi_metadata__.references.get(contains):
+        return ommi.query_ast.search(
+            getattr(ref[0].to_model, ref[0].to_field.get("field_name"))
+            == getattr(model, ref[0].from_field.get("field_name"))
+        )
+
+    if ref := contains.__ommi_metadata__.references.get(type(model)):
+        return ommi.query_ast.search(
+            getattr(ref[0].from_model, ref[0].from_field.get("field_name"))
+            == getattr(model, ref[0].to_field.get("field_name"))
+        )
+
+    raise RuntimeError(f"No reference found between models {type(model)} and {contains}")
