@@ -46,7 +46,6 @@ class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
     @abstractmethod
     def add(self, *items: TModel) -> "add_action.AddAction[TConn, TModel]": ...
 
-    @property
     @abstractmethod
     def find(self, *predicates: Predicate) -> "find_action.FindAction[TConn, TModel]": ...
 
