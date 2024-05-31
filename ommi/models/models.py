@@ -1,4 +1,5 @@
 import sys
+from dataclasses import dataclass
 from inspect import get_annotations
 from typing import (
     Callable,
@@ -46,6 +47,13 @@ def _get_value(
     default: Any,
 ) -> Any:
     return class_params.pop(param_name, getattr(cls, dunder_name, default))
+
+
+@dataclass
+class QueryFieldMetadata:
+    name: str
+    type: "Type[ommi.models.query_fields.LazyQueryField]"
+    args: tuple[Any, ...]
 
 
 class OmmiModel:
@@ -213,6 +221,15 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
     )
 
     fields = _get_fields(get_annotations(c))
+    query_fields = _get_query_fields(get_annotations(c))
+
+    def init(self, *args, **kwargs):
+        for field in query_fields.values():
+            if field.name not in kwargs:
+                kwargs[field.name] = field.type.create(self, field.args)
+
+        super(model_type, self).__init__(*args, **kwargs)
+
     model_type = type.__new__(
         type(c),
         f"OmmiModel_{c.__name__}",
@@ -225,6 +242,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
             if not name.startswith("_")
         }
         | {
+            "__init__": init,
             METADATA_DUNDER_NAME: metadata_factory(
                 model_name=_get_value(
                     kwargs,
@@ -292,3 +310,11 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
             )()
 
     return ommi_fields
+
+
+def _get_query_fields(fields: dict[str, Any]) -> dict[str, QueryFieldMetadata]:
+    return {
+        name: QueryFieldMetadata(name=name, type=get_origin(annotation), args=get_args(annotation))
+        for name, annotation in fields.items()
+        if isinstance((orig := get_origin(annotation)), type) and issubclass(orig, ommi.models.query_fields.LazyQueryField)
+    }
