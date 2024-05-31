@@ -17,11 +17,7 @@ from ommi.query_ast import search
 async def test_load_relation(loader):
     driver_mock = MagicMock(
         spec=AbstractDatabaseDriver,
-        find=Mock(
-            return_value=AsyncMock(
-                one=AsyncMock()
-            )
-        )
+        find=Mock(return_value=AsyncMock()),
     )
 
     @ommi_model
