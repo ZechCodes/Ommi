@@ -1,8 +1,5 @@
 from contextvars import ContextVar
-from contextlib import contextmanager
-from typing import Generator, TypeVar, Generic
-
-import ommi.drivers as drivers
+from typing import TypeVar, Generic
 
 
 T = TypeVar("T", bound="drivers.DatabaseDriver")
