@@ -16,6 +16,7 @@ import ommi.models.collections
 
 import ommi.drivers.delete_actions as delete_actions
 import ommi.drivers.fetch_actions as fetch_actions
+import ommi.models.query_fields
 
 try:
     from typing import Self
@@ -254,14 +255,14 @@ def get_collection(
 def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
     ommi_fields = {}
     for name, hint in fields.items():
-        ommi_fields[name] = AggregateMetadata()
+        metadata = AggregateMetadata()
         if get_origin(hint) == Annotated:
             field_type, *annotations = get_args(hint)
             _annotations = []
             for annotation in annotations:
                 match annotation:
                     case FieldMetadata():
-                        ommi_fields[name] |= annotation
+                        metadata |= annotation
 
                     case _:
                         _annotations.append(annotation)
@@ -274,13 +275,14 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
         else:
             field_type = hint
 
-        ommi_fields[name] |= FieldType(field_type)
-        if not ommi_fields[name].matches(StoreAs):
-            ommi_fields[name] |= StoreAs(name)
+        if not issubclass(field_type, ommi.models.query_fields.LazyQueryField):
+            ommi_fields[name] |= metadata | FieldType(field_type)
+            if not ommi_fields[name].matches(StoreAs):
+                ommi_fields[name] |= StoreAs(name)
 
-        ommi_fields[name] |= create_metadata_type(
-            "FieldMetadata", field_name=name, field_type=field_type
-        )()
+            ommi_fields[name] |= create_metadata_type(
+                "FieldMetadata", field_name=name, field_type=field_type
+            )()
 
     return ommi_fields
 import sys
