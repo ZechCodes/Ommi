@@ -7,7 +7,6 @@ from tramp.results import Result
 
 from ommi import ommi_model
 from ommi.drivers.drivers import AbstractDatabaseDriver
-from ommi.drivers.find_actions import FindAction
 from ommi.models.field_metadata import ReferenceTo
 from ommi.models.query_fields import LazyLoadTheRelated, LazyLoadEveryRelated
 from ommi.query_ast import search
