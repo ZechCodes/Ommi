@@ -40,7 +40,7 @@ async def test_load_relation(loader):
     assert isinstance(result, Result.Value)
 
     await relation.value
-    await relation.get()
+    assert await relation.get("default") != "default"
     driver_mock.find.assert_called_once()
 
 
