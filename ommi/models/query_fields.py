@@ -19,6 +19,10 @@ class LazyQueryField(ABC):
     def __await__(self):
         return self.value.__await__()
 
+    def __get_pydantic_core_schema__(self, *_):
+        import pydantic_core
+        return pydantic_core.core_schema.is_instance_schema(type(self))
+
     @abstractmethod
     async def get(self, default=None):
         ...
