@@ -51,7 +51,7 @@ async def test_load_relation(loader):
 async def test_load_relation_fails(loader):
     driver_mock = MagicMock(
         spec=AbstractDatabaseDriver,
-        find=Mock(side_effect=Exception("Error")),
+        find=Mock(side_effect=RuntimeError("Error")),
     )
 
     relation = loader(search(ModelB.a_id == a.id), driver=driver_mock)
@@ -59,6 +59,7 @@ async def test_load_relation_fails(loader):
     driver_mock.find.assert_called_with(ModelB.a_id == a.id)
 
     assert isinstance(result, Result.Error)
+    assert isinstance(result.error, RuntimeError)
 
     assert await relation.get("default") == "default"
 
