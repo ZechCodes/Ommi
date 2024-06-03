@@ -9,6 +9,7 @@ from typing import (
     Any,
     Generator, Annotated, get_origin, get_args,
 )
+from tramp.annotations import Annotation
 from tramp.optionals import Optional
 
 import ommi.query_ast as query_ast
@@ -224,11 +225,11 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
     query_fields = _get_query_fields(get_annotations(c))
 
     def init(self, *args, **kwargs):
+        super(model_type, self).__init__(*args, **kwargs)
+
         for field in query_fields.values():
             if field.name not in kwargs:
-                kwargs[field.name] = field.type.create(self, field.args)
-
-        super(model_type, self).__init__(*args, **kwargs)
+                setattr(self, field.name, field.type.create(self, field.args))
 
     model_type = type.__new__(
         type(c),
@@ -238,7 +239,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
             name: QueryableFieldDescriptor(
                 getattr(c, name, None), fields[name]
             )
-            for name in get_annotations(c)
+            for name in fields
             if not name.startswith("_")
         }
         | {
@@ -281,10 +282,11 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
     ommi_fields = {}
     for name, hint in fields.items():
         metadata = AggregateMetadata()
-        if get_origin(hint) == Annotated:
-            field_type, *annotations = get_args(hint)
+        annotation = Annotation(hint)
+        if annotation.origin == Annotated:
+            field_type = annotation.type
             _annotations = []
-            for annotation in annotations:
+            for annotation in annotation.args[1:]:
                 match annotation:
                     case FieldMetadata():
                         metadata |= annotation
@@ -299,6 +301,9 @@ def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
 
         else:
             field_type = hint
+
+        if not isinstance(field_type, type):
+            field_type = get_origin(field_type)
 
         if not issubclass(field_type, ommi.models.query_fields.LazyQueryField):
             ommi_fields[name] = metadata | FieldType(field_type)
