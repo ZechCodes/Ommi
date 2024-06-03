@@ -292,16 +292,10 @@ def _get_fields(fields: dict[str, Annotation], namespace: dict[str, Any]) -> dic
         metadata = AggregateMetadata()
 
         if annotation.origin == Annotated:
-            _type, *_annotations = annotation.args
-            annotation = Annotation(_type, some_namespace)
-            for a in _annotations:
-                match a:
+            for arg in annotation.args:
+                match arg:
                     case FieldMetadata():
-                        metadata |= a
-
-        match annotation.origin:
-            case type():
-                annotation = Annotation(annotation.origin, some_namespace)
+                        metadata |= arg
 
         if not issubclass(annotation.type, ommi.models.query_fields.LazyQueryField):
             ommi_fields[name] = metadata | FieldType(annotation.type)
