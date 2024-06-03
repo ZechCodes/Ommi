@@ -338,10 +338,12 @@ class LazyLoadFieldB:
 @parametrize_drivers()
 async def test_lazy_load_field(driver):
     async with driver as connection:
-        await connection.schema(lazy_load_field_collection).create_models().raise_on_errors()
+        schema = connection.schema(lazy_load_field_collection)
+        await schema.delete_models().raise_on_errors()
+        await schema.create_models().raise_on_errors()
 
-        await connection.add(a := LazyLoadFieldA(1, "testing")).raise_on_errors()
-        await connection.add(b := LazyLoadFieldB(1, a_id=a.id)).raise_on_errors()
+        await connection.add(a := LazyLoadFieldA(10, "testing")).raise_on_errors()
+        await connection.add(b := LazyLoadFieldB(10, a_id=a.id)).raise_on_errors()
 
         b_a = await b.a
         assert b_a.id == a.id
