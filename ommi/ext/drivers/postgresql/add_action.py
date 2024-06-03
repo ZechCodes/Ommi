@@ -14,7 +14,8 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
     async def items(self, *items: TModel) -> Iterable[TModel]:
         session = self._connection.cursor()
         try:
-            await self._insert(items, session, type(items[0]))
+            for model, group in self._group_by_model_type(items).items():
+                await self._insert(group, session, model)
 
         except Exception:
             await self._connection.rollback()
@@ -25,6 +26,13 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
 
         finally:
             await session.close()
+
+    def _group_by_model_type(self, items: Sequence[OmmiModel]):
+        model_groups = {}
+        for item in items:
+            model_groups.setdefault(type(item), []).append(item)
+
+        return model_groups
 
     async def _insert(
             self,
