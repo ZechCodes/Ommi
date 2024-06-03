@@ -7,7 +7,10 @@ from typing import (
     Type,
     TypeVar,
     Any,
-    Generator, Annotated, get_origin, get_args,
+    Generator,
+    Annotated,
+    get_origin,
+    get_args,
 )
 from tramp.annotations import Annotation
 from tramp.optionals import Optional
@@ -221,15 +224,19 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
         c.__ommi_metadata__.clone if hasattr(c, METADATA_DUNDER_NAME) else OmmiMetadata
     )
 
-    fields = _get_fields(get_annotations(c))
-    query_fields = _get_query_fields(get_annotations(c))
+    annotations = {
+        name: Annotation(hint, Optional.Some(vars(sys.modules[c.__module__])))
+        for name, hint in get_annotations(c).items()
+    }
+    fields = _get_fields(annotations, vars(sys.modules[c.__module__]))
+    query_fields = _get_query_fields(annotations)
 
     def init(self, *args, **kwargs):
         super(model_type, self).__init__(*args, **kwargs)
 
-        for field in query_fields.values():
-            if field.name not in kwargs:
-                setattr(self, field.name, field.type.create(self, field.args))
+        for name, annotation in query_fields.items():
+            if name not in kwargs:
+                setattr(self, name, annotation.origin.create(self, annotation.args))
 
     model_type = type.__new__(
         type(c),
@@ -278,48 +285,39 @@ def get_collection(
     )
 
 
-def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
+def _get_fields(fields: dict[str, Annotation], namespace: dict[str, Any]) -> dict[str, FieldMetadata]:
+    some_namespace = Optional.Some(namespace)
     ommi_fields = {}
-    for name, hint in fields.items():
+    for name, annotation in fields.items():
         metadata = AggregateMetadata()
-        annotation = Annotation(hint)
+
         if annotation.origin == Annotated:
-            field_type = annotation.type
-            _annotations = []
-            for annotation in annotation.args[1:]:
-                match annotation:
+            _type, *_annotations = annotation.args
+            annotation = Annotation(_type, some_namespace)
+            for a in _annotations:
+                match a:
                     case FieldMetadata():
-                        metadata |= annotation
+                        metadata |= a
 
-                    case _:
-                        _annotations.append(annotation)
+        match annotation.origin:
+            case type():
+                annotation = Annotation(annotation.origin, some_namespace)
 
-            if _annotations:
-                field_type = Annotated.__class_getitem__(
-                    field_type, *_annotations
-                )  # Hack to support 3.10
-
-        else:
-            field_type = hint
-
-        if not isinstance(field_type, type):
-            field_type = get_origin(field_type)
-
-        if not issubclass(field_type, ommi.models.query_fields.LazyQueryField):
-            ommi_fields[name] = metadata | FieldType(field_type)
+        if not issubclass(annotation.type, ommi.models.query_fields.LazyQueryField):
+            ommi_fields[name] = metadata | FieldType(annotation.type)
             if not ommi_fields[name].matches(StoreAs):
                 ommi_fields[name] |= StoreAs(name)
 
             ommi_fields[name] |= create_metadata_type(
-                "FieldMetadata", field_name=name, field_type=field_type
+                "FieldMetadata", field_name=name, field_type=annotation.type
             )()
 
     return ommi_fields
 
 
-def _get_query_fields(fields: dict[str, Any]) -> dict[str, QueryFieldMetadata]:
+def _get_query_fields(fields: dict[str, Annotation]) -> dict[str, Annotation]:
     return {
-        name: QueryFieldMetadata(name=name, type=get_origin(annotation), args=get_args(annotation))
+        name: annotation
         for name, annotation in fields.items()
-        if isinstance((orig := get_origin(annotation)), type) and issubclass(orig, ommi.models.query_fields.LazyQueryField)
+        if isinstance(annotation.origin, type) and issubclass(annotation.origin, ommi.models.query_fields.LazyQueryField)
     }
