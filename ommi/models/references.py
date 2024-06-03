@@ -23,6 +23,9 @@ class LazyReferenceBuilder:
         self._namespace = namespace
         self._references: dict[Type[ommi.models.OmmiModel], list[FieldReference]] = defaultdict(list)
 
+    def __contains__(self, model: "Type[ommi.models.OmmiModel]") -> bool:
+        return model in self._references
+
     def __getitem__(self, model: "Type[ommi.models.OmmiModel]") -> list[FieldReference]:
         if not self._built:
             self._build_references()
