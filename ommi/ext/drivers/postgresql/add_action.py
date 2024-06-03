@@ -36,7 +36,12 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
 
         fields = list(model.__ommi_metadata__.fields.values())
         pk = model.get_primary_key_field()
-        columns = [field.get("store_as") for field in fields if field != pk]
+        allow_pk = getattr(items[0], pk.get("field_name")) is not None
+        columns = [
+            field.get("store_as")
+            for field in fields
+            if field != pk or allow_pk
+        ]
         query.append(f"({','.join(columns)})")
 
         values = []
@@ -47,7 +52,7 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
             values.extend(
                 getattr(item, field.get("field_name"))
                 for field in fields
-                if field != pk
+                if field != pk or allow_pk
             )
 
         query.append(f"VALUES {','.join(inserts)}")
