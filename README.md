@@ -185,6 +185,14 @@ await db.schema().create_models().raise_on_errors()
 await db.schema(some_model_collection).create_models().raise_on_errors()
 ```
 
+It also provides a `delete_models` action that deletes all models in the collection from the database.
+
+```python
+await db.schema(some_model_collection).delete_models().raise_on_errors()
+```
+
+```python
+
 ### AsyncResultWrapper
 
 `AsyncResultWrapper` is a wrapper around the result of an async database action. It provides various awaitable
