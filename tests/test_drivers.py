@@ -324,7 +324,7 @@ class LazyLoadFieldADataclass:
     id: int
     name: str
 
-    b: "LazyLoadEveryRelated[LazyLoadFieldBDataclass]" = None
+    b: "LazyLoadEveryRelated[LazyLoadFieldBDataclass]"
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -333,7 +333,7 @@ class LazyLoadFieldBDataclass:
     id: int
     a_id: Annotated[int, ReferenceTo(LazyLoadFieldADataclass.id)]
 
-    a: LazyLoadTheRelated[LazyLoadFieldADataclass] = None
+    a: LazyLoadTheRelated[LazyLoadFieldADataclass]
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -342,7 +342,7 @@ class LazyLoadFieldAAttrs:
     id: int
     name: str
 
-    b: "LazyLoadEveryRelated[LazyLoadFieldBAttrs]" = None
+    b: "LazyLoadEveryRelated[LazyLoadFieldBAttrs]"
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -351,7 +351,7 @@ class LazyLoadFieldBAttrs:
     id: int
     a_id: Annotated[int, ReferenceTo(LazyLoadFieldAAttrs.id)]
 
-    a: LazyLoadTheRelated[LazyLoadFieldAAttrs] = None
+    a: LazyLoadTheRelated[LazyLoadFieldAAttrs]
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -359,7 +359,7 @@ class LazyLoadFieldAPydantic(pydantic.BaseModel):
     id: int
     name: str
 
-    b: "LazyLoadEveryRelated[LazyLoadFieldBPydantic]" = None
+    b: "LazyLoadEveryRelated[LazyLoadFieldBPydantic]"
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -367,7 +367,7 @@ class LazyLoadFieldBPydantic(pydantic.BaseModel):
     id: int
     a_id: Annotated[int, ReferenceTo(LazyLoadFieldAPydantic.id)]
 
-    a: LazyLoadTheRelated[LazyLoadFieldAPydantic] = None
+    a: LazyLoadTheRelated[LazyLoadFieldAPydantic]
 
 
 @pytest.mark.asyncio
