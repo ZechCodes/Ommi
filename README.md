@@ -268,3 +268,88 @@ result = await db.find(User.name == "Alice").count()
 print(result.error)  # Prints None if the action succeeded
 ```
 
+### Lazy Loaded Relationships
+
+Ommi provides support for lazy loading relationships between models. It fully supports forward references as string
+annotations. There are two supported relationship types using the `ommi.query_fields.LazyLoadTheRelated` and
+`ommi.query_fields.LazyLoadEveryRelated` generic types as annotations. It relies on models using the
+`ommi.field_metadata.ReferenceTo` annotation to define which field references which field on another model.
+
+```python
+@ommi_model
+@dataclass
+class User:
+    id: int
+
+    posts: LazyLoadEveryRelated["Post"]
+
+class Post:
+    id: int
+    author_id: Annotated[int, ReferenceTo(User)]
+
+    author: LazyLoadTheRelated[User]
+```
+
+`LazyLoadTheRelated` and `LazyLoadEveryRelated` are awaitable to fetch the related models. They also provide an
+awaitable `value` property that returns the same value as well as a `get` method that takes a default value in case of a
+failure. `LazyLoadTheRelated` will return a single model while `LazyLoadEveryRelated` will return a `list` of models.
+
+```python
+user = User(id=1)
+posts = await user.posts
+```
+
+Lazy fields will only fetch once and then cache the result.
+
+#### Get
+
+'LazyQueryFields` provide a `get` method that takes a default value and returns the value of the relationship or the
+default value if there is an error.
+
+```python
+user = User(id=1)
+posts = await user.posts.get([])
+```
+
+### Value
+
+`LazyQueryFields` provide a `value` property that returns the value of the relationship or raises an exception if there
+is an error.
+
+```python
+user = User(id=1)
+posts = await user.posts.value
+```
+
+### Refresh
+
+`LazyQueryFields` provide a `refresh` method that will fetch the related models again and update the cache.
+
+```python
+user = User(id=1)
+await user.posts.refresh()
+```
+
+### Refresh if needed
+
+The `refresh_if_needed` method will only fetch the related models if they haven't been fetched yet.
+
+```python
+user = User(id=1)
+await user.posts.refresh_if_needed()
+```
+
+### Result
+
+`LazyQueryFields` provide a `result` property that returns the `tramp.results.Result` object directly. This can be
+helpful for handling errors more explicitly.
+
+```python
+user = User(id=1)
+match await user.posts.result:
+    case Value(posts):
+        ...
+
+    case Error(error):
+        ...
+```
