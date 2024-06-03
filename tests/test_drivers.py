@@ -329,7 +329,7 @@ class LazyLoadFieldA:
 @dataclass
 class LazyLoadFieldB:
     id: int
-    a_id: Annotated[str, ReferenceTo(LazyLoadFieldA.id)]
+    a_id: Annotated[int, ReferenceTo(LazyLoadFieldA.id)]
 
     a: LazyLoadTheRelated[LazyLoadFieldA] = None
 
