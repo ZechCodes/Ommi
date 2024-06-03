@@ -39,7 +39,7 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
         session.execute(query_str, query.values)
         result = session.fetchall()
         return [
-            query.model(*self._validate_row_values(query.model, row)) for row in result
+            query.model(**dict(self._validate_row_values(query.model, row))) for row in result
         ]
 
     def _build_select_query(self, query: SelectQuery):
@@ -65,12 +65,13 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
 
     def _validate_row_values(
         self, model: Type[OmmiModel], row: tuple[Any]
-    ) -> Generator[Any, None, None]:
+    ) -> Generator[tuple[str, Any], None, None]:
         for field, value in zip(model.__ommi_metadata__.fields.values(), row):
+            name = field.get("field_name")
             if validator := self._find_type_validator(field.get("field_type", value)):
-                yield validator(value)
+                yield name, validator(value)
             else:
-                yield value
+                yield name, value
 
     def _find_type_validator(self, type_hint: Type[T]) -> Callable[[Any], T] | None:
         hint = get_origin(type_hint) or type_hint
