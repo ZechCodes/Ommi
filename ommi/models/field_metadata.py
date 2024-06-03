@@ -1,6 +1,6 @@
 from collections import ChainMap
 from typing import Any, TypeVar, Type, cast, MutableMapping
-from tramp.optionals import Optional, Value, Nothing
+from tramp.optionals import Optional, Some, Nothing
 from itertools import zip_longest
 
 import ommi.query_ast as query_ast
@@ -129,7 +129,7 @@ def create_metadata_flag(name: str) -> FieldMetadata:
     """Helper function for creating field metadata flag instances. These flags are field metadata instances that contain
     a singular boolean True value to indicate that they're set. Flags should be treated as singletons for purposes of
     identity checks."""
-    return create_metadata_type(name, Value(MetadataFlag), **{f"__flag_{name}": True})()
+    return create_metadata_type(name, Some(MetadataFlag), **{f"__flag_{name}": True})()
 
 
 Auto = create_metadata_flag("Auto")

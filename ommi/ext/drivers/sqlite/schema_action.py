@@ -22,7 +22,7 @@ class SQLiteSchemaAction(SchemaAction[SQLiteConnection, OmmiModel]):
     async def create_models(self) -> Iterable[Type[OmmiModel]]:
         session = self._connection.cursor()
         models = get_collection(
-            Optional.Value(self._model_collection) if self._model_collection else Optional.Nothing
+            Optional.Some(self._model_collection) if self._model_collection else Optional.Nothing
         ).models
 
         try:

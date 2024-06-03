@@ -205,7 +205,7 @@ def ommi_model(
         _register_model(
             model,
             (
-                Optional.Value(kwargs["collection"])
+                Optional.Some(kwargs["collection"])
                 if "collection" in kwargs
                 else Optional.Nothing
             ),
