@@ -8,7 +8,7 @@ from ommi.ext.drivers.sqlite import SQLiteDriver, SQLiteConfig
 from ommi.models.collections import ModelCollection
 from ommi.models import ommi_model
 from ommi.models.field_metadata import ReferenceTo
-from ommi.models.query_fields import LazyLoadTheRelated
+from ommi.models.query_fields import LazyLoadTheRelated, LazyLoadEveryRelated
 
 test_models = ModelCollection()
 
@@ -324,6 +324,8 @@ class LazyLoadFieldA:
     id: int
     name: str
 
+    b: "LazyLoadEveryRelated[LazyLoadFieldB]" = None
+
 
 @ommi_model(collection=lazy_load_field_collection)
 @dataclass
@@ -347,3 +349,6 @@ async def test_lazy_load_field(driver):
 
         b_a = await b.a
         assert b_a.id == a.id
+
+        a_b = await a.b
+        assert a_b[0].id == b.id
