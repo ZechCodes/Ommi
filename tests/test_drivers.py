@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import pytest
+import attrs
+import pydantic
 
 from ommi import StoreAs
 from ommi.ext.drivers.sqlite import SQLiteDriver, SQLiteConfig
@@ -318,32 +320,78 @@ lazy_load_field_collection = ModelCollection()
 
 @ommi_model(collection=lazy_load_field_collection)
 @dataclass
-class LazyLoadFieldA:
+class LazyLoadFieldADataclass:
     id: int
     name: str
 
-    b: "LazyLoadEveryRelated[LazyLoadFieldB]" = None
+    b: "LazyLoadEveryRelated[LazyLoadFieldBDataclass]" = None
 
 
 @ommi_model(collection=lazy_load_field_collection)
 @dataclass
-class LazyLoadFieldB:
+class LazyLoadFieldBDataclass:
     id: int
-    a_id: Annotated[int, ReferenceTo(LazyLoadFieldA.id)]
+    a_id: Annotated[int, ReferenceTo(LazyLoadFieldADataclass.id)]
 
-    a: LazyLoadTheRelated[LazyLoadFieldA] = None
+    a: LazyLoadTheRelated[LazyLoadFieldADataclass] = None
+
+
+@ommi_model(collection=lazy_load_field_collection)
+@attrs.define
+class LazyLoadFieldAAttrs:
+    id: int
+    name: str
+
+    b: "LazyLoadEveryRelated[LazyLoadFieldBAttrs]" = None
+
+
+@ommi_model(collection=lazy_load_field_collection)
+@attrs.define
+class LazyLoadFieldBAttrs:
+    id: int
+    a_id: Annotated[int, ReferenceTo(LazyLoadFieldAAttrs.id)]
+
+    a: LazyLoadTheRelated[LazyLoadFieldAAttrs] = None
+
+
+@ommi_model(collection=lazy_load_field_collection)
+class LazyLoadFieldAPydantic(pydantic.BaseModel):
+    id: int
+    name: str
+
+    b: "LazyLoadEveryRelated[LazyLoadFieldBPydantic]" = None
+
+
+@ommi_model(collection=lazy_load_field_collection)
+class LazyLoadFieldBPydantic(pydantic.BaseModel):
+    id: int
+    a_id: Annotated[int, ReferenceTo(LazyLoadFieldAPydantic.id)]
+
+    a: LazyLoadTheRelated[LazyLoadFieldAPydantic] = None
 
 
 @pytest.mark.asyncio
 @parametrize_drivers()
-async def test_lazy_load_field(driver):
+@pytest.mark.parametrize(
+    "models",
+    [
+        *zip(
+            (LazyLoadFieldADataclass, LazyLoadFieldAAttrs, LazyLoadFieldAPydantic),
+            (LazyLoadFieldBDataclass, LazyLoadFieldBAttrs, LazyLoadFieldBPydantic),
+            ("Dataclasses", "Attrs", "Pydantic"),
+        )
+    ],
+    ids=lambda params: params[~0],
+)
+async def test_lazy_load_field(driver, models):
+    model_a, model_b, _ = models
     async with driver as connection:
         schema = connection.schema(lazy_load_field_collection)
         await schema.delete_models().raise_on_errors()
         await schema.create_models().raise_on_errors()
 
-        await connection.add(a := LazyLoadFieldA(10, "testing")).raise_on_errors()
-        await connection.add(b := LazyLoadFieldB(10, a_id=a.id)).raise_on_errors()
+        await connection.add(a := model_a(id=10, name="testing")).raise_on_errors()
+        await connection.add(b := model_b(id=10, a_id=a.id)).raise_on_errors()
 
         b_a = await b.a
         assert b_a.id == a.id
