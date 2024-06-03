@@ -21,7 +21,17 @@ class LazyQueryField(ABC):
 
     def __get_pydantic_core_schema__(self, *_):
         import pydantic_core
-        return pydantic_core.core_schema.is_instance_schema(type(self))
+        return pydantic_core.core_schema.no_info_plain_validator_function(function=self.__pydantic_validator)
+
+    @staticmethod
+    def __pydantic_validator(value):
+        if value is None:
+            return value
+
+        if isinstance(value, LazyQueryField):
+            return value
+
+        raise TypeError(f"Expected LazyQueryField, got {type(value)}")
 
     @abstractmethod
     async def get(self, default=None):
