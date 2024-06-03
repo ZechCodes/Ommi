@@ -16,7 +16,7 @@ class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
         int: "INTEGER",
         str: "TEXT",
         float: "REAL",
-        bool: "INTEGER",
+        bool: "BOOLEAN",
     }
 
     @async_result
