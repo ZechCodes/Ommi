@@ -399,3 +399,36 @@ async def test_lazy_load_field(driver, models):
 
         a_b = await a.b
         assert {b.id, c.id} == {m.id for m in a_b}
+
+
+@pytest.mark.asyncio
+@parametrize_drivers()
+async def test_join_queries(driver):
+    join_collection = ModelCollection()
+    @ommi_model(collection=join_collection)
+    @dataclass
+    class JoinModelA:
+        id: int
+        name: str
+
+    @ommi_model(collection=join_collection)
+    @dataclass
+    class JoinModelB:
+        id: int
+        a_id: Annotated[int, ReferenceTo(JoinModelA.id)]
+
+
+    async with driver as connection:
+        schema = connection.schema(join_collection)
+        await schema.delete_models().raise_on_errors()
+        await schema.create_models().raise_on_errors()
+
+        await connection.add(a := JoinModelA(id=10, name="testing")).raise_on_errors()
+        await connection.add(b := JoinModelB(id=10, a_id=a.id)).raise_on_errors()
+        await connection.add(c := JoinModelB(id=11, a_id=a.id)).raise_on_errors()
+
+        await connection.add(d := JoinModelA(id=11, name="foobar")).raise_on_errors()
+        await connection.add(e := JoinModelB(id=12, a_id=d.id)).raise_on_errors()
+
+        result = await connection.find(JoinModelB, JoinModelA.name == "testing").fetch.all()
+        assert {b.id, c.id} == {m.id for m in result}
