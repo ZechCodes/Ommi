@@ -42,7 +42,7 @@ def model_to_dict(model: OmmiModel, *, preserve_pk: bool = False) -> dict[str, A
     return {
         field.get("store_as"): getattr(model, field.get("field_name"))
         for field in fields
-        if field is not pk or preserve_pk
+        if field is not pk or preserve_pk or getattr(model, pk.get("field_name")) is not None
     }
 
 

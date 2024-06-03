@@ -30,6 +30,9 @@ class MongoDBAddAction(AddAction[MongoDBConnection, OmmiModel]):
 
     async def _set_auto_increment_pk(self, item: OmmiModel):
         pk = item.get_primary_key_field()
+        if getattr(item, pk.get("field_name")) is not None:
+            return
+
         if (
             not issubclass(pk.get("field_type"), int)
             or getattr(item, pk.get("field_name")) is not None
