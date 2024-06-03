@@ -32,9 +32,9 @@ operator_mapping = {
 class SelectQuery:
     limit: int = 0
     model: Type[OmmiModel] | None = None
+    models: list[OmmiModel] = dc_field(default_factory=list)
     offset: int = 0
     order_by: dict[str, ResultOrdering] = dc_field(default_factory=dict)
-    tables: list[OmmiModel] = dc_field(default_factory=list)
     values: list[Any] = dc_field(default_factory=list)
     where: str = ""
 
@@ -53,13 +53,13 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 node_stack.append(iter(group))
 
             case ASTReferenceNode(None, model):
-                query.tables.append(model)
+                query.models.append(model)
                 query.model = query.model or model
 
             case ASTReferenceNode(field, model):
                 name = f"{model.__ommi_metadata__.model_name}.{field.metadata.get('store_as')}"
                 where.append(name)
-                query.tables.append(model)
+                query.models.append(model)
                 query.model = query.model or model
 
             case ASTLiteralNode(value):
@@ -90,6 +90,7 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 raise TypeError(f"Unexpected node type: {node}")
 
     query.where = " ".join(where)
+    query.models.remove(query.model)
     return query
 
 
