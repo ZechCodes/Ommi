@@ -313,5 +313,5 @@ def _get_query_fields(fields: dict[str, Annotation]) -> dict[str, Annotation]:
     return {
         name: annotation
         for name, annotation in fields.items()
-        if isinstance(annotation.origin, type) and issubclass(annotation.origin, ommi.models.query_fields.LazyQueryField)
+        if annotation.is_generic() and issubclass(annotation.type, ommi.models.query_fields.LazyQueryField)
     }
