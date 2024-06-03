@@ -30,4 +30,4 @@ class MongoDBSchemaAction(SchemaAction[MongoDBConnection, OmmiModel]):
     @async_result
     async def delete_models(self) -> None:
         for model in self._model_collection.models:
-            self._db[model.__ommi_metadata__.model_name].drop()
+            await self._db[model.__ommi_metadata__.model_name].drop()
