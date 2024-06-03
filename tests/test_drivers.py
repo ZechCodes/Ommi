@@ -93,9 +93,7 @@ def parametrize_drivers():
     return pytest.mark.parametrize("driver", connections, ids=id_factory)
 
 
-connections = [
-    sqlite,
-]
+connections = [sqlite]
 
 try:
     from ommi.ext.drivers.mongodb import MongoDBDriver, MongoDBConfig
