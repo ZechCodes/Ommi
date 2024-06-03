@@ -26,7 +26,12 @@ class MongoDBFetchAction(FetchAction[MongoDBConnection, OmmiModel]):
     @async_result
     async def fetch(self) -> list[OmmiModel]:
         pipeline, model = build_pipeline(search(*self._predicates))
-        results = self._db[model.__ommi_metadata__.model_name].aggregate([pipeline])
+        results = self._db[model.__ommi_metadata__.model_name].aggregate(
+            [
+                {stage: actions}
+                for stage, actions in pipeline.items()
+            ]
+        )
         return [self._create_model(result, model) async for result in results]
 
     async def one(self) -> OmmiModel:
