@@ -88,7 +88,7 @@ async def example():
 
 ### Database Actions
 
-The database drivers provide `add`, `count`, delete`, `fetch`, `sync_schema`, and `update` methods. These methods should
+The database drivers provide `add`, `count`, `delete`, `fetch`, `sync_schema`, and `update` methods. These methods should
 be wrapped in an `ommi.drivers.DatabaseAction`. The database action will capture the return and wrap it in a
 `DatabaseStatus` result that is either a `Success` or `Exception`. The database action provides an `or_raise` method
 that will force the exception to be raised immediately or return a `Success` result. The `DatabaseStatus` types are
@@ -190,8 +190,6 @@ It also provides a `delete_models` action that deletes all models in the collect
 ```python
 await db.schema(some_model_collection).delete_models().raise_on_errors()
 ```
-
-```python
 
 ### AsyncResultWrapper
 
