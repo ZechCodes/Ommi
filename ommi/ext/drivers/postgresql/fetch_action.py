@@ -8,7 +8,7 @@ from ommi.drivers.fetch_actions import FetchAction
 from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
 from ommi.ext.drivers.postgresql.utils import build_query, SelectQuery
 from ommi.models import OmmiModel
-from ommi.query_ast import search, ASTGroupNode, ResultOrdering
+from ommi.query_ast import when, ASTGroupNode, ResultOrdering
 
 
 T = TypeVar("T")
@@ -22,7 +22,7 @@ class PostgreSQLFetchAction(FetchAction[PostgreSQLConnection, OmmiModel]):
 
     @async_result
     async def fetch(self) -> list[OmmiModel]:
-        ast = search(*self._predicates)
+        ast = when(*self._predicates)
         session = self._connection.cursor()
         result = await self._select(ast, session)
         return result

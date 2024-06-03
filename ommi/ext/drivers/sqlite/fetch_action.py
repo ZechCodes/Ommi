@@ -7,7 +7,7 @@ from ommi.drivers.fetch_actions import FetchAction
 from ommi.ext.drivers.sqlite.connection_protocol import SQLiteConnection
 from ommi.ext.drivers.sqlite.utils import build_query, SelectQuery
 from ommi.models import OmmiModel
-from ommi.query_ast import search, ASTGroupNode, ResultOrdering
+from ommi.query_ast import when, ASTGroupNode, ResultOrdering
 
 
 T = TypeVar("T")
@@ -25,7 +25,7 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
 
     @async_result
     async def fetch(self) -> list[OmmiModel]:
-        ast = search(*self._predicates)
+        ast = when(*self._predicates)
         session = self._connection.cursor()
         result = self._select(ast, session)
         return result

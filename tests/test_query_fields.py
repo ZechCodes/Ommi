@@ -9,7 +9,7 @@ from ommi import ommi_model
 from ommi.drivers.drivers import AbstractDatabaseDriver
 from ommi.models.field_metadata import ReferenceTo
 from ommi.models.query_fields import LazyLoadTheRelated, LazyLoadEveryRelated
-from ommi.query_ast import search
+from ommi.query_ast import when
 
 
 @ommi_model
@@ -36,7 +36,7 @@ async def test_load_relation(loader):
         find=Mock(return_value=AsyncMock()),
     )
 
-    relation = loader(search(ModelB.a_id == a.id), driver=driver_mock)
+    relation = loader(when(ModelB.a_id == a.id), driver=driver_mock)
     result = await relation.result
     driver_mock.find.assert_called_with(ModelB.a_id == a.id)
 
@@ -55,7 +55,7 @@ async def test_load_relation_fails(loader):
         find=Mock(side_effect=RuntimeError("Error")),
     )
 
-    relation = loader(search(ModelB.a_id == a.id), driver=driver_mock)
+    relation = loader(when(ModelB.a_id == a.id), driver=driver_mock)
     result = await relation.result
     driver_mock.find.assert_called_with(ModelB.a_id == a.id)
 

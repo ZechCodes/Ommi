@@ -6,7 +6,7 @@ from ommi.drivers.database_results import async_result
 from ommi.drivers.driver_types import TModel
 from ommi.ext.drivers.sqlite.connection_protocol import SQLiteConnection
 from ommi.models import OmmiModel
-from ommi.query_ast import search, ASTGroupNode
+from ommi.query_ast import when, ASTGroupNode
 from ommi.ext.drivers.sqlite.utils import build_query, SelectQuery
 
 Predicate: TypeAlias = ASTGroupNode | Type[TModel] | bool
@@ -15,7 +15,7 @@ Predicate: TypeAlias = ASTGroupNode | Type[TModel] | bool
 class SQLiteCountAction(CountAction[SQLiteConnection, OmmiModel]):
     @async_result
     async def count(self) -> int:
-        ast = search(*self._predicates)
+        ast = when(*self._predicates)
         session = self._connection.cursor()
         return self._count(ast, session)
 
