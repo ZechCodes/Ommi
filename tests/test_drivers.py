@@ -392,9 +392,10 @@ async def test_lazy_load_field(driver, models):
 
         await connection.add(a := model_a(id=10, name="testing")).raise_on_errors()
         await connection.add(b := model_b(id=10, a_id=a.id)).raise_on_errors()
+        await connection.add(c := model_b(id=11, a_id=a.id)).raise_on_errors()
 
         b_a = await b.a
         assert b_a.id == a.id
 
         a_b = await a.b
-        assert a_b[0].id == b.id
+        assert {b.id, c.id} == {m.id for m in a_b}
