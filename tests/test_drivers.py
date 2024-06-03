@@ -114,6 +114,35 @@ else:
 
 @pytest.mark.asyncio
 @parametrize_drivers()
+async def test_insert_and_fetch(driver):
+    collection = ModelCollection()
+
+    @ommi_model(collection=collection)
+    @dataclass
+    class InnerTestModel:
+        id: int
+        name: str
+        toggle: bool
+        decimal: float
+
+    async with driver as connection:
+        await connection.schema(collection).create_models().raise_on_errors()
+
+        await connection.add(model := InnerTestModel(10, "testing", True, 1.23)).raise_on_errors()
+        assert model.id == 10
+        assert model.name == "testing"
+        assert model.toggle == True
+        assert model.decimal == 1.23
+
+        result = await connection.find(InnerTestModel.id == 10).fetch.one()
+        assert result.id == model.id
+        assert result.name == model.name
+        assert result.toggle == model.toggle
+        assert result.decimal == model.decimal
+
+
+@pytest.mark.asyncio
+@parametrize_drivers()
 async def test_driver(driver):
     async with driver as connection:
         await connection.add(model := TestModel(name="dummy")).raise_on_errors()
