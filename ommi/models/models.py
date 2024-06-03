@@ -232,16 +232,15 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
     query_fields = _get_query_fields(annotations)
 
     def init(self, *args, **kwargs):
-        unset = set()
-        for name in query_fields:
-            if name not in kwargs:
-                kwargs[name] = None
-                unset.add(name)
-
-        super(model_type, self).__init__(*args, **kwargs)
+        unset_query_fields = {
+            name: None
+            for name in query_fields
+            if name not in kwargs
+        }
+        super(model_type, self).__init__(*args, **kwargs | unset_query_fields)
 
         for name, annotation in query_fields.items():
-            if name in unset:
+            if name in unset_query_fields:
                 setattr(self, name, annotation.origin.create(self, annotation.args))
 
     model_type = type.__new__(
@@ -253,7 +252,6 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
                 getattr(c, name, None), fields[name]
             )
             for name in fields
-            if not name.startswith("_")
         }
         | {
             "__init__": init,
