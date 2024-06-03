@@ -40,7 +40,9 @@ class DriverFactory:
 @DriverFactory
 async def sqlite():
     driver = await SQLiteDriver.from_config(SQLiteConfig(filename=":memory:"))
-    await driver.schema(test_models).create_models().raise_on_errors()
+    schema = driver.schema(test_models)
+    await schema.delete_models().raise_on_errors()
+    await schema.create_models().raise_on_errors()
     return driver
 
 
@@ -51,7 +53,7 @@ async def mongo():
     )
     try:
         driver = await MongoDBDriver.from_config(config)
-        await driver._db.drop_collection(TestModel.__ommi_metadata__.model_name)
+        await driver.schema(test_models).delete_models().raise_on_errors()
     except pymongo.errors.ServerSelectionTimeoutError as exc:
         raise RuntimeError(
             f"Could not connect to MongoDB. Is it running? {config}"
@@ -72,15 +74,14 @@ async def postgresql():
     )
     try:
         driver = await PostgreSQLDriver.from_config(config)
-        await driver.connection.execute(
-            f"DROP TABLE IF EXISTS {TestModel.__ommi_metadata__.model_name}"
-        )
+        schema = driver.schema(test_models)
+        await schema.delete_models().raise_on_errors()
     except psycopg.OperationalError as exc:
         raise RuntimeError(
             f"Could not connect to PostgreSQL. Is it running? {config}"
         ) from exc
     else:
-        await driver.schema(test_models).create_models().raise_on_errors()
+        await schema.create_models().raise_on_errors()
         return driver
 
 

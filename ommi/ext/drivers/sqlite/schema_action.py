@@ -39,6 +39,27 @@ class SQLiteSchemaAction(SchemaAction[SQLiteConnection, OmmiModel]):
         finally:
             session.close()
 
+    @async_result
+    async def delete_models(self) -> Iterable[Type[OmmiModel]]:
+        session = self._connection.cursor()
+        models = get_collection(
+            Optional.Some(self._model_collection) if self._model_collection else Optional.Nothing
+        ).models
+
+        try:
+            for model in models:
+                session.execute(f"DROP TABLE IF EXISTS {model.__ommi_metadata__.model_name};")
+
+        except:
+            self._connection.rollback()
+            raise
+
+        else:
+            return models
+
+        finally:
+            session.close()
+
     def _create_table(self, model: Type[OmmiModel], session: sqlite3.Cursor):
         pk = model.get_primary_key_field().get("store_as")
         columns = ", ".join(

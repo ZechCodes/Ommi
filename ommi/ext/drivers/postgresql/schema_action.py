@@ -2,7 +2,7 @@ from typing import Type, Iterable, Any
 
 import psycopg
 
-from ommi.drivers.database_results import async_result
+from ommi.drivers.database_results import async_result, AsyncResultWrapper
 from ommi.drivers.schema_actions import SchemaAction
 from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
 from ommi.models.field_metadata import FieldMetadata
@@ -36,6 +36,27 @@ class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
 
         else:
             return models
+
+        finally:
+            await session.close()
+
+    @async_result
+    async def delete_models(self) -> None:
+        session = self._connection.cursor()
+        models = get_collection(
+            Optional.Some(self._model_collection) if self._model_collection else Optional.Nothing
+        ).models
+
+        try:
+            for model in models:
+                await session.execute(f"DROP TABLE IF EXISTS {model.__ommi_metadata__.model_name};")
+
+        except:
+            await self._connection.rollback()
+            raise
+
+        else:
+            return None
 
         finally:
             await session.close()

@@ -14,3 +14,7 @@ class SchemaAction(Generic[TConn, TModel], ABC):
     @abstractmethod
     def create_models(self) -> AsyncResultWrapper[Iterable[Type[TModel]]]:
         ...
+
+    @abstractmethod
+    def delete_models(self) -> AsyncResultWrapper[None]:
+        ...
