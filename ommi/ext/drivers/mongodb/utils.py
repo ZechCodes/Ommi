@@ -109,6 +109,7 @@ def model_to_dict(model: OmmiModel, *, preserve_pk: bool = False) -> dict[str, A
         if field is not pk or preserve_pk or getattr(model, pk.get("field_name")) is not None
     }
 
+
 def process_ast(ast: ASTGroupNode) -> Query:
     query = Query()
     group_stack = [query.match]
@@ -160,7 +161,6 @@ def process_ast(ast: ASTGroupNode) -> Query:
             case node:
                 raise TypeError(f"Unexpected node type: {node}")
 
-
     if ast.sorting:
         query.sorts = ast.sorting
 
@@ -188,7 +188,7 @@ def build_pipeline(query: Query) -> tuple[list[dict[str, Any]], Type[OmmiModel]]
             pipeline.append(_create_skip_stage(query.max_results, query.results_page))
 
     if len(query.collections):
-        lookups, unwind, project = _create_lookup_stages(query.collection, query.collections)
+        lookups, unwind, project = create_lookup_stages(query.collection, query.collections)
         pipeline = [*lookups, *unwind, *pipeline, project]
 
     return pipeline, query.collection
@@ -203,7 +203,7 @@ def _create_sort_stage(sorts: list[ASTReferenceNode]) -> dict[str, Any]:
     }
 
 
-def _create_lookup_stages(
+def create_lookup_stages(
         model: Type[OmmiModel], collections: list[Type[OmmiModel]]
 ) -> tuple[LookupStages, UnwindStages, ProjectStage]:
     lookups = []
