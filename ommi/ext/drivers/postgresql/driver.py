@@ -31,7 +31,9 @@ class PostgreSQLConfig(DriverConfig):
 
 @enforce_connection_protocol
 class PostgreSQLDriver(
-    DatabaseDriver[PostgreSQLConnection, OmmiModel], driver_name="postgresql", nice_name="PostgreSQL"
+    DatabaseDriver[PostgreSQLConnection, OmmiModel],
+    driver_name="postgresql",
+    nice_name="PostgreSQL",
 ):
     @async_result
     async def disconnect(self) -> bool:

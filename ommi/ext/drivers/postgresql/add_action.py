@@ -35,10 +35,10 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
         return model_groups
 
     async def _insert(
-            self,
-            items: Sequence[OmmiModel],
-            session: psycopg.AsyncCursor,
-            model: Type[OmmiModel],
+        self,
+        items: Sequence[OmmiModel],
+        session: psycopg.AsyncCursor,
+        model: Type[OmmiModel],
     ):
         query = [f"INSERT INTO {model.__ommi__.model_name}"]
 
@@ -47,11 +47,7 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
             pk: getattr(items[0], pk.get("field_name")) is not None
             for pk in model.get_primary_key_fields()
         }
-        columns = [
-            field.get("store_as")
-            for field in fields
-            if pks.get(field, True)
-        ]
+        columns = [field.get("store_as") for field in fields if pks.get(field, True)]
         query.append(f"({','.join(columns)})")
 
         values = []

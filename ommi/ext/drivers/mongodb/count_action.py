@@ -12,7 +12,9 @@ Predicate: TypeAlias = ASTGroupNode | Type[TModel] | bool
 
 
 class MongoDBCountAction(CountAction[MongoDBConnection, OmmiModel]):
-    def __init__(self, connection: MongoDBConnection, predicates: Sequence[Predicate], database):
+    def __init__(
+        self, connection: MongoDBConnection, predicates: Sequence[Predicate], database
+    ):
         super().__init__(connection, predicates)
         self._db = database
 
@@ -22,8 +24,6 @@ class MongoDBCountAction(CountAction[MongoDBConnection, OmmiModel]):
         pipeline, model = build_pipeline(query)
         pipeline.append({"$count": "count"})
         result = (
-            await self._db[model.__ommi__.model_name]
-            .aggregate(pipeline)
-            .to_list(1)
+            await self._db[model.__ommi__.model_name].aggregate(pipeline).to_list(1)
         )
         return result[0].get("count", 0)

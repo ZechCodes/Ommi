@@ -91,7 +91,9 @@ class AsyncResultWrapper(Generic[T]):
             return DatabaseResult.Failure(error)
 
 
-def async_result(coroutine: Callable[P, Awaitable[R]]) -> Callable[P, AsyncResultWrapper[R]]:
+def async_result(
+    coroutine: Callable[P, Awaitable[R]]
+) -> Callable[P, AsyncResultWrapper[R]]:
     @wraps(coroutine)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> AsyncResultWrapper[R]:
         return AsyncResultWrapper(coroutine(*args, **kwargs))

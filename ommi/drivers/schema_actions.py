@@ -7,7 +7,9 @@ from ommi.models.collections import ModelCollection
 
 
 class SchemaAction(Generic[TConn, TModel], ABC):
-    def __init__(self, connection: TConn, model_collection: ModelCollection[Type[TModel]] | None):
+    def __init__(
+        self, connection: TConn, model_collection: ModelCollection[Type[TModel]] | None
+    ):
         self._connection = connection
         self._model_collection = model_collection
 

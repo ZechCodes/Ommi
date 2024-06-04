@@ -130,7 +130,9 @@ async def test_insert_and_fetch(driver):
     async with driver as connection:
         await connection.schema(collection).create_models().raise_on_errors()
 
-        await connection.add(model := InnerTestModel(10, "testing", True, 1.23)).raise_on_errors()
+        await connection.add(
+            model := InnerTestModel(10, "testing", True, 1.23)
+        ).raise_on_errors()
         assert model.id == 10
         assert model.name == "testing"
         assert model.toggle == True
@@ -278,7 +280,9 @@ async def test_driver_update_query(driver):
         ).raise_on_errors()
 
         ignore_id, new_name = 2, "dummy"
-        await connection.find(TestModel.id != ignore_id).set(name=new_name).raise_on_errors()
+        await connection.find(TestModel.id != ignore_id).set(
+            name=new_name
+        ).raise_on_errors()
         result = await connection.find(TestModel.name == new_name).fetch.all()
         assert len(result) > 1
         assert all(m.name == new_name for m in result)
@@ -300,7 +304,9 @@ async def test_load_changes(driver):
     async with driver as connection:
         await connection.add(m := TestModel(name="dummy")).raise_on_errors()
 
-        await connection.find(TestModel.name == "dummy").set(name="Dummy").raise_on_errors()
+        await connection.find(TestModel.name == "dummy").set(
+            name="Dummy"
+        ).raise_on_errors()
         assert m.name == "dummy"
 
         await m.reload().raise_on_errors()
@@ -418,7 +424,6 @@ async def test_join_queries(driver):
         id: int
         a_id: Annotated[int, ReferenceTo(JoinModelA.id)]
 
-
     async with driver as connection:
         schema = connection.schema(join_collection)
         await schema.delete_models().raise_on_errors()
@@ -431,11 +436,12 @@ async def test_join_queries(driver):
         ).raise_on_errors()
 
         await connection.add(
-            JoinModelA(id=11, name="foobar"),
-            JoinModelB(id=12, a_id=11)
+            JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11)
         ).raise_on_errors()
 
-        result = await connection.find(JoinModelB, JoinModelA.name == "testing").fetch.all()
+        result = await connection.find(
+            JoinModelB, JoinModelA.name == "testing"
+        ).fetch.all()
         assert {10, 11} == {m.id for m in result}
 
 
@@ -456,7 +462,6 @@ async def test_join_deletes(driver):
         id: int
         a_id: Annotated[int, ReferenceTo(JoinModelA.id)]
 
-
     async with driver as connection:
         schema = connection.schema(join_collection)
         await schema.delete_models().raise_on_errors()
@@ -469,11 +474,12 @@ async def test_join_deletes(driver):
         ).raise_on_errors()
 
         await connection.add(
-            JoinModelA(id=11, name="foobar"),
-            JoinModelB(id=12, a_id=11)
+            JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11)
         ).raise_on_errors()
 
-        await connection.find(JoinModelB, JoinModelA.name == "testing").delete().raise_on_errors()
+        await connection.find(
+            JoinModelB, JoinModelA.name == "testing"
+        ).delete().raise_on_errors()
         result = await connection.find(JoinModelB).fetch.all()
         assert {m.id for m in result} == {12}
 
@@ -509,11 +515,12 @@ async def test_join_updates(driver):
         ).raise_on_errors()
 
         await connection.add(
-            JoinModelA(id=11, name="foobar"),
-            JoinModelB(id=12, value="foo", a_id=11)
+            JoinModelA(id=11, name="foobar"), JoinModelB(id=12, value="foo", a_id=11)
         ).raise_on_errors()
 
-        await connection.find(JoinModelB, JoinModelA.name == "testing").set(value="foobar").raise_on_errors()
+        await connection.find(JoinModelB, JoinModelA.name == "testing").set(
+            value="foobar"
+        ).raise_on_errors()
         result = await connection.find(JoinModelB.value == "foobar").fetch.all()
         assert {m.id for m in result} == {10, 11}
 
@@ -547,11 +554,14 @@ async def test_join_counts(driver):
         ).raise_on_errors()
 
         await connection.add(
-            JoinModelA(id=11, name="foobar"),
-            JoinModelB(id=12, a_id=11)
+            JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11)
         ).raise_on_errors()
 
-        result = await connection.find(JoinModelB, JoinModelA.name == "testing").count().value
+        result = (
+            await connection.find(JoinModelB, JoinModelA.name == "testing")
+            .count()
+            .value
+        )
         assert result == 2
 
 
@@ -586,20 +596,30 @@ async def test_composite_keys(driver):
             CompositeModelB(id=2, id1=10, id2=21),
         ).raise_on_errors()
 
-        result = await connection.find(CompositeModelB, CompositeModelA.value == "foo").fetch.all()
+        result = await connection.find(
+            CompositeModelB, CompositeModelA.value == "foo"
+        ).fetch.all()
         assert len(result) == 1
         assert result[0].id == 1
 
-        result = await connection.find(CompositeModelA, CompositeModelB.id == 1).count().value
+        result = (
+            await connection.find(CompositeModelA, CompositeModelB.id == 1)
+            .count()
+            .value
+        )
         assert result == 1
 
-        await connection.find(CompositeModelA, CompositeModelB.id == 1).set(value="FOOBAR").raise_on_errors()
+        await connection.find(CompositeModelA, CompositeModelB.id == 1).set(
+            value="FOOBAR"
+        ).raise_on_errors()
         result = await connection.find(CompositeModelA.value == "FOOBAR").fetch.all()
         assert len(result) == 1
         assert result[0].id1 == 10
         assert result[0].id2 == 20
 
-        await connection.find(CompositeModelA, CompositeModelB.id == 1).delete().raise_on_errors()
+        await connection.find(
+            CompositeModelA, CompositeModelB.id == 1
+        ).delete().raise_on_errors()
         result = await connection.find(CompositeModelA).fetch.all()
         assert len(result) == 1
 
@@ -633,7 +653,11 @@ async def test_composite_key_lazy_loads(driver):
         await connection.add(
             CompositeModelA(id1=10, id2=20, value="foo"),
             CompositeModelA(id1=10, id2=21, value="bar"),
-            CompositeModelB(id=1, id1=10, id2=20, ),
+            CompositeModelB(
+                id=1,
+                id1=10,
+                id2=20,
+            ),
         ).raise_on_errors()
 
         result = await connection.find(CompositeModelB).fetch.one()

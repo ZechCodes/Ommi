@@ -17,7 +17,9 @@ class Iteratable:
 
 
 class MongoDBFetchAction(FetchAction[MongoDBConnection, OmmiModel]):
-    def __init__(self, connection: MongoDBConnection, predicates: Sequence[Predicate], database):
+    def __init__(
+        self, connection: MongoDBConnection, predicates: Sequence[Predicate], database
+    ):
         super().__init__(connection, predicates)
         self._db = database
 
@@ -45,7 +47,3 @@ class MongoDBFetchAction(FetchAction[MongoDBConnection, OmmiModel]):
         )
         instance.__ommi_mongodb_id__ = data.get("_id")
         return instance
-
-
-
-

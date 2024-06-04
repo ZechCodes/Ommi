@@ -28,7 +28,9 @@ class MongoDBConfig(DriverConfig):
 
 @enforce_connection_protocol
 class MongoDBDriver(
-    DatabaseDriver[MongoDBConnection, OmmiModel], driver_name="mongodb", nice_name="MongoDB"
+    DatabaseDriver[MongoDBConnection, OmmiModel],
+    driver_name="mongodb",
+    nice_name="MongoDB",
 ):
     def __init__(self, connection: MongoDBConnection, database):
         super().__init__(connection)
@@ -60,4 +62,3 @@ class MongoDBDriver(
         )
         db = connection.get_database(config.database_name)
         return cls(connection, db)
-

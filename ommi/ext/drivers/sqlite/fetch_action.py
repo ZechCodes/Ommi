@@ -39,7 +39,8 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
         session.execute(query_str, query.values)
         result = session.fetchall()
         return [
-            query.model(**dict(self._validate_row_values(query.model, row))) for row in result
+            query.model(**dict(self._validate_row_values(query.model, row)))
+            for row in result
         ]
 
     def _build_select_query(self, query: SelectQuery):
@@ -83,7 +84,3 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
                 return validator
 
         return None
-
-
-
-

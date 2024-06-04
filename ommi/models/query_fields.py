@@ -11,7 +11,11 @@ T = TypeVar("T")
 
 
 class LazyQueryField(ABC):
-    def __init__(self, query: "ommi.query_ast.ASTGroupNode", driver: "ommi.drivers.drivers.AbstractDatabaseDriver | None" = None):
+    def __init__(
+        self,
+        query: "ommi.query_ast.ASTGroupNode",
+        driver: "ommi.drivers.drivers.AbstractDatabaseDriver | None" = None,
+    ):
         self._query = query
         self._driver = driver
 
@@ -22,7 +26,10 @@ class LazyQueryField(ABC):
 
     def __get_pydantic_core_schema__(self, *_):
         import pydantic_core
-        return pydantic_core.core_schema.no_info_plain_validator_function(function=self.__pydantic_validator)
+
+        return pydantic_core.core_schema.no_info_plain_validator_function(
+            function=self.__pydantic_validator
+        )
 
     @staticmethod
     def __pydantic_validator(value):
@@ -77,7 +84,9 @@ class LazyQueryField(ABC):
 
     @classmethod
     @abstractmethod
-    def create(cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]) -> "LazyQueryField":
+    def create(
+        cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]
+    ) -> "LazyQueryField":
         ...
 
 
@@ -95,16 +104,14 @@ class LazyLoadTheRelated(Generic[T], LazyQueryField):
 
     async def _fetch(self):
         with Result.build() as builder:
-            builder.set(
-                await self._get_driver()
-                .find(self._query.limit(1))
-                .fetch.one()
-            )
+            builder.set(await self._get_driver().find(self._query.limit(1)).fetch.one())
 
         return builder.result
 
     @classmethod
-    def create(cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]) -> "LazyQueryField":
+    def create(
+        cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]
+    ) -> "LazyQueryField":
         contains, *_ = args
         return cls(_build_query(model, contains))
 
@@ -123,25 +130,26 @@ class LazyLoadEveryRelated(Generic[T], LazyQueryField):
 
     async def _fetch(self):
         with Result.build() as builder:
-            builder.set(
-                await self._get_driver()
-                .find(self._query)
-                .fetch.all()
-            )
+            builder.set(await self._get_driver().find(self._query).fetch.all())
 
         return builder.result
 
     @classmethod
-    def create(cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]) -> "LazyQueryField":
+    def create(
+        cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]
+    ) -> "LazyQueryField":
         contains, *_ = args
         return cls(_build_query(model, contains))
 
 
-def _build_query(model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]") -> "ommi.query_ast.ASTGroupNode":
+def _build_query(
+    model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]"
+) -> "ommi.query_ast.ASTGroupNode":
     if refs := model.__ommi__.references.get(contains):
         return ommi.query_ast.when(
             *(
-                getattr(r.to_model, r.to_field.get("field_name")) == getattr(model, r.from_field.get("field_name"))
+                getattr(r.to_model, r.to_field.get("field_name"))
+                == getattr(model, r.from_field.get("field_name"))
                 for r in refs
             )
         )
@@ -149,9 +157,12 @@ def _build_query(model: "ommi.models.OmmiModel", contains: "Type[ommi.models.Omm
     if refs := contains.__ommi__.references.get(type(model)):
         return ommi.query_ast.when(
             *(
-                getattr(r.from_model, r.from_field.get("field_name")) == getattr(model, r.to_field.get("field_name"))
+                getattr(r.from_model, r.from_field.get("field_name"))
+                == getattr(model, r.to_field.get("field_name"))
                 for r in refs
             )
         )
 
-    raise RuntimeError(f"No reference found between models {type(model)} and {contains}")
+    raise RuntimeError(
+        f"No reference found between models {type(model)} and {contains}"
+    )

@@ -29,14 +29,17 @@ class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
 
     @property
     @abstractmethod
-    def connection(self) -> Any: ...
+    def connection(self) -> Any:
+        ...
 
     @property
     @abstractmethod
-    def connected(self) -> bool: ...
+    def connected(self) -> bool:
+        ...
 
     @abstractmethod
-    def disconnect(self) -> AsyncResultWrapper[bool]: ...
+    def disconnect(self) -> AsyncResultWrapper[bool]:
+        ...
 
     # ---------------------------- #
     # Actions                      #
@@ -44,15 +47,18 @@ class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
 
     @property
     @abstractmethod
-    def add(self, *items: TModel) -> "add_action.AddAction[TConn, TModel]": ...
+    def add(self, *items: TModel) -> "add_action.AddAction[TConn, TModel]":
+        ...
 
     @abstractmethod
-    def find(self, *predicates: Predicate) -> "find_action.FindAction[TConn, TModel]": ...
+    def find(self, *predicates: Predicate) -> "find_action.FindAction[TConn, TModel]":
+        ...
 
     @abstractmethod
     def schema(
         self, model_collection: ModelCollection[Type[TModel]] | None = None
-    ) -> "schema_action.SchemaAction[TConn, TModel]": ...
+    ) -> "schema_action.SchemaAction[TConn, TModel]":
+        ...
 
     # ---------------------------- #
     # Driver Collection Management #
@@ -60,11 +66,13 @@ class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
 
     @classmethod
     @abstractmethod
-    def add_driver(cls, driver: "Type[AbstractDatabaseDriver]"): ...
+    def add_driver(cls, driver: "Type[AbstractDatabaseDriver]"):
+        ...
 
     @classmethod
     @abstractmethod
-    def disable_driver(cls, name: DriverName): ...
+    def disable_driver(cls, name: DriverName):
+        ...
 
     # ---------------------------- #
     # Configuration                #
@@ -72,7 +80,8 @@ class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
 
     @classmethod
     @abstractmethod
-    async def from_config(cls, config: DriverConfig) -> "AbstractDatabaseDriver": ...
+    async def from_config(cls, config: DriverConfig) -> "AbstractDatabaseDriver":
+        ...
 
 
 class DatabaseDriver(AbstractDatabaseDriver[TConn, TModel], ABC):
@@ -161,6 +170,7 @@ def connection_context_manager(
 
     return wrapper
 
+
 def enforce_connection_protocol(driver: Type[AbstractDatabaseDriver]):
     init = driver.__init__
     connection_protocol = get_args(driver.__orig_bases__[0])[0]
@@ -180,4 +190,3 @@ def enforce_connection_protocol(driver: Type[AbstractDatabaseDriver]):
 
     driver.__init__ = __init__
     return driver
-

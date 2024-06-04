@@ -23,7 +23,9 @@ class MongoDBFindAction(FindAction[MongoDBConnection, OmmiModel]):
     _fetch_action = MongoDBFetchAction
     _set_fields_action = MongoDBSetFieldsAction
 
-    def __init__(self, connection: MongoDBConnection, predicates: Sequence[Predicate], database):
+    def __init__(
+        self, connection: MongoDBConnection, predicates: Sequence[Predicate], database
+    ):
         super().__init__(connection, predicates)
         self._db = database
 

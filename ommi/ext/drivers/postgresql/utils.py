@@ -43,7 +43,9 @@ class SelectQuery:
             self.model, *models = models
 
         if models:
-            self.models.extend(m for m in models if m not in self.models and m != self.model)
+            self.models.extend(
+                m for m in models if m not in self.models and m != self.model
+            )
 
 
 def build_query(ast: ASTGroupNode) -> SelectQuery:
@@ -100,8 +102,7 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
 
 def _process_ordering(sorting: list[ASTReferenceNode]) -> dict[str, ResultOrdering]:
     return {
-        f"{ref.model.__model_name__}.{ref.field.name}": ref.ordering
-        for ref in sorting
+        f"{ref.model.__model_name__}.{ref.field.name}": ref.ordering for ref in sorting
     }
 
 

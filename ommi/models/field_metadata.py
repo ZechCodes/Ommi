@@ -96,6 +96,7 @@ class MetadataFlag(FieldMetadata):
     metadata instances that contain a singular boolean True value to indicate that they're set. Flags should be treated
     as singletons for purposes of identity checks."""
 
+
 class FieldType(FieldMetadata):
     """Field metadata type for setting the field's data type."""
 

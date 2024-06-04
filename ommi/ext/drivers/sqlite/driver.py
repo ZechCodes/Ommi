@@ -24,7 +24,9 @@ class SQLiteConfig(DriverConfig):
 
 @enforce_connection_protocol
 class SQLiteDriver(
-    DatabaseDriver[SQLiteConnection, OmmiModel], driver_name="sqlite", nice_name="SQLite"
+    DatabaseDriver[SQLiteConnection, OmmiModel],
+    driver_name="sqlite",
+    nice_name="SQLite",
 ):
     @async_result
     async def disconnect(self) -> bool:

@@ -50,15 +50,15 @@ LookupStage = TypedDict(
                 "as": str,
             },
         )
-    }
+    },
 )
 
 
 ProjectStage = TypedDict(
     "ProjectStage",
     {
-        "$project":  dict[str, int],
-    }
+        "$project": dict[str, int],
+    },
 )
 
 
@@ -72,7 +72,7 @@ UnwindStage = TypedDict(
                 "preserveNullAndEmptyArrays": bool,
             },
         )
-    }
+    },
 )
 
 
@@ -108,7 +108,9 @@ def model_to_dict(model: OmmiModel, *, preserve_pk: bool = False) -> dict[str, A
     return {
         field.get("store_as"): getattr(model, field.get("field_name"))
         for field in fields
-        if field not in pks or preserve_pk or getattr(model, field.get("field_name")) is not None
+        if field not in pks
+        or preserve_pk
+        or getattr(model, field.get("field_name")) is not None
     }
 
 
@@ -190,7 +192,9 @@ def build_pipeline(query: Query) -> tuple[list[dict[str, Any]], Type[OmmiModel]]
             pipeline.append(_create_skip_stage(query.max_results, query.results_page))
 
     if len(query.collections):
-        lookups, unwind, project = create_lookup_stages(query.collection, query.collections)
+        lookups, unwind, project = create_lookup_stages(
+            query.collection, query.collections
+        )
         pipeline = [*lookups, *unwind, *pipeline, project]
 
     return pipeline, query.collection
@@ -206,10 +210,12 @@ def _create_sort_stage(sorts: list[ASTReferenceNode]) -> dict[str, Any]:
 
 
 def create_lookup_stages(
-        model: Type[OmmiModel], collections: list[Type[OmmiModel]]
+    model: Type[OmmiModel], collections: list[Type[OmmiModel]]
 ) -> tuple[LookupStages, UnwindStages, ProjectStage]:
     lookups = []
-    project = {"$project": (hide := {}),}
+    project = {
+        "$project": (hide := {}),
+    }
     unwind = []
     for collection in collections:
         hide[f"__join__{collection.__ommi__.model_name}"] = 0
@@ -220,13 +226,21 @@ def create_lookup_stages(
             {
                 "$lookup": {
                     "from": collection.__ommi__.model_name,
-                    "let": {f"{model_name}_{local_field}": f"${local_field}" for local_field, _ in refs},
+                    "let": {
+                        f"{model_name}_{local_field}": f"${local_field}"
+                        for local_field, _ in refs
+                    },
                     "pipeline": [
                         {
                             "$match": {
                                 "$expr": {
                                     "$and": [
-                                        {"$eq": [f"${foreign_field}", f"$${model_name}_{local_field}"]}
+                                        {
+                                            "$eq": [
+                                                f"${foreign_field}",
+                                                f"$${model_name}_{local_field}",
+                                            ]
+                                        }
                                         for local_field, foreign_field in refs
                                     ]
                                 }
@@ -258,17 +272,17 @@ def _create_skip_stage(max_results: int, results_page: int) -> dict[str, Any]:
     return {"$skip": max_results * results_page}
 
 
-def _get_reference_fields(model: Type[OmmiModel], collection: Type[OmmiModel]) -> tuple[tuple[LocalField, ForeignField], ...]:
-    if (ref := collection.__ommi__.references.get(model)):
+def _get_reference_fields(
+    model: Type[OmmiModel], collection: Type[OmmiModel]
+) -> tuple[tuple[LocalField, ForeignField], ...]:
+    if ref := collection.__ommi__.references.get(model):
         return tuple(
-            (r.from_field.get("store_as"), r.to_field.get("store_as"))
-            for r in ref
+            (r.from_field.get("store_as"), r.to_field.get("store_as")) for r in ref
         )
 
     ref = model.__ommi__.references[collection]
     return tuple(
-        (r.from_field.get("store_as"), r.to_field.get("store_as"))
-        for r in ref
+        (r.from_field.get("store_as"), r.to_field.get("store_as")) for r in ref
     )
 
 
@@ -287,7 +301,9 @@ def _process_comparison_ast(
             collections.append(model)
 
             name = field.metadata.get("store_as")
-            if (querying_model and model != querying_model) or (not querying_model and collections and model != collections[0]):
+            if (querying_model and model != querying_model) or (
+                not querying_model and collections and model != collections[0]
+            ):
                 name = f"__join__{model.__ommi__.model_name}.{name}"
 
             expr = {
@@ -298,7 +314,6 @@ def _process_comparison_ast(
                 )
             }
 
-
         case (
             ASTLiteralNode(value=value),
             ASTReferenceNode(field=field, model=model),
@@ -306,7 +321,9 @@ def _process_comparison_ast(
             collections.append(model)
 
             name = field.metadata.get("store_as")
-            if model != querying_model or (not querying_model and model != collections[0]):
+            if model != querying_model or (
+                not querying_model and model != collections[0]
+            ):
                 name = f"__join__{model.__ommi__.model_name}.{name}"
 
             expr = {

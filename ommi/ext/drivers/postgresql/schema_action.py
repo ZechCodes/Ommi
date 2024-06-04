@@ -23,7 +23,9 @@ class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
     async def create_models(self) -> Iterable[Type[OmmiModel]]:
         session = self._connection.cursor()
         models = get_collection(
-            Optional.Some(self._model_collection) if self._model_collection else Optional.Nothing
+            Optional.Some(self._model_collection)
+            if self._model_collection
+            else Optional.Nothing
         ).models
 
         try:
@@ -44,12 +46,16 @@ class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
     async def delete_models(self) -> None:
         session = self._connection.cursor()
         models = get_collection(
-            Optional.Some(self._model_collection) if self._model_collection else Optional.Nothing
+            Optional.Some(self._model_collection)
+            if self._model_collection
+            else Optional.Nothing
         ).models
 
         try:
             for model in models:
-                await session.execute(f"DROP TABLE IF EXISTS {model.__ommi__.model_name};")
+                await session.execute(
+                    f"DROP TABLE IF EXISTS {model.__ommi__.model_name};"
+                )
 
         except:
             await self._connection.rollback()

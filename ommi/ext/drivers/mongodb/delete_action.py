@@ -12,7 +12,9 @@ Predicate = ASTGroupNode | type(OmmiModel) | bool
 
 
 class MongoDBDeleteAction(DeleteAction[MongoDBConnection, OmmiModel]):
-    def __init__(self, connection: MongoDBConnection, predicates: Sequence[Predicate], database):
+    def __init__(
+        self, connection: MongoDBConnection, predicates: Sequence[Predicate], database
+    ):
         super().__init__(connection, predicates)
         self._db = database
         self._is_replica_set_result: Optional[bool] = Optional.Nothing
@@ -35,7 +37,9 @@ class MongoDBDeleteAction(DeleteAction[MongoDBConnection, OmmiModel]):
 
         return await self._delete(query.collection, query.match)
 
-    async def _delete(self, model: Type[OmmiModel], match: list[dict[str, Any]]) -> bool:
+    async def _delete(
+        self, model: Type[OmmiModel], match: list[dict[str, Any]]
+    ) -> bool:
         await self._db[model.__ommi__.model_name].delete_many(
             {"$and": match} if match else {},
         )
@@ -51,7 +55,7 @@ class MongoDBDeleteAction(DeleteAction[MongoDBConnection, OmmiModel]):
     async def _do_join_delete(self, query: Query, session=None) -> bool:
         pipeline, model = build_pipeline(query)
         documents_to_delete = self._db[model.__ommi__.model_name].aggregate(
-            pipeline, session=session,
+            pipeline, session=session
         )
         await self._db[model.__ommi__.model_name].delete_many(
             {"_id": {"$in": [doc["_id"] async for doc in documents_to_delete]}},

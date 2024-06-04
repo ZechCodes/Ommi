@@ -28,11 +28,13 @@ class SQLiteSetFieldsAction(SetFieldsAction[SQLiteConnection, OmmiModel]):
         query_builder = [
             f"UPDATE {query.model.__ommi__.model_name}",
             f"SET",
-            ", ".join(f"{fields[name].get('store_as')} = ?" for name in set_fields.keys()),
+            ", ".join(
+                f"{fields[name].get('store_as')} = ?" for name in set_fields.keys()
+            ),
         ]
         if query.models:
             sub_query = build_subquery(query.model, query.models, query.where)
-            pks = ', '.join(
+            pks = ", ".join(
                 f"{query.model.__ommi__.model_name}.{pk.get('store_as')}"
                 for pk in query.model.get_primary_key_fields()
             )

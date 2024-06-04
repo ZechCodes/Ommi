@@ -16,7 +16,12 @@ class MongoDBSchemaAction(SchemaAction[MongoDBConnection, OmmiModel]):
         bool: "INTEGER",
     }
 
-    def __init__(self, connection: MongoDBConnection, model_collection: ModelCollection[Type[TModel]] | None, database):
+    def __init__(
+        self,
+        connection: MongoDBConnection,
+        model_collection: ModelCollection[Type[TModel]] | None,
+        database,
+    ):
         super().__init__(connection, model_collection)
         self._db = database
 

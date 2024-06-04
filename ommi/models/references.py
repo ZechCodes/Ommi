@@ -16,12 +16,19 @@ class FieldReference:
 
 
 class LazyReferenceBuilder:
-    def __init__(self, fields: dict[str, FieldMetadata], model: "Type[ommi.models.OmmiModel]", namespace: dict[str, Any]):
+    def __init__(
+        self,
+        fields: dict[str, FieldMetadata],
+        model: "Type[ommi.models.OmmiModel]",
+        namespace: dict[str, Any],
+    ):
         self._built = False
         self._fields = fields
         self._model = model
         self._namespace = namespace
-        self._references: dict[Type[ommi.models.OmmiModel], list[FieldReference]] = defaultdict(list)
+        self._references: dict[
+            Type[ommi.models.OmmiModel], list[FieldReference]
+        ] = defaultdict(list)
 
     def __contains__(self, model: "Type[ommi.models.OmmiModel]") -> bool:
         return model in self._references
@@ -32,7 +39,11 @@ class LazyReferenceBuilder:
 
         return self._references[model]
 
-    def get(self, model: "Type[ommi.models.OmmiModel]", default: list[FieldReference] | None = None) -> list[FieldReference]:
+    def get(
+        self,
+        model: "Type[ommi.models.OmmiModel]",
+        default: list[FieldReference] | None = None,
+    ) -> list[FieldReference]:
         if not self._built:
             self._build_references()
 
@@ -53,7 +64,9 @@ class LazyReferenceBuilder:
                         )
 
                     case str() as ref:
-                        reference: query_ast.ASTReferenceNode = eval(ref, vars(self._namespace))
+                        reference: query_ast.ASTReferenceNode = eval(
+                            ref, vars(self._namespace)
+                        )
                         self._references[reference.model].append(
                             FieldReference(
                                 from_model=self._model,

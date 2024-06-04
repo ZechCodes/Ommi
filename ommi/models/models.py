@@ -16,7 +16,14 @@ from tramp.optionals import Optional
 import ommi.query_ast as query_ast
 import ommi
 from ommi.drivers.database_results import async_result, AsyncResultWrapper
-from ommi.models.field_metadata import FieldMetadata, FieldType, StoreAs, create_metadata_type, AggregateMetadata, Key
+from ommi.models.field_metadata import (
+    FieldMetadata,
+    FieldType,
+    StoreAs,
+    create_metadata_type,
+    AggregateMetadata,
+    Key,
+)
 from ommi.models.metadata import OmmiMetadata
 from ommi.contextual_method import contextual_method
 import ommi.models.collections
@@ -76,14 +83,19 @@ class OmmiModel:
     def delete(
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> "delete_actions.DeleteAction":
-        return self.get_driver(driver).find(
-            query_ast.when(
-                *(
-                     getattr(type(self), pk.get("field_name")) == getattr(self, pk.get("field_name"))
-                     for pk in self.get_primary_key_fields()
-                 )
+        return (
+            self.get_driver(driver)
+            .find(
+                query_ast.when(
+                    *(
+                        getattr(type(self), pk.get("field_name"))
+                        == getattr(self, pk.get("field_name"))
+                        for pk in self.get_primary_key_fields()
+                    )
+                )
             )
-        ).delete()
+            .delete()
+        )
 
     @classmethod
     def count(
@@ -109,21 +121,19 @@ class OmmiModel:
         return driver.find(*predicates, *cls._build_column_predicates(columns)).fetch
 
     @async_result
-    async def reload(
-        self, driver: "drivers.DatabaseDriver | None" = None
-    ) -> Self:
+    async def reload(self, driver: "drivers.DatabaseDriver | None" = None) -> Self:
         result = await (
             self.get_driver(driver)
             .find(
                 query_ast.when(
                     *(
-                        getattr(type(self), pk.get("field_name")) == getattr(self, pk.get("field_name"))
+                        getattr(type(self), pk.get("field_name"))
+                        == getattr(self, pk.get("field_name"))
                         for pk in self.get_primary_key_fields()
                     )
                 )
             )
-            .fetch
-            .one()
+            .fetch.one()
         )
         for name in self.__ommi__.fields.keys():
             setattr(self, name, getattr(result, name))
@@ -131,28 +141,24 @@ class OmmiModel:
         return self
 
     @async_result
-    async def save(
-        self, driver: "drivers.DatabaseDriver | None" = None
-    ) -> bool:
+    async def save(self, driver: "drivers.DatabaseDriver | None" = None) -> bool:
         pks = self.get_primary_key_fields()
         driver = self.get_driver(driver)
-        await (
-            driver
-            .find(
-                query_ast.when(
-                    *(
-                        getattr(type(self), pk.get("field_name")) == getattr(self, pk.get("field_name"))
-                        for pk in pks
-                    )
+        await driver.find(
+            query_ast.when(
+                *(
+                    getattr(type(self), pk.get("field_name"))
+                    == getattr(self, pk.get("field_name"))
+                    for pk in pks
                 )
             )
-            .set(
-                **{
-                    field.get("field_name"): getattr(self, field.get("field_name"))
-                    for field in self.__ommi__.fields.values()
-                    if field not in pks and getattr(self, field.get("field_name")) is not None
-                }
-            )
+        ).set(
+            **{
+                field.get("field_name"): getattr(self, field.get("field_name"))
+                for field in self.__ommi__.fields.values()
+                if field not in pks
+                and getattr(self, field.get("field_name")) is not None
+            }
         )
         return True
 
@@ -198,11 +204,13 @@ def ommi_model(
     cls: None = None,
     *,
     collection: "ommi.model_collections.ModelCollection | None" = None,
-) -> Callable[[T], T | Type[OmmiModel]]: ...
+) -> Callable[[T], T | Type[OmmiModel]]:
+    ...
 
 
 @overload
-def ommi_model(cls: T) -> T | Type[OmmiModel]: ...
+def ommi_model(cls: T) -> T | Type[OmmiModel]:
+    ...
 
 
 def ommi_model(
@@ -236,11 +244,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
     query_fields = _get_query_fields(annotations)
 
     def init(self, *args, **kwargs):
-        unset_query_fields = {
-            name: None
-            for name in query_fields
-            if name not in kwargs
-        }
+        unset_query_fields = {name: None for name in query_fields if name not in kwargs}
         super(model_type, self).__init__(*args, **kwargs | unset_query_fields)
 
         for name, annotation in query_fields.items():
@@ -252,9 +256,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
         f"OmmiModel_{c.__name__}",
         (c, OmmiModel),
         {
-            name: QueryableFieldDescriptor(
-                getattr(c, name, None), fields[name]
-            )
+            name: QueryableFieldDescriptor(getattr(c, name, None), fields[name])
             for name in fields
         }
         | {
@@ -269,7 +271,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
                 ),
                 fields=fields,
                 references=LazyReferenceBuilder(fields, c, sys.modules[c.__module__]),
-            )
+            ),
         },
     )
     getattr(model_type, METADATA_DUNDER_NAME).references._model = model_type
@@ -277,7 +279,8 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
 
 
 def _register_model(
-    model: Type[OmmiModel], collection: "Optional[ommi.models.collections.ModelCollection]"
+    model: Type[OmmiModel],
+    collection: "Optional[ommi.models.collections.ModelCollection]",
 ):
     get_collection(collection, model).add(model)
 
@@ -320,5 +323,6 @@ def _get_query_fields(fields: dict[str, Annotation]) -> dict[str, Annotation]:
     return {
         name: annotation
         for name, annotation in fields.items()
-        if annotation.is_generic() and issubclass(annotation.type, ommi.models.query_fields.LazyQueryField)
+        if annotation.is_generic()
+        and issubclass(annotation.type, ommi.models.query_fields.LazyQueryField)
     }

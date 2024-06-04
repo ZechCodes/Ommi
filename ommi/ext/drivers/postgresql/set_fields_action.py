@@ -31,7 +31,9 @@ class PostgreSQLSetFieldsAction(SetFieldsAction[PostgreSQLConnection, OmmiModel]
         query_builder = [
             f"UPDATE {query.model.__ommi__.model_name}",
             f"SET",
-            ", ".join(f"{fields[name].get('store_as')} = %s" for name in set_fields.keys())
+            ", ".join(
+                f"{fields[name].get('store_as')} = %s" for name in set_fields.keys()
+            ),
         ]
         if query.models:
             from_join = query.models.pop(0)
@@ -40,7 +42,7 @@ class PostgreSQLSetFieldsAction(SetFieldsAction[PostgreSQLConnection, OmmiModel]
             query_builder.extend(generate_joins(query.model, query.models))
 
             if where:
-                where =  f"{from_join_comparison} AND ({where})"
+                where = f"{from_join_comparison} AND ({where})"
 
             else:
                 where = from_join_comparison

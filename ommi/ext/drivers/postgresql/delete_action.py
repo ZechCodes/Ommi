@@ -28,8 +28,15 @@ class PostgreSQLDeleteAction(DeleteAction[PostgreSQLConnection, OmmiModel]):
         where = [query.where]
         if query.models:
             query_builder.append("USING")
-            query_builder.append(", ".join(model.__ommi__.model_name for model in query.models))
-            using_join = [" AND ".join(f"({create_join_comparison(query.model, model)})" for model in query.models)]
+            query_builder.append(
+                ", ".join(model.__ommi__.model_name for model in query.models)
+            )
+            using_join = [
+                " AND ".join(
+                    f"({create_join_comparison(query.model, model)})"
+                    for model in query.models
+                )
+            ]
 
             where = []
             if query.where:

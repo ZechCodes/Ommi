@@ -80,7 +80,3 @@ class PostgreSQLFetchAction(FetchAction[PostgreSQLConnection, OmmiModel]):
                 return validator
 
         return None
-
-
-
-

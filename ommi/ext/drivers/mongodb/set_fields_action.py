@@ -11,7 +11,9 @@ Predicate = ASTGroupNode | type[OmmiModel] | bool
 
 
 class MongoDBSetFieldsAction(SetFieldsAction[MongoDBConnection, OmmiModel]):
-    def __init__(self, connection: MongoDBConnection, predicates: Sequence[Predicate], database):
+    def __init__(
+        self, connection: MongoDBConnection, predicates: Sequence[Predicate], database
+    ):
         super().__init__(connection, predicates)
         self._db = database
 
@@ -33,7 +35,9 @@ class MongoDBSetFieldsAction(SetFieldsAction[MongoDBConnection, OmmiModel]):
         ]
 
         if query.collections:
-            lookups, unwind, project = create_lookup_stages(query.collection, query.collections)
+            lookups, unwind, project = create_lookup_stages(
+                query.collection, query.collections
+            )
             pipeline = [*lookups, *unwind, *pipeline, project]
 
         pipeline.append(
@@ -46,5 +50,7 @@ class MongoDBSetFieldsAction(SetFieldsAction[MongoDBConnection, OmmiModel]):
             }
         )
 
-        await self._db[query.collection.__ommi__.model_name].aggregate(pipeline).to_list(1)
+        await self._db[query.collection.__ommi__.model_name].aggregate(
+            pipeline
+        ).to_list(1)
         return True
