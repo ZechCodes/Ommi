@@ -1,4 +1,4 @@
-from typing import Generic, Iterable, Type, Awaitable, Sequence, TypeAlias
+from typing import Generic, Type, Sequence, TypeAlias
 from abc import ABC, abstractmethod
 from contextlib import suppress
 

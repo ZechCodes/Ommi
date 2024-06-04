@@ -1,4 +1,3 @@
-from typing import Type
 import sqlite3
 
 from ommi.drivers.database_results import async_result

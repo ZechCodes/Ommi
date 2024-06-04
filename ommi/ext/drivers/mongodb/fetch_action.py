@@ -1,13 +1,11 @@
-import ast
-from datetime import datetime, date
-from typing import Type, Any, Generator, TypeVar, Callable, get_origin, Sequence
+from typing import Type, Any, TypeVar, Sequence
 
 from ommi.drivers.database_results import async_result
 from ommi.drivers.fetch_actions import FetchAction
 from ommi.ext.drivers.mongodb.connection_protocol import MongoDBConnection
 from ommi.ext.drivers.mongodb.utils import build_pipeline, process_ast
 from ommi.models import OmmiModel
-from ommi.query_ast import when, ASTGroupNode, ResultOrdering
+from ommi.query_ast import when, ASTGroupNode
 
 
 T = TypeVar("T")

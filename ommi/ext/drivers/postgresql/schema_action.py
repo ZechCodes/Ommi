@@ -2,7 +2,7 @@ from typing import Type, Iterable, Any
 
 import psycopg
 
-from ommi.drivers.database_results import async_result, AsyncResultWrapper
+from ommi.drivers.database_results import async_result
 from ommi.drivers.schema_actions import SchemaAction
 from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
 from ommi.models.field_metadata import FieldMetadata

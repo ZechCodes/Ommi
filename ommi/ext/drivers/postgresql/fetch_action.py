@@ -1,4 +1,4 @@
-from typing import Type, Any, Generator, TypeVar, Callable, get_origin, Iterator
+from typing import Type, Any, Generator, TypeVar, Callable, get_origin
 from datetime import datetime, date
 
 import psycopg

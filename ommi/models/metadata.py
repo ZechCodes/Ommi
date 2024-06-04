@@ -2,7 +2,7 @@ from dataclasses import dataclass, field as dc_field
 
 from ommi.models.collections import get_global_collection
 from ommi.models.references import LazyReferenceBuilder
-import ommi.models.collections
+import ommi.models.field_metadata
 
 
 @dataclass
