@@ -423,12 +423,16 @@ async def test_join_queries(driver):
         await schema.delete_models().raise_on_errors()
         await schema.create_models().raise_on_errors()
 
-        await connection.add(a := JoinModelA(id=10, name="testing")).raise_on_errors()
-        await connection.add(b := JoinModelB(id=10, a_id=a.id)).raise_on_errors()
-        await connection.add(c := JoinModelB(id=11, a_id=a.id)).raise_on_errors()
+        await connection.add(
+            JoinModelA(id=10, name="testing"),
+            JoinModelB(id=10, a_id=10),
+            JoinModelB(id=11, a_id=10),
+        ).raise_on_errors()
 
-        await connection.add(d := JoinModelA(id=11, name="foobar")).raise_on_errors()
-        await connection.add(e := JoinModelB(id=12, a_id=d.id)).raise_on_errors()
+        await connection.add(
+            JoinModelA(id=11, name="foobar"),
+            JoinModelB(id=12, a_id=11)
+        ).raise_on_errors()
 
         result = await connection.find(JoinModelB, JoinModelA.name == "testing").fetch.all()
-        assert {b.id, c.id} == {m.id for m in result}
+        assert {10, 11} == {m.id for m in result}
