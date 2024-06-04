@@ -32,11 +32,18 @@ operator_mapping = {
 class SelectQuery:
     limit: int = 0
     model: Type[OmmiModel] | None = None
-    models: list[OmmiModel] = dc_field(default_factory=list)
+    models: list[Type[OmmiModel]] = dc_field(default_factory=list)
     offset: int = 0
     order_by: dict[str, ResultOrdering] = dc_field(default_factory=dict)
     values: list[Any] = dc_field(default_factory=list)
     where: str = ""
+
+    def add_model(self, *models: Type[OmmiModel]):
+        if not self.model:
+            self.model, *models = models
+
+        if models:
+            self.models.extend(m for m in models if m not in self.models and m != self.model)
 
 
 def build_query(ast: ASTGroupNode) -> SelectQuery:
@@ -53,14 +60,12 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 node_stack.append(iter(group))
 
             case ASTReferenceNode(None, model):
-                query.models.append(model)
-                query.model = query.model or model
+                query.add_model(model)
 
             case ASTReferenceNode(field, model):
                 name = f"{model.__ommi_metadata__.model_name}.{field.metadata.get('store_as')}"
                 where.append(name)
-                query.models.append(model)
-                query.model = query.model or model
+                query.add_model(model)
 
             case ASTLiteralNode(value):
                 where.append("%s")
@@ -90,7 +95,6 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 raise TypeError(f"Unexpected node type: {node}")
 
     query.where = " ".join(where)
-    query.models.remove(query.model)
     return query
 
 
@@ -100,3 +104,25 @@ def _process_ordering(sorting: list[ASTReferenceNode]) -> dict[str, ResultOrderi
         for ref in sorting
     }
 
+
+def generate_joins(model: Type[OmmiModel], models: list[Type[OmmiModel]]):
+    for join in models:
+        yield create_join(model, join)
+
+
+def create_join(model: Type[OmmiModel], join_model: Type[OmmiModel]) -> str:
+    return f"JOIN {join_model.__ommi_metadata__.model_name} ON {create_join_comparison(model, join_model)}"
+
+
+def create_join_comparison(model: Type[OmmiModel], join_model: Type[OmmiModel]) -> str:
+    if model in join_model.__ommi_metadata__.references:
+        reference = join_model.__ommi_metadata__.references[model][0]
+        to_column = f"{reference.to_model.__ommi_metadata__.model_name}.{reference.to_field.get('store_as')}"
+        from_column = f"{reference.from_model.__ommi_metadata.model_name}.{reference.from_field.get('store_as')}"
+
+    else:
+        reference = model.__ommi_metadata__.references[join_model][0]
+        from_column = f"{reference.to_model.__ommi_metadata__.model_name}.{reference.to_field.get('store_as')}"
+        to_column = f"{reference.from_model.__ommi_metadata__.model_name}.{reference.from_field.get('store_as')}"
+
+    return f"{from_column} = {to_column}"
