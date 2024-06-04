@@ -584,9 +584,11 @@ async def test_composite_keys(driver):
         await connection.add(
             CompositeModelA(id1=10, id2=20, value="foo"),
             CompositeModelA(id1=10, id2=21, value="bar"),
-            CompositeModelB(id=10, id1=10, id2=20, ),
+            CompositeModelB(id=1, id1=10, id2=20, ),
         ).raise_on_errors()
 
         result = await connection.find(CompositeModelB).fetch.one()
-        assert result.id == 10
-        assert len(await result.a) == 1
+        a = await result.a
+        assert result.id == 1
+        assert len(a) == 1
+        assert a[0].value == "foo"
