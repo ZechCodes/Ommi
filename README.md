@@ -10,7 +10,7 @@ specific database? Meet Ommi, a simple object model mapper that allows you to us
 with whatever database you like.
 
 Ommi doesn't provide its own model types, it allows you to use whatever models you are already using. Compatibility with
-the most popular model implementations are ensured through unit tests.
+the most popular model implementations are ensured through a comprehensive unit test suite.
 
 ### Compatible Model Implementations
 
@@ -26,19 +26,22 @@ Ommi's test suite checks for compatibility with the following model implementati
 
 - Table creation from models
 - Select, Insert, Update, Delete, Count
-- No relationships or joins
+- One-to-one & one-to-many relationships
+- Joins to filter queries for a single model type (cannot query for multiple model types in a single query)
 
 #### PostgreSQL
 
 - Table creation from models
 - Select, Insert, Update, Delete, Count
-- No relationships or joins
+- One-to-one & one-to-many relationships
+- Joins to filter queries for a single model type (cannot query for multiple model types in a single query)
 
 #### MongoDB
 
 - Collection creation from models
 - Fetch, Insert, Update, Delete, Count
-- No relationships or nested documents
+- One-to-one & one-to-many relationships
+- Joins to filter queries for a single model type (cannot query for multiple model types in a single query)
 
 ## Usage
 
