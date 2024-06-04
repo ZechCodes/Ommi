@@ -100,3 +100,30 @@ def _process_ordering(sorting: list[ASTReferenceNode]) -> dict[str, ResultOrderi
         for ref in sorting
     }
 
+
+def build_subquery(model: Type[OmmiModel], models: list[Type[OmmiModel]], where: str) -> str:
+    sub_query = [
+        f"SELECT {model.__ommi_metadata__.model_name}.{model.get_primary_key_field().get('store_as')}",
+        f"FROM {model.__ommi_metadata__.model_name}",
+    ]
+    for join_model in models:
+        sub_query.append(_create_join(model, join_model))
+
+    if where:
+        sub_query.append(f"WHERE {where}")
+
+    return sub_query
+
+
+def _create_join(model: Type[OmmiModel], join_model: Type[OmmiModel]) -> str:
+    if model in join_model.__ommi_metadata__.references:
+        reference = join_model.__ommi_metadata__.references[model][0]
+        to_column = f"{reference.to_model.__ommi_metadata__.model_name}.{reference.to_field.get('store_as')}"
+        from_column = f"{reference.from_model.__ommi_metadata.model_name}.{reference.from_field.get('store_as')}"
+
+    else:
+        reference = model.__ommi_metadata__.references[join_model][0]
+        from_column = f"{reference.to_model.__ommi_metadata__.model_name}.{reference.to_field.get('store_as')}"
+        to_column = f"{reference.from_model.__ommi_metadata__.model_name}.{reference.from_field.get('store_as')}"
+
+    return f"JOIN {join_model.__ommi_metadata__.model_name} ON {from_column} = {to_column}"
