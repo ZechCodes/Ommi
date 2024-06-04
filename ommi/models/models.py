@@ -75,7 +75,6 @@ class OmmiModel:
     ) -> "drivers.DatabaseDriver | None":
         return driver or ommi.active_driver.get(None)
 
-    @contextual_method
     def delete(
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> "delete_actions.DeleteAction":
@@ -87,18 +86,6 @@ class OmmiModel:
                  )
             )
         ).delete()
-
-    @delete.classmethod
-    def delete(
-        cls, *items: "OmmiModel", driver: "drivers.DatabaseDriver | None" = None
-    ) -> AsyncResultWrapper[bool]:
-        driver = cls.get_driver(driver)
-        query = query_ast.when()
-        for item in items:
-            pk_name = item.get_primary_key_field().get("field_name")
-            query = query.Or(getattr(cls, pk_name) == getattr(item, pk_name))
-
-        return driver.find(query).delete
 
     @classmethod
     def count(
