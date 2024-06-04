@@ -574,6 +574,55 @@ async def test_composite_keys(driver):
         id1: Annotated[int, ReferenceTo(CompositeModelA.id1)]
         id2: Annotated[int, ReferenceTo(CompositeModelA.id2)]
 
+    async with driver as connection:
+        schema = connection.schema(composite_collection)
+        await schema.delete_models().raise_on_errors()
+        await schema.create_models().raise_on_errors()
+
+        await connection.add(
+            CompositeModelA(id1=10, id2=20, value="foo"),
+            CompositeModelA(id1=10, id2=21, value="bar"),
+            CompositeModelB(id=1, id1=10, id2=20),
+            CompositeModelB(id=2, id1=10, id2=21),
+        ).raise_on_errors()
+
+        result = await connection.find(CompositeModelB, CompositeModelA.value == "foo").fetch.all()
+        assert len(result) == 1
+        assert result[0].id == 1
+
+        result = await connection.find(CompositeModelA, CompositeModelB.id == 1).count().value
+        assert result == 1
+
+        await connection.find(CompositeModelA, CompositeModelB.id == 1).set(value="FOOBAR").raise_on_errors()
+        result = await connection.find(CompositeModelA.value == "FOOBAR").fetch.all()
+        assert len(result) == 1
+        assert result[0].id1 == 10
+        assert result[0].id2 == 20
+
+        await connection.find(CompositeModelA, CompositeModelB.id == 1).delete().raise_on_errors()
+        result = await connection.find(CompositeModelA).fetch.all()
+        assert len(result) == 1
+
+
+@pytest.mark.asyncio
+@parametrize_drivers()
+async def test_composite_key_lazy_loads(driver):
+    composite_collection = ModelCollection()
+
+    @ommi_model(collection=composite_collection)
+    @dataclass
+    class CompositeModelA:
+        id1: Annotated[int, Key]
+        id2: Annotated[int, Key]
+        value: str
+
+    @ommi_model(collection=composite_collection)
+    @dataclass
+    class CompositeModelB:
+        id: int
+        id1: Annotated[int, ReferenceTo(CompositeModelA.id1)]
+        id2: Annotated[int, ReferenceTo(CompositeModelA.id2)]
+
         a: LazyLoadEveryRelated[CompositeModelA]
 
     async with driver as connection:
