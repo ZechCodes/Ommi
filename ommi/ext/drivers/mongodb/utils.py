@@ -35,6 +35,8 @@ flipped_operator_mapping = operator_mapping | {
     ASTOperatorNode.LESS_THAN_OR_EQUAL: "$gte",
 }
 
+LocalField: TypeAlias = str
+ForeignField: TypeAlias = str
 
 LookupStage = TypedDict(
     "LookupStage",
@@ -197,7 +199,7 @@ def build_pipeline(query: Query) -> tuple[list[dict[str, Any]], Type[OmmiModel]]
 def _create_sort_stage(sorts: list[ASTReferenceNode]) -> dict[str, Any]:
     return {
         "$sort": {
-            reference.field.name: 1 if ref.ordering == ResultOrdering.ASCENDING else -1
+            ref.field.name: 1 if ref.ordering == ResultOrdering.ASCENDING else -1
             for ref in sorts
         }
     }
@@ -210,16 +212,27 @@ def create_lookup_stages(
     project = {"$project": (hide := {}),}
     unwind = []
     for collection in collections:
-        local_field, foreign_field = _get_reference_fields(model, collection)
-
         hide[f"__join__{collection.__ommi__.model_name}"] = 0
 
+        refs = _get_reference_fields(model, collection)
+        model_name = model.__ommi__.model_name.lower()
         lookups.append(
             {
                 "$lookup": {
                     "from": collection.__ommi__.model_name,
-                    "localField": local_field,
-                    "foreignField": foreign_field,
+                    "let": {f"{model_name}_{local_field}": f"${local_field}" for local_field, _ in refs},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$and": [
+                                        {"$eq": [f"${foreign_field}", f"$${model_name}_{local_field}"]}
+                                        for local_field, foreign_field in refs
+                                    ]
+                                }
+                            }
+                        }
+                    ],
                     "as": f"__join__{collection.__ommi__.model_name}",
                 }
             }
@@ -245,16 +258,19 @@ def _create_skip_stage(max_results: int, results_page: int) -> dict[str, Any]:
     return {"$skip": max_results * results_page}
 
 
-def _get_reference_fields(model: Type[OmmiModel], collection: Type[OmmiModel]) -> tuple[str, str]:
-    if model in collection.__ommi__.references:
-        reference = collection.__ommi__.references[model][0]
-        foreign, local = reference.from_field, reference.to_field
+def _get_reference_fields(model: Type[OmmiModel], collection: Type[OmmiModel]) -> tuple[tuple[LocalField, ForeignField], ...]:
+    if (ref := collection.__ommi__.references.get(model)):
+        return tuple(
+            (r.from_field.get("store_as"), r.to_field.get("store_as"))
+            for r in ref
+        )
 
-    else:
-        reference = model.__ommi__.references[collection][0]
-        foreign, local = reference.to_field, reference.from_field
+    ref = model.__ommi__.references[collection]
+    return tuple(
+        (r.from_field.get("store_as"), r.to_field.get("store_as"))
+        for r in ref
+    )
 
-    return local.get("store_as"), foreign.get("store_as")
 
 def _process_comparison_ast(
     left: ASTLiteralNode | ASTReferenceNode,
