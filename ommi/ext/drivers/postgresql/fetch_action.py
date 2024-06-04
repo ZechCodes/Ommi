@@ -40,7 +40,7 @@ class PostgreSQLFetchAction(FetchAction[PostgreSQLConnection, OmmiModel]):
         ]
 
     def _build_select_query(self, query: SelectQuery):
-        query_builder = [f"SELECT * FROM {query.model.__ommi_metadata__.model_name}"]
+        query_builder = [f"SELECT * FROM {query.model.__ommi__.model_name}"]
         if query.models:
             query_builder.extend(generate_joins(query.model, query.models))
 
@@ -66,7 +66,7 @@ class PostgreSQLFetchAction(FetchAction[PostgreSQLConnection, OmmiModel]):
     def _validate_row_values(
         self, model: Type[OmmiModel], row: tuple[Any]
     ) -> Generator[tuple[str, Any], None, None]:
-        for field, value in zip(model.__ommi_metadata__.fields.values(), row):
+        for field, value in zip(model.__ommi__.fields.values(), row):
             name = field.get("field_name")
             if validator := self._find_type_validator(field.get("field_type", value)):
                 yield name, validator(value)

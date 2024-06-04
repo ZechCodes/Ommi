@@ -29,7 +29,7 @@ class PostgreSQLCountAction(CountAction[PostgreSQLConnection, OmmiModel]):
         return result[0]
 
     def _build_count_query(self, query: SelectQuery):
-        query_builder = [f"SELECT Count(*) FROM {query.model.__ommi_metadata__.model_name}"]
+        query_builder = [f"SELECT Count(*) FROM {query.model.__ommi__.model_name}"]
         if query.models:
             query_builder.extend(generate_joins(query.model, query.models))
 

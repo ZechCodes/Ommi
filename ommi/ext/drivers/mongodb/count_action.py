@@ -22,7 +22,7 @@ class MongoDBCountAction(CountAction[MongoDBConnection, OmmiModel]):
         pipeline, model = build_pipeline(query)
         pipeline.append({"$count": "count"})
         result = (
-            await self._db[model.__ommi_metadata__.model_name]
+            await self._db[model.__ommi__.model_name]
             .aggregate(pipeline)
             .to_list(1)
         )

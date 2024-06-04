@@ -36,7 +36,7 @@ class MongoDBDeleteAction(DeleteAction[MongoDBConnection, OmmiModel]):
         return await self._delete(query.collection, query.match)
 
     async def _delete(self, model: Type[OmmiModel], match: list[dict[str, Any]]) -> bool:
-        await self._db[model.__ommi_metadata__.model_name].delete_many(
+        await self._db[model.__ommi__.model_name].delete_many(
             {"$and": match} if match else {},
         )
         return True
@@ -50,10 +50,10 @@ class MongoDBDeleteAction(DeleteAction[MongoDBConnection, OmmiModel]):
 
     async def _do_join_delete(self, query: Query, session=None) -> bool:
         pipeline, model = build_pipeline(query)
-        documents_to_delete = self._db[model.__ommi_metadata__.model_name].aggregate(
+        documents_to_delete = self._db[model.__ommi__.model_name].aggregate(
             pipeline, session=session,
         )
-        await self._db[model.__ommi_metadata__.model_name].delete_many(
+        await self._db[model.__ommi__.model_name].delete_many(
             {"_id": {"$in": [doc["_id"] async for doc in documents_to_delete]}},
             session=session,
         )

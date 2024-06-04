@@ -49,7 +49,7 @@ class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
 
         try:
             for model in models:
-                await session.execute(f"DROP TABLE IF EXISTS {model.__ommi_metadata__.model_name};")
+                await session.execute(f"DROP TABLE IF EXISTS {model.__ommi__.model_name};")
 
         except:
             await self._connection.rollback()
@@ -65,10 +65,10 @@ class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
         pk = model.get_primary_key_field()
         columns = ", ".join(
             self._build_column(field, field == pk)
-            for field in model.__ommi_metadata__.fields.values()
+            for field in model.__ommi__.fields.values()
         )
         await session.execute(
-            f"CREATE TABLE IF NOT EXISTS {model.__ommi_metadata__.model_name} ({columns});"
+            f"CREATE TABLE IF NOT EXISTS {model.__ommi__.model_name} ({columns});"
         )
 
     def _build_column(self, field: FieldMetadata, pk: bool) -> str:

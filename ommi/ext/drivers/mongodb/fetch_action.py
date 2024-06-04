@@ -27,7 +27,7 @@ class MongoDBFetchAction(FetchAction[MongoDBConnection, OmmiModel]):
     async def fetch(self) -> list[OmmiModel]:
         query = process_ast(when(*self._predicates))
         pipeline, model = build_pipeline(query)
-        results = self._db[model.__ommi_metadata__.model_name].aggregate(pipeline)
+        results = self._db[model.__ommi__.model_name].aggregate(pipeline)
         return [self._create_model(result, model) async for result in results]
 
     async def one(self) -> OmmiModel:
@@ -36,7 +36,7 @@ class MongoDBFetchAction(FetchAction[MongoDBConnection, OmmiModel]):
     def _create_model(self, data: dict[str, Any], model: Type[OmmiModel]) -> OmmiModel:
         field_mapping = {
             field.get("store_as"): field.get("field_name")
-            for field in model.__ommi_metadata__.fields.values()
+            for field in model.__ommi__.fields.values()
         }
         instance = model(
             **{

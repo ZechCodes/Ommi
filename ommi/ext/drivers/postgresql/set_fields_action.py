@@ -26,17 +26,17 @@ class PostgreSQLSetFieldsAction(SetFieldsAction[PostgreSQLConnection, OmmiModel]
         session: psycopg.AsyncCursor,
     ):
         query = build_query(ast)
-        fields = query.model.__ommi_metadata__.fields
+        fields = query.model.__ommi__.fields
         where = query.where
         query_builder = [
-            f"UPDATE {query.model.__ommi_metadata__.model_name}",
+            f"UPDATE {query.model.__ommi__.model_name}",
             f"SET",
             ", ".join(f"{fields[name].get('store_as')} = %s" for name in set_fields.keys())
         ]
         if query.models:
             from_join = query.models.pop(0)
             from_join_comparison = f"{create_join_comparison(query.model, from_join)}"
-            query_builder.append(f"FROM {from_join.__ommi_metadata__.model_name}")
+            query_builder.append(f"FROM {from_join.__ommi__.model_name}")
             query_builder.extend(generate_joins(query.model, query.models))
 
             if where:

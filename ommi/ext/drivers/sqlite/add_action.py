@@ -28,7 +28,7 @@ class SQLiteAddAction(AddAction[SQLiteConnection, OmmiModel]):
             session.close()
 
     def _insert(self, item: OmmiModel, session: sqlite3.Cursor):
-        fields = list(item.__ommi_metadata__.fields.values())
+        fields = list(item.__ommi__.fields.values())
         data = {
             field.get("store_as"): getattr(item, field.get("field_name"))
             for field in fields
@@ -37,7 +37,7 @@ class SQLiteAddAction(AddAction[SQLiteConnection, OmmiModel]):
         columns = ", ".join(data.keys())
         values = tuple(data.values())
         session.execute(
-            f"INSERT INTO {item.__ommi_metadata__.model_name} ({columns}) VALUES ({qs});",
+            f"INSERT INTO {item.__ommi__.model_name} ({columns}) VALUES ({qs});",
             values,
         )
 

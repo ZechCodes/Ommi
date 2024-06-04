@@ -63,7 +63,7 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 query.add_model(model)
 
             case ASTReferenceNode(field, model):
-                name = f"{model.__ommi_metadata__.model_name}.{field.metadata.get('store_as')}"
+                name = f"{model.__ommi__.model_name}.{field.metadata.get('store_as')}"
                 where.append(name)
                 query.add_model(model)
 
@@ -111,18 +111,18 @@ def generate_joins(model: Type[OmmiModel], models: list[Type[OmmiModel]]):
 
 
 def create_join(model: Type[OmmiModel], join_model: Type[OmmiModel]) -> str:
-    return f"JOIN {join_model.__ommi_metadata__.model_name} ON {create_join_comparison(model, join_model)}"
+    return f"JOIN {join_model.__ommi__.model_name} ON {create_join_comparison(model, join_model)}"
 
 
 def create_join_comparison(model: Type[OmmiModel], join_model: Type[OmmiModel]) -> str:
-    if model in join_model.__ommi_metadata__.references:
-        reference = join_model.__ommi_metadata__.references[model][0]
-        to_column = f"{reference.to_model.__ommi_metadata__.model_name}.{reference.to_field.get('store_as')}"
+    if model in join_model.__ommi__.references:
+        reference = join_model.__ommi__.references[model][0]
+        to_column = f"{reference.to_model.__ommi__.model_name}.{reference.to_field.get('store_as')}"
         from_column = f"{reference.from_model.__ommi_metadata.model_name}.{reference.from_field.get('store_as')}"
 
     else:
-        reference = model.__ommi_metadata__.references[join_model][0]
-        from_column = f"{reference.to_model.__ommi_metadata__.model_name}.{reference.to_field.get('store_as')}"
-        to_column = f"{reference.from_model.__ommi_metadata__.model_name}.{reference.from_field.get('store_as')}"
+        reference = model.__ommi__.references[join_model][0]
+        from_column = f"{reference.to_model.__ommi__.model_name}.{reference.to_field.get('store_as')}"
+        to_column = f"{reference.from_model.__ommi__.model_name}.{reference.from_field.get('store_as')}"
 
     return f"{from_column} = {to_column}"

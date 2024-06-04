@@ -40,7 +40,7 @@ T = TypeVar("T", bound=Type)
 DRIVER_DUNDER_NAME = "__ommi_driver__"
 MODEL_NAME_DUNDER_NAME = "__ommi_model_name__"
 MODEL_NAME_CLASS_PARAM = "name"
-METADATA_DUNDER_NAME = "__ommi_metadata__"
+METADATA_DUNDER_NAME = "__ommi__"
 
 
 def _get_value(
@@ -61,7 +61,7 @@ class QueryFieldMetadata:
 
 
 class OmmiModel:
-    __ommi_metadata__: OmmiMetadata
+    __ommi__: OmmiMetadata
 
     @contextual_method
     def get_driver(
@@ -131,7 +131,7 @@ class OmmiModel:
             .fetch
             .one()
         )
-        for name in self.__ommi_metadata__.fields.keys():
+        for name in self.__ommi__.fields.keys():
             setattr(self, name, getattr(result, name))
 
         return self
@@ -148,7 +148,7 @@ class OmmiModel:
             .set(
                 **{
                     name: getattr(self, name)
-                    for name in self.__ommi_metadata__.fields.keys()
+                    for name in self.__ommi__.fields.keys()
                     if name != pk_name
                 }
             )
@@ -157,7 +157,7 @@ class OmmiModel:
 
     @classmethod
     def get_primary_key_field(cls) -> FieldMetadata:
-        fields = cls.__ommi_metadata__.fields
+        fields = cls.__ommi__.fields
         if not fields:
             raise Exception(f"No fields defined on {cls}")
 
@@ -183,7 +183,7 @@ class OmmiModel:
             return
 
         for name, value in columns.items():
-            if name not in cls.__ommi_metadata__.fields:
+            if name not in cls.__ommi__.fields:
                 raise ValueError(f"Invalid column {name!r} for model {cls.__name__}")
 
             yield getattr(cls, name) == value
@@ -221,7 +221,7 @@ def ommi_model(
 
 def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
     metadata_factory = (
-        c.__ommi_metadata__.clone if hasattr(c, METADATA_DUNDER_NAME) else OmmiMetadata
+        c.__ommi__.clone if hasattr(c, METADATA_DUNDER_NAME) else OmmiMetadata
     )
 
     annotations = {

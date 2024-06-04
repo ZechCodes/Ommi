@@ -48,7 +48,7 @@ class SQLiteSchemaAction(SchemaAction[SQLiteConnection, OmmiModel]):
 
         try:
             for model in models:
-                session.execute(f"DROP TABLE IF EXISTS {model.__ommi_metadata__.model_name};")
+                session.execute(f"DROP TABLE IF EXISTS {model.__ommi__.model_name};")
 
         except:
             self._connection.rollback()
@@ -64,10 +64,10 @@ class SQLiteSchemaAction(SchemaAction[SQLiteConnection, OmmiModel]):
         pk = model.get_primary_key_field().get("store_as")
         columns = ", ".join(
             self._build_column(field, field.get("store_as") == pk)
-            for field in model.__ommi_metadata__.fields.values()
+            for field in model.__ommi__.fields.values()
         )
         session.execute(
-            f"CREATE TABLE IF NOT EXISTS {model.__ommi_metadata__.model_name} ({columns});"
+            f"CREATE TABLE IF NOT EXISTS {model.__ommi__.model_name} ({columns});"
         )
 
     def _build_column(self, field: FieldMetadata, pk: bool) -> str:

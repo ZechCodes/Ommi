@@ -63,8 +63,8 @@ def test_field_metadata():
         foo: Annotated[int, MetadataFlag]
         bar: str = "Default"
 
-    assert "foo" in TestModel.__ommi_metadata__.fields
-    assert TestModel.__ommi_metadata__.fields["foo"].matches(MetadataFlag)
+    assert "foo" in TestModel.__ommi__.fields
+    assert TestModel.__ommi__.fields["foo"].matches(MetadataFlag)
 
 
 def test_primary_key_first_field():
@@ -130,11 +130,11 @@ def test_reference_fields():
     class ModelB:
         model_a_id: Annotated[str, ReferenceTo(ModelA.id)]
 
-    reference = ModelB.__ommi_metadata__.references[ModelA][0]
+    reference = ModelB.__ommi__.references[ModelA][0]
     assert reference.from_model == ModelB
     assert reference.to_model == ModelA
-    assert reference.from_field == ModelB.__ommi_metadata__.fields["model_a_id"]
-    assert reference.to_field == ModelA.__ommi_metadata__.fields["id"]
+    assert reference.from_field == ModelB.__ommi__.fields["model_a_id"]
+    assert reference.to_field == ModelA.__ommi__.fields["id"]
 
 
 circular_collection = ModelCollection()
@@ -155,14 +155,14 @@ class CircularModelB:
 
 
 def test_circular_references():
-    reference = CircularModelA.__ommi_metadata__.references[CircularModelB][0]
+    reference = CircularModelA.__ommi__.references[CircularModelB][0]
     assert reference.from_model == CircularModelA
     assert reference.to_model == CircularModelB
-    assert reference.from_field == CircularModelA.__ommi_metadata__.fields["model_b_id"]
-    assert reference.to_field == CircularModelB.__ommi_metadata__.fields["id"]
+    assert reference.from_field == CircularModelA.__ommi__.fields["model_b_id"]
+    assert reference.to_field == CircularModelB.__ommi__.fields["id"]
 
-    reference = CircularModelB.__ommi_metadata__.references[CircularModelA][0]
+    reference = CircularModelB.__ommi__.references[CircularModelA][0]
     assert reference.from_model == CircularModelB
     assert reference.to_model == CircularModelA
-    assert reference.from_field == CircularModelB.__ommi_metadata__.fields["model_a_id"]
-    assert reference.to_field == CircularModelA.__ommi_metadata__.fields["id"]
+    assert reference.from_field == CircularModelB.__ommi__.fields["model_a_id"]
+    assert reference.to_field == CircularModelA.__ommi__.fields["id"]

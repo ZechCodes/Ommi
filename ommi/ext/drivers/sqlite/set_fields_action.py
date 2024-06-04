@@ -24,16 +24,16 @@ class SQLiteSetFieldsAction(SetFieldsAction[SQLiteConnection, OmmiModel]):
         session: sqlite3.Cursor,
     ):
         query = build_query(ast)
-        fields = query.model.__ommi_metadata__.fields
+        fields = query.model.__ommi__.fields
         query_builder = [
-            f"UPDATE {query.model.__ommi_metadata__.model_name}",
+            f"UPDATE {query.model.__ommi__.model_name}",
             f"SET",
             ", ".join(f"{fields[name].get('store_as')} = ?" for name in set_fields.keys()),
         ]
         if query.models:
             pk = query.model.get_primary_key_field().get("store_as")
             sub_query = build_subquery(query.model, query.models, query.where)
-            query_builder.append(f"WHERE {query.model.__ommi_metadata__.model_name}.{pk} IN ({sub_query})")
+            query_builder.append(f"WHERE {query.model.__ommi__.model_name}.{pk} IN ({sub_query})")
 
         else:
             query_builder.append("WHERE")

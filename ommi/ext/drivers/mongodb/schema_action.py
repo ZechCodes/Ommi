@@ -23,11 +23,11 @@ class MongoDBSchemaAction(SchemaAction[MongoDBConnection, OmmiModel]):
     @async_result
     async def create_models(self) -> Iterable[Type[OmmiModel]]:
         for model in self._model_collection.models:
-            self._db.create_collection(model.__ommi_metadata__.model_name)
+            self._db.create_collection(model.__ommi__.model_name)
 
         return self._model_collection.models
 
     @async_result
     async def delete_models(self) -> None:
         for model in self._model_collection.models:
-            await self._db[model.__ommi_metadata__.model_name].drop()
+            await self._db[model.__ommi__.model_name].drop()

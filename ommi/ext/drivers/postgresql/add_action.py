@@ -40,9 +40,9 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
             session: psycopg.AsyncCursor,
             model: Type[OmmiModel],
     ):
-        query = [f"INSERT INTO {model.__ommi_metadata__.model_name}"]
+        query = [f"INSERT INTO {model.__ommi__.model_name}"]
 
-        fields = list(model.__ommi_metadata__.fields.values())
+        fields = list(model.__ommi__.fields.values())
         pk = model.get_primary_key_field()
         allow_pk = getattr(items[0], pk.get("field_name")) is not None
         columns = [

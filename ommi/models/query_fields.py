@@ -137,11 +137,11 @@ class LazyLoadEveryRelated(Generic[T], LazyQueryField):
 
 
 def _build_query(model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]") -> "ommi.query_ast.ASTGroupNode":
-    if ref := model.__ommi_metadata__.references.get(contains):
+    if ref := model.__ommi__.references.get(contains):
         return ommi.query_ast.when(getattr(ref[0].to_model, ref[0].to_field.get("field_name"))
                                    == getattr(model, ref[0].from_field.get("field_name")))
 
-    if ref := contains.__ommi_metadata__.references.get(type(model)):
+    if ref := contains.__ommi__.references.get(type(model)):
         return ommi.query_ast.when(getattr(ref[0].from_model, ref[0].from_field.get("field_name"))
                                    == getattr(model, ref[0].to_field.get("field_name")))
 

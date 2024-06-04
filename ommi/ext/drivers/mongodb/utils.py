@@ -101,7 +101,7 @@ class Query:
 
 
 def model_to_dict(model: OmmiModel, *, preserve_pk: bool = False) -> dict[str, Any]:
-    fields = list(model.__ommi_metadata__.fields.values())
+    fields = list(model.__ommi__.fields.values())
     pk = model.get_primary_key_field()
     return {
         field.get("store_as"): getattr(model, field.get("field_name"))
@@ -212,15 +212,15 @@ def create_lookup_stages(
     for collection in collections:
         local_field, foreign_field = _get_reference_fields(model, collection)
 
-        hide[f"__join__{collection.__ommi_metadata__.model_name}"] = 0
+        hide[f"__join__{collection.__ommi__.model_name}"] = 0
 
         lookups.append(
             {
                 "$lookup": {
-                    "from": collection.__ommi_metadata__.model_name,
+                    "from": collection.__ommi__.model_name,
                     "localField": local_field,
                     "foreignField": foreign_field,
-                    "as": f"__join__{collection.__ommi_metadata__.model_name}",
+                    "as": f"__join__{collection.__ommi__.model_name}",
                 }
             }
         )
@@ -228,7 +228,7 @@ def create_lookup_stages(
         unwind.append(
             {
                 "$unwind": {
-                    "path": f"$__join__{collection.__ommi_metadata__.model_name}",
+                    "path": f"$__join__{collection.__ommi__.model_name}",
                     "preserveNullAndEmptyArrays": True,
                 }
             }
@@ -246,12 +246,12 @@ def _create_skip_stage(max_results: int, results_page: int) -> dict[str, Any]:
 
 
 def _get_reference_fields(model: Type[OmmiModel], collection: Type[OmmiModel]) -> tuple[str, str]:
-    if model in collection.__ommi_metadata__.references:
-        reference = collection.__ommi_metadata__.references[model][0]
+    if model in collection.__ommi__.references:
+        reference = collection.__ommi__.references[model][0]
         foreign, local = reference.from_field, reference.to_field
 
     else:
-        reference = model.__ommi_metadata__.references[collection][0]
+        reference = model.__ommi__.references[collection][0]
         foreign, local = reference.to_field, reference.from_field
 
     return local.get("store_as"), foreign.get("store_as")
@@ -272,7 +272,7 @@ def _process_comparison_ast(
 
             name = field.metadata.get("store_as")
             if (querying_model and model != querying_model) or (not querying_model and collections and model != collections[0]):
-                name = f"__join__{model.__ommi_metadata__.model_name}.{name}"
+                name = f"__join__{model.__ommi__.model_name}.{name}"
 
             expr = {
                 name: (
@@ -291,7 +291,7 @@ def _process_comparison_ast(
 
             name = field.metadata.get("store_as")
             if model != querying_model or (not querying_model and model != collections[0]):
-                name = f"__join__{model.__ommi_metadata__.model_name}.{name}"
+                name = f"__join__{model.__ommi__.model_name}.{name}"
 
             expr = {
                 name: (

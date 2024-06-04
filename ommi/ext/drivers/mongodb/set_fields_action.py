@@ -26,7 +26,7 @@ class MongoDBSetFieldsAction(SetFieldsAction[MongoDBConnection, OmmiModel]):
             },
             {
                 "$set": {
-                    query.collection.__ommi_metadata__.fields[name].get("store_as"): value
+                    query.collection.__ommi__.fields[name].get("store_as"): value
                     for name, value in kwargs.items()
                 },
             },
@@ -39,12 +39,12 @@ class MongoDBSetFieldsAction(SetFieldsAction[MongoDBConnection, OmmiModel]):
         pipeline.append(
             {
                 "$merge": {
-                    "into": query.collection.__ommi_metadata__.model_name,
+                    "into": query.collection.__ommi__.model_name,
                     "on": "_id",
                     "whenMatched": "replace",
                 },
             }
         )
 
-        await self._db[query.collection.__ommi_metadata__.model_name].aggregate(pipeline).to_list(1)
+        await self._db[query.collection.__ommi__.model_name].aggregate(pipeline).to_list(1)
         return True

@@ -24,7 +24,7 @@ class MongoDBAddAction(AddAction[MongoDBConnection, OmmiModel]):
 
     async def _insert(self, item: OmmiModel):
         data = model_to_dict(item)
-        result = await self._db[item.__ommi_metadata__.model_name].insert_one(data)
+        result = await self._db[item.__ommi__.model_name].insert_one(data)
         item.__ommi_mongodb_id__ = result.inserted_id
         await self._set_auto_increment_pk(item)
 
@@ -41,11 +41,11 @@ class MongoDBAddAction(AddAction[MongoDBConnection, OmmiModel]):
 
         name = pk.get("store_as")
         with suppress(StopAsyncIteration):
-            await self._db[item.__ommi_metadata__.model_name].aggregate(
+            await self._db[item.__ommi__.model_name].aggregate(
                 [
                     {
                         "$lookup": {
-                            "from": item.__ommi_metadata__.model_name,
+                            "from": item.__ommi__.model_name,
                             "pipeline": [
                                 {
                                     "$match": {
@@ -102,12 +102,12 @@ class MongoDBAddAction(AddAction[MongoDBConnection, OmmiModel]):
                         },
                     },
                     {
-                        "$merge": item.__ommi_metadata__.model_name,
+                        "$merge": item.__ommi__.model_name,
                     },
                 ]
             ).next()
 
-        result = await self._db[item.__ommi_metadata__.model_name].find_one(
+        result = await self._db[item.__ommi__.model_name].find_one(
             {"_id": item.__ommi_mongodb_id__}, {"_id": 0, name: 1}
         )
         setattr(item, pk.get("field_name"), result[name])
