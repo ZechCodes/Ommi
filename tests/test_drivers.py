@@ -153,7 +153,7 @@ async def test_driver(driver):
         assert result.name == model.name
 
         model.name = "Dummy"
-        await model.save()
+        await model.save().raise_on_errors()
         result = await connection.find(TestModel.name == "Dummy").fetch.one()
         assert result.name == model.name
 
@@ -474,3 +474,42 @@ async def test_join_deletes(driver):
         await connection.find(JoinModelB, JoinModelA.name == "testing").delete().raise_on_errors()
         result = await connection.find(JoinModelB).fetch.all()
         assert {m.id for m in result} == {12}
+
+
+@pytest.mark.asyncio
+@parametrize_drivers()
+async def test_join_updates(driver):
+    join_collection = ModelCollection()
+    @ommi_model(collection=join_collection)
+    @dataclass
+    class JoinModelA:
+        id: int
+        name: str
+
+    @ommi_model(collection=join_collection)
+    @dataclass
+    class JoinModelB:
+        id: int
+        value: str
+
+        a_id: Annotated[int, ReferenceTo(JoinModelA.id)]
+
+    async with driver as connection:
+        schema = connection.schema(join_collection)
+        await schema.delete_models().raise_on_errors()
+        await schema.create_models().raise_on_errors()
+
+        await connection.add(
+            JoinModelA(id=10, name="testing"),
+            JoinModelB(id=10, value="foo", a_id=10),
+            JoinModelB(id=11, value="bar", a_id=10),
+        ).raise_on_errors()
+
+        await connection.add(
+            JoinModelA(id=11, name="foobar"),
+            JoinModelB(id=12, value="foo", a_id=11)
+        ).raise_on_errors()
+
+        await connection.find(JoinModelB, JoinModelA.name == "testing").set(value="foobar").raise_on_errors()
+        result = await connection.find(JoinModelB.value == "foobar").fetch.all()
+        assert {m.id for m in result} == {10, 11}
