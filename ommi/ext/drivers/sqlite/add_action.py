@@ -17,7 +17,7 @@ class SQLiteAddAction(AddAction[SQLiteConnection, OmmiModel]):
                 self._insert(item, session)
                 self._sync_with_last_inserted(item, session)
 
-        except Exception as error:
+        except Exception:
             self._connection.rollback()
             raise
 
