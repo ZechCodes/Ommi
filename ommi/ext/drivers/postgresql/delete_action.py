@@ -37,7 +37,6 @@ class PostgreSQLDeleteAction(DeleteAction[PostgreSQLConnection, OmmiModel]):
 
         query_builder.append("WHERE")
         query_builder.extend(where)
-        print(f"{' '.join(query_builder)};")
         await session.execute(f"{' '.join(query_builder)};", query.values)
 
     def _create_using_predicate(self, model: OmmiModel, target_model: OmmiModel) -> str:

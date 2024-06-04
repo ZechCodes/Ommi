@@ -43,12 +43,14 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
         query = [f"INSERT INTO {model.__ommi__.model_name}"]
 
         fields = list(model.__ommi__.fields.values())
-        pk = model.get_primary_key_field()
-        allow_pk = getattr(items[0], pk.get("field_name")) is not None
+        pks = {
+            pk: getattr(items[0], pk.get("field_name")) is not None
+            for pk in model.get_primary_key_fields()
+        }
         columns = [
             field.get("store_as")
             for field in fields
-            if field != pk or allow_pk
+            if pks.get(field, True)
         ]
         query.append(f"({','.join(columns)})")
 
@@ -60,11 +62,11 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
             values.extend(
                 getattr(item, field.get("field_name"))
                 for field in fields
-                if field != pk or allow_pk
+                if pks.get(field, True)
             )
 
         query.append(f"VALUES {','.join(inserts)}")
-        query.append(f"RETURNING {pk.get('store_as')};")
+        query.append(f"RETURNING {', '.join(pk.get('store_as') for pk in pks)};")
 
         result = await session.execute(" ".join(query).encode(), values)
 
@@ -72,4 +74,5 @@ class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
         item_stack = iter(items)
         async for record in result:
             item = next(item_stack)
-            setattr(item, pk.get("field_name"), record[0])
+            for pk, value in zip(pks, record):
+                setattr(item, pk.get("field_name"), value)

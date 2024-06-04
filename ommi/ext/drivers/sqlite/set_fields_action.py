@@ -31,9 +31,12 @@ class SQLiteSetFieldsAction(SetFieldsAction[SQLiteConnection, OmmiModel]):
             ", ".join(f"{fields[name].get('store_as')} = ?" for name in set_fields.keys()),
         ]
         if query.models:
-            pk = query.model.get_primary_key_field().get("store_as")
             sub_query = build_subquery(query.model, query.models, query.where)
-            query_builder.append(f"WHERE {query.model.__ommi__.model_name}.{pk} IN ({sub_query})")
+            pks = ', '.join(
+                f"{query.model.__ommi__.model_name}.{pk.get('store_as')}"
+                for pk in query.model.get_primary_key_fields()
+            )
+            query_builder.append(f"WHERE ({pks}) IN ({sub_query})")
 
         else:
             query_builder.append("WHERE")

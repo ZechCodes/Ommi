@@ -62,13 +62,17 @@ class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
             await session.close()
 
     async def _create_table(self, model: Type[OmmiModel], session: psycopg.AsyncCursor):
-        pk = model.get_primary_key_field()
+        pks = model.get_primary_key_fields()
         columns = ", ".join(
-            self._build_column(field, field == pk)
+            self._build_column(field, len(pks) == 1 and field in pks)
             for field in model.__ommi__.fields.values()
         )
         await session.execute(
-            f"CREATE TABLE IF NOT EXISTS {model.__ommi__.model_name} ({columns});"
+            f"CREATE TABLE IF NOT EXISTS {model.__ommi__.model_name}"
+            f"("
+            f"{columns}, "
+            f"PRIMARY KEY ({', '.join(pk.get('store_as') for pk in pks)})"
+            f");"
         )
 
     def _build_column(self, field: FieldMetadata, pk: bool) -> str:
@@ -76,9 +80,6 @@ class PostgreSQLSchemaAction(SchemaAction[PostgreSQLConnection, OmmiModel]):
             field.get("store_as"),
             self._get_postgresql_type(field.get("field_type"), pk),
         ]
-        if pk:
-            column.append("PRIMARY KEY")
-
         return " ".join(column)
 
     def _get_postgresql_type(self, type_: Type[Any], pk: bool) -> str:

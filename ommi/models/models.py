@@ -79,9 +79,14 @@ class OmmiModel:
     def delete(
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> "delete_actions.DeleteAction":
-        driver = self.get_driver(driver)
-        pk_name = self.get_primary_key_field().get("field_name")
-        return driver.find(getattr(type(self), pk_name) == getattr(self, pk_name)).delete()
+        return self.get_driver(driver).find(
+            query_ast.when(
+                *(
+                     getattr(type(self), pk.get("field_name")) == getattr(self, pk.get("field_name"))
+                     for pk in self.get_primary_key_fields()
+                 )
+            )
+        ).delete()
 
     @delete.classmethod
     def delete(
@@ -122,12 +127,16 @@ class OmmiModel:
     async def reload(
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> Self:
-        pk_name = self.get_primary_key_field().get("field_name")
-        pk_reference = getattr(type(self), pk_name)
-
         result = await (
             self.get_driver(driver)
-            .find(query_ast.when(pk_reference == getattr(self, pk_name)))
+            .find(
+                query_ast.when(
+                    *(
+                        getattr(type(self), pk.get("field_name")) == getattr(self, pk.get("field_name"))
+                        for pk in self.get_primary_key_fields()
+                    )
+                )
+            )
             .fetch
             .one()
         )
@@ -140,40 +149,50 @@ class OmmiModel:
     async def save(
         self, driver: "drivers.DatabaseDriver | None" = None
     ) -> bool:
-        pk_name = self.get_primary_key_field().get("field_name")
+        pks = self.get_primary_key_fields()
         driver = self.get_driver(driver)
         await (
             driver
-            .find(getattr(type(self), pk_name) == getattr(self, pk_name))
+            .find(
+                query_ast.when(
+                    *(
+                        getattr(type(self), pk.get("field_name")) == getattr(self, pk.get("field_name"))
+                        for pk in pks
+                    )
+                )
+            )
             .set(
                 **{
-                    name: getattr(self, name)
-                    for name in self.__ommi__.fields.keys()
-                    if name != pk_name
+                    field.get("field_name"): getattr(self, field.get("field_name"))
+                    for field in self.__ommi__.fields.values()
+                    if field not in pks and getattr(self, field.get("field_name")) is not None
                 }
             )
         )
         return True
 
     @classmethod
-    def get_primary_key_field(cls) -> FieldMetadata:
+    def get_primary_key_fields(cls) -> tuple[FieldMetadata, ...]:
         fields = cls.__ommi__.fields
         if not fields:
             raise Exception(f"No fields defined on {cls}")
 
-        def find_field_where(predicate):
-            return first(f for f in fields.values() if predicate(f))
+        def find_fields_where(predicate):
+            return tuple(f for f in fields.values() if predicate(f))
 
-        if field := find_field_where(lambda f: f.matches(Key)):
-            return field
+        def find_field_where(predicate):
+            return first(find_fields_where(predicate))
+
+        if matches := find_fields_where(lambda f: f.matches(Key)):
+            return matches
 
         if field := find_field_where(lambda f: f.get("store_as") in {"id", "_id"}):
-            return field
+            return (field,)
 
         if field := find_field_where(lambda f: issubclass(f.get("field_type"), int)):
-            return field
+            return (field,)
 
-        return first(fields.values())
+        return (first(fields.values()),)
 
     @classmethod
     def _build_column_predicates(

@@ -24,6 +24,9 @@ class FieldMetadata:
 
         return self.metadata == other.metadata
 
+    def __hash__(self):
+        return hash(tuple(self.metadata.items()))
+
     def __or__(self, other: "FieldMetadata") -> "FieldMetadata":
         if not isinstance(other, FieldMetadata):
             raise NotImplementedError
@@ -74,6 +77,9 @@ class AggregateMetadata(FieldMetadata):
         self._add_field(other)
         return self
 
+    def __hash__(self):
+        return hash(tuple(self.metadata.items()))
+
     def _add_field(self, field: "FieldMetadata") -> None:
         """Adds field metadata to the aggregate metadata. This is done in a non-destructive way so as to prevent changes
         made to the aggregate metadata mapping from propagating to the the aggregated field metadata instances.
@@ -86,12 +92,9 @@ class AggregateMetadata(FieldMetadata):
 
 
 class MetadataFlag(FieldMetadata):
-    def __eq__(self, other: "MetadataFlag | Any") -> bool:
-        if not isinstance(other, MetadataFlag):
-            raise NotImplementedError
-
-        return self.metadata == other.metadata
-
+    """A field metadata type that acts as a flag to indicate that a field has a certain property. Flags are field
+    metadata instances that contain a singular boolean True value to indicate that they're set. Flags should be treated
+    as singletons for purposes of identity checks."""
 
 class FieldType(FieldMetadata):
     """Field metadata type for setting the field's data type."""

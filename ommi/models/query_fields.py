@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Any, Type
+
 from tramp.results import Result
 
 import ommi
@@ -137,12 +138,20 @@ class LazyLoadEveryRelated(Generic[T], LazyQueryField):
 
 
 def _build_query(model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]") -> "ommi.query_ast.ASTGroupNode":
-    if ref := model.__ommi__.references.get(contains):
-        return ommi.query_ast.when(getattr(ref[0].to_model, ref[0].to_field.get("field_name"))
-                                   == getattr(model, ref[0].from_field.get("field_name")))
+    if refs := model.__ommi__.references.get(contains):
+        return ommi.query_ast.when(
+            *(
+                getattr(r.to_model, r.to_field.get("field_name")) == getattr(model, r.from_field.get("field_name"))
+                for r in refs
+            )
+        )
 
-    if ref := contains.__ommi__.references.get(type(model)):
-        return ommi.query_ast.when(getattr(ref[0].from_model, ref[0].from_field.get("field_name"))
-                                   == getattr(model, ref[0].to_field.get("field_name")))
+    if refs := contains.__ommi__.references.get(type(model)):
+        return ommi.query_ast.when(
+            *(
+                getattr(r.from_model, r.from_field.get("field_name")) == getattr(model, r.to_field.get("field_name"))
+                for r in refs
+            )
+        )
 
     raise RuntimeError(f"No reference found between models {type(model)} and {contains}")

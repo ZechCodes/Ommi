@@ -42,6 +42,10 @@ class SQLiteAddAction(AddAction[SQLiteConnection, OmmiModel]):
         )
 
     def _sync_with_last_inserted(self, item: OmmiModel, session: sqlite3.Cursor):
-        pk = item.get_primary_key_field().get("store_as")
+        pks = item.get_primary_key_fields()
+        if len(pks) != 1:
+            return
+
+        pk = pks[0].get("store_as")
         result = session.execute("SELECT last_insert_rowid();").fetchone()
         setattr(item, pk, result[0])

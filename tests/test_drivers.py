@@ -9,7 +9,7 @@ from ommi import StoreAs
 from ommi.ext.drivers.sqlite import SQLiteDriver, SQLiteConfig
 from ommi.models.collections import ModelCollection
 from ommi.models import ommi_model
-from ommi.models.field_metadata import ReferenceTo
+from ommi.models.field_metadata import ReferenceTo, Key
 from ommi.models.query_fields import LazyLoadTheRelated, LazyLoadEveryRelated
 
 test_models = ModelCollection()
@@ -553,3 +553,40 @@ async def test_join_counts(driver):
 
         result = await connection.find(JoinModelB, JoinModelA.name == "testing").count().value
         assert result == 2
+
+
+@pytest.mark.asyncio
+@parametrize_drivers()
+async def test_composite_keys(driver):
+    composite_collection = ModelCollection()
+
+    @ommi_model(collection=composite_collection)
+    @dataclass
+    class CompositeModelA:
+        id1: Annotated[int, Key]
+        id2: Annotated[int, Key]
+        value: str
+
+    @ommi_model(collection=composite_collection)
+    @dataclass
+    class CompositeModelB:
+        id: int
+        id1: Annotated[int, ReferenceTo(CompositeModelA.id1)]
+        id2: Annotated[int, ReferenceTo(CompositeModelA.id2)]
+
+        a: LazyLoadEveryRelated[CompositeModelA]
+
+    async with driver as connection:
+        schema = connection.schema(composite_collection)
+        await schema.delete_models().raise_on_errors()
+        await schema.create_models().raise_on_errors()
+
+        await connection.add(
+            CompositeModelA(id1=10, id2=20, value="foo"),
+            CompositeModelA(id1=10, id2=21, value="bar"),
+            CompositeModelB(id=10, id1=10, id2=20, ),
+        ).raise_on_errors()
+
+        result = await connection.find(CompositeModelB).fetch.one()
+        assert result.id == 10
+        assert len(await result.a) == 1

@@ -29,7 +29,11 @@ class MongoDBAddAction(AddAction[MongoDBConnection, OmmiModel]):
         await self._set_auto_increment_pk(item)
 
     async def _set_auto_increment_pk(self, item: OmmiModel):
-        pk = item.get_primary_key_field()
+        pks = item.get_primary_key_fields()
+        if len(pks) != 1:
+            return
+
+        pk = pks[0]
         if getattr(item, pk.get("field_name")) is not None:
             return
 

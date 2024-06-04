@@ -74,7 +74,9 @@ def test_primary_key_first_field():
         name: str
         occupation: str
 
-    assert Model.get_primary_key_field().get("field_name") == "name"
+    pks = Model.get_primary_key_fields()
+    assert len(pks) == 1
+    assert all(pk.get("field_name") == "name" for pk in pks)
 
 
 def test_primary_key_first_int_field():
@@ -84,7 +86,9 @@ def test_primary_key_first_int_field():
         name: str
         model_id: int
 
-    assert Model.get_primary_key_field().get("field_name") == "model_id"
+    pks = Model.get_primary_key_fields()
+    assert len(pks) == 1
+    assert all(pk.get("field_name") == "model_id" for pk in pks)
 
 
 def test_primary_key_first_store_as_id():
@@ -94,7 +98,9 @@ def test_primary_key_first_store_as_id():
         name: str
         model_id: Annotated[int, StoreAs("_id")]
 
-    assert Model.get_primary_key_field().get("field_name") == "model_id"
+    pks = Model.get_primary_key_fields()
+    assert len(pks) == 1
+    assert all(pk.get("field_name") == "model_id" for pk in pks)
 
 
 def test_primary_key_annotation():
@@ -104,7 +110,9 @@ def test_primary_key_annotation():
         name: str
         model_id: Annotated[str, Key]
 
-    assert Model.get_primary_key_field().get("field_name") == "model_id"
+    pks = Model.get_primary_key_fields()
+    assert len(pks) == 1
+    assert all(pk.get("field_name") == "model_id" for pk in pks)
 
 
 def test_primary_key_named_id():
@@ -114,7 +122,9 @@ def test_primary_key_named_id():
         name: str
         id: str
 
-    assert Model.get_primary_key_field().get("field_name") == "id"
+    pks = Model.get_primary_key_fields()
+    assert len(pks) == 1
+    assert all(pk.get("field_name") == "id" for pk in pks)
 
 
 def test_reference_fields():

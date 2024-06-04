@@ -106,8 +106,12 @@ def _process_ordering(sorting: list[ASTReferenceNode]) -> dict[str, ResultOrderi
 
 
 def build_subquery(model: Type[OmmiModel], models: list[Type[OmmiModel]], where: str) -> str:
+    pks = ", ".join(
+        f"{model.__ommi__.model_name}.{pk.get('store_as')}"
+        for pk in model.get_primary_key_fields()
+    )
     sub_query = [
-        f"SELECT {model.__ommi__.model_name}.{model.get_primary_key_field().get('store_as')}",
+        f"SELECT {pks}",
         f"FROM {model.__ommi__.model_name}",
     ]
     sub_query.extend(generate_joins(model, models))
