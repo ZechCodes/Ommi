@@ -112,7 +112,7 @@ def build_subquery(model: Type[OmmiModel], models: list[Type[OmmiModel]], where:
     if where:
         sub_query.append(f"WHERE {where}")
 
-    return sub_query
+    return " ".join(sub_query)
 
 
 def _create_join(model: Type[OmmiModel], join_model: Type[OmmiModel]) -> str:
