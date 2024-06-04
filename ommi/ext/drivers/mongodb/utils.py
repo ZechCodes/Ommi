@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field as dc_field
-from typing import Type, Any
+from typing import Type, Any, TypeAlias, TypedDict
 
 from ommi.models import OmmiModel
 from ommi.query_ast import (
@@ -36,6 +36,70 @@ flipped_operator_mapping = operator_mapping | {
 }
 
 
+LookupStage = TypedDict(
+    "LookupStage",
+    {
+        "$lookup": TypedDict(
+            "LookupStageFields",
+            {
+                "from": str,
+                "localField": str,
+                "foreignField": str,
+                "as": str,
+            },
+        )
+    }
+)
+
+
+ProjectStage = TypedDict(
+    "ProjectStage",
+    {
+        "$project":  dict[str, int],
+    }
+)
+
+
+UnwindStage = TypedDict(
+    "UnwindStage",
+    {
+        "$unwind": TypedDict(
+            "UnwindStageFields",
+            {
+                "path": str,
+                "preserveNullAndEmptyArrays": bool,
+            },
+        )
+    }
+)
+
+
+LookupStages: TypeAlias = list[LookupStage]
+UnwindStages: TypeAlias = list[UnwindStage]
+
+
+@dataclass
+class Query:
+    collection: Type[OmmiModel] | None = None
+    collections: list[Type[OmmiModel]] = dc_field(default_factory=list)
+    match: list[Any] = dc_field(default_factory=list)
+
+    sorts: list[ASTReferenceNode] = dc_field(default_factory=list)
+    max_results: int = 0
+    results_page: int = 0
+
+    def add_collection(self, *collections: Type[OmmiModel]) -> None:
+        if not self.collection:
+            self.collection, *collections = collections
+
+        if collections:
+            self.collections.extend(
+                collection
+                for collection in collections
+                if collection not in self.collections and collection != self.collection
+            )
+
+
 def model_to_dict(model: OmmiModel, *, preserve_pk: bool = False) -> dict[str, Any]:
     fields = list(model.__ommi_metadata__.fields.values())
     pk = model.get_primary_key_field()
@@ -45,55 +109,25 @@ def model_to_dict(model: OmmiModel, *, preserve_pk: bool = False) -> dict[str, A
         if field is not pk or preserve_pk or getattr(model, pk.get("field_name")) is not None
     }
 
-
-def build_pipeline(ast: ASTGroupNode) -> tuple[list[dict[str, Any]], Type[OmmiModel]]:
-    pipeline = [{"$match": (match := {})}]
-    if ast.sorting:
-        pipeline.append(
-            {
-                "$sort":  {
-                    reference.field.name: (
-                        1 if reference.ordering == ResultOrdering.ASCENDING else -1
-                    )
-                    for reference in ast.sorting
-
-                }
-            }
-        )
-
-    if ast.max_results > 0:
-        pipeline.append(
-            {
-                "$limit": ast.max_results,
-            }
-        )
-
-        if ast.results_page:
-            pipeline.append(
-                {
-                    "$skip": ast.results_page * ast.max_results
-                }
-            )
-
-    collections = []
-    query = []
-    group_stack = [query]
+def process_ast(ast: ASTGroupNode) -> Query:
+    query = Query()
+    group_stack = [query.match]
     logical_operator_stack = [ASTLogicalOperatorNode.AND]
     node_stack = [iter(ast)]
     while node_stack:
         match next(node_stack[~0], None):
             case ASTReferenceNode(field=None, model=model):
-                collections.append(model)
+                query.add_collection(model)
 
             case ASTGroupNode() as group:
                 node_stack.append(iter(group))
 
             case ASTComparisonNode(left, right, op):
-                expression, collections_ = _process_comparison_ast(
-                    left, op, right, collections[0] if collections else None
+                expression, collections = _process_comparison_ast(
+                    left, op, right, query.collection
                 )
                 group_stack[~0].append(expression)
-                collections.extend(collections_)
+                query.add_collection(*collections)
 
             case ASTLogicalOperatorNode() as op:
                 if len(node_stack) <= 1:
@@ -126,41 +160,89 @@ def build_pipeline(ast: ASTGroupNode) -> tuple[list[dict[str, Any]], Type[OmmiMo
             case node:
                 raise TypeError(f"Unexpected node type: {node}")
 
-    if query:
-        match["$and"] = query
 
-    model = collections[0]
-    collections = set(collections)
-    collections.remove(model)
-    if len(collections) >= 1:
-        lookups = []
-        project_hide = []
-        unwind = []
-        for collection in set(collections):
-            local_field, foreign_field = _get_reference_fields(model, collection)
-            lookups.append(
-                {
-                    "$lookup": {
-                        "from": collection.__ommi_metadata__.model_name,
-                        "localField": local_field,
-                        "foreignField": foreign_field,
-                        "as": f"__join__{collection.__ommi_metadata__.model_name}",
-                    }
+    if ast.sorting:
+        query.sorts = ast.sorting
+
+    if ast.max_results:
+        query.max_results = ast.max_results
+
+    if ast.results_page:
+        query.results_page = ast.results_page
+
+    return query
+
+
+def build_pipeline(query: Query) -> tuple[list[dict[str, Any]], Type[OmmiModel]]:
+    pipeline = []
+    if query.match:
+        pipeline.append({"$match": {"$and": query.match}})
+
+    if query.sorts:
+        pipeline.append(_create_sort_stage(query.sorts))
+
+    if query.max_results > 0:
+        pipeline.append(_create_limit_stage(query.max_results))
+
+        if query.results_page:
+            pipeline.append(_create_skip_stage(query.max_results, query.results_page))
+
+    if len(query.collections):
+        lookups, unwind, project = _create_lookup_stages(query.collection, query.collections)
+        pipeline = [*lookups, *unwind, *pipeline, project]
+
+    return pipeline, query.collection
+
+
+def _create_sort_stage(sorts: list[ASTReferenceNode]) -> dict[str, Any]:
+    return {
+        "$sort": {
+            reference.field.name: 1 if ref.ordering == ResultOrdering.ASCENDING else -1
+            for ref in sorts
+        }
+    }
+
+
+def _create_lookup_stages(
+        model: Type[OmmiModel], collections: list[Type[OmmiModel]]
+) -> tuple[LookupStages, UnwindStages, ProjectStage]:
+    lookups = []
+    project = {"$project": (hide := {}),}
+    unwind = []
+    for collection in collections:
+        local_field, foreign_field = _get_reference_fields(model, collection)
+
+        hide[f"__join__{collection.__ommi_metadata__.model_name}"] = 0
+
+        lookups.append(
+            {
+                "$lookup": {
+                    "from": collection.__ommi_metadata__.model_name,
+                    "localField": local_field,
+                    "foreignField": foreign_field,
+                    "as": f"__join__{collection.__ommi_metadata__.model_name}",
                 }
-            )
-            project_hide.append(f"__join__{collection.__ommi_metadata__.model_name}")
-            unwind.append(
-                {
-                    "$unwind": {
-                        "path": f"$__join__{collection.__ommi_metadata__.model_name}",
-                        "preserveNullAndEmptyArrays": True,
-                    }
+            }
+        )
+
+        unwind.append(
+            {
+                "$unwind": {
+                    "path": f"$__join__{collection.__ommi_metadata__.model_name}",
+                    "preserveNullAndEmptyArrays": True,
                 }
-            )
+            }
+        )
 
-            pipeline = lookups + unwind + pipeline + [{"$project": {field: 0 for field in project_hide}}]
+    return lookups, unwind, project
 
-    return pipeline, model
+
+def _create_limit_stage(max_results: int) -> dict[str, Any]:
+    return {"$limit": max_results}
+
+
+def _create_skip_stage(max_results: int, results_page: int) -> dict[str, Any]:
+    return {"$skip": max_results * results_page}
 
 
 def _get_reference_fields(model: Type[OmmiModel], collection: Type[OmmiModel]) -> tuple[str, str]:

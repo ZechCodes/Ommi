@@ -6,7 +6,7 @@ from ommi.drivers.driver_types import TModel
 from ommi.ext.drivers.mongodb.connection_protocol import MongoDBConnection
 from ommi.models import OmmiModel
 from ommi.query_ast import when, ASTGroupNode
-from ommi.ext.drivers.mongodb.utils import build_pipeline
+from ommi.ext.drivers.mongodb.utils import build_pipeline, process_ast
 
 Predicate: TypeAlias = ASTGroupNode | Type[TModel] | bool
 
@@ -18,10 +18,14 @@ class MongoDBCountAction(CountAction[MongoDBConnection, OmmiModel]):
 
     @async_result
     async def count(self) -> int:
-        pipeline, model = build_pipeline(when(*self._predicates))
-        pipeline.append({"$count": "count"})
-        if not pipeline[0]["$match"]:
+        query = process_ast(when(*self._predicates))
+        pipeline, model = build_pipeline(query)
+        if pipeline and not pipeline[0].get("$match"):
             del pipeline[0]
+
+        pipeline.append({"$count": "count"})
+
+        print(pipeline)
 
         result = (
             await self._db[model.__ommi_metadata__.model_name]

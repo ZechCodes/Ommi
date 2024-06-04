@@ -5,7 +5,7 @@ from typing import Type, Any, Generator, TypeVar, Callable, get_origin, Sequence
 from ommi.drivers.database_results import async_result
 from ommi.drivers.fetch_actions import FetchAction
 from ommi.ext.drivers.mongodb.connection_protocol import MongoDBConnection
-from ommi.ext.drivers.mongodb.utils import build_pipeline
+from ommi.ext.drivers.mongodb.utils import build_pipeline, process_ast
 from ommi.models import OmmiModel
 from ommi.query_ast import when, ASTGroupNode, ResultOrdering
 
@@ -25,7 +25,8 @@ class MongoDBFetchAction(FetchAction[MongoDBConnection, OmmiModel]):
 
     @async_result
     async def fetch(self) -> list[OmmiModel]:
-        pipeline, model = build_pipeline(when(*self._predicates))
+        query = process_ast(when(*self._predicates))
+        pipeline, model = build_pipeline(query)
         results = self._db[model.__ommi_metadata__.model_name].aggregate(pipeline)
         return [self._create_model(result, model) async for result in results]
 
