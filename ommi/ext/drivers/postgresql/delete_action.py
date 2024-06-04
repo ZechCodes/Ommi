@@ -1,9 +1,11 @@
+from typing import Type
+
 import psycopg
 
 from ommi.drivers.database_results import async_result
 from ommi.drivers.delete_actions import DeleteAction
 from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
-from ommi.ext.drivers.postgresql.utils import build_query
+from ommi.ext.drivers.postgresql.utils import build_query, create_join_comparison
 from ommi.models import OmmiModel
 from ommi.query_ast import when, ASTGroupNode
 
@@ -27,7 +29,7 @@ class PostgreSQLDeleteAction(DeleteAction[PostgreSQLConnection, OmmiModel]):
         if query.models:
             query_builder.append("USING")
             query_builder.append(", ".join(model.__ommi__.model_name for model in query.models))
-            using_join = [" AND ".join(self._create_using_predicate(model, query.model) for model in query.models)]
+            using_join = [" AND ".join(f"({create_join_comparison(query.model, model)})" for model in query.models)]
 
             where = []
             if query.where:
@@ -37,17 +39,4 @@ class PostgreSQLDeleteAction(DeleteAction[PostgreSQLConnection, OmmiModel]):
 
         query_builder.append("WHERE")
         query_builder.extend(where)
-        await session.execute(f"{' '.join(query_builder)};", query.values)
-
-    def _create_using_predicate(self, model: OmmiModel, target_model: OmmiModel) -> str:
-        if target_model in model.__ommi__.references:
-            reference = model.__ommi__.references[target_model][0]
-            to_column = f"{reference.to_model.__ommi__.model_name}.{reference.to_field.get('store_as')}"
-            from_column = f"{reference.from_model.__ommi_metadata.model_name}.{reference.from_field.get('store_as')}"
-
-        else:
-            reference = target_model.__ommi__.references[model][0]
-            from_column = f"{reference.to_model.__ommi__.model_name}.{reference.to_field.get('store_as')}"
-            to_column = f"{reference.from_model.__ommi__.model_name}.{reference.from_field.get('store_as')}"
-
-        return f"{to_column} = {from_column}"
+        await session.execute(f"{' '.join(query_builder)};".encode(), query.values)
