@@ -234,7 +234,7 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
         name: Annotation(hint, Optional.Some(vars(sys.modules[c.__module__])))
         for name, hint in get_annotations(c).items()
     }
-    fields = _get_fields(annotations, vars(sys.modules[c.__module__]))
+    fields = _get_fields(annotations)
     query_fields = _get_query_fields(annotations)
 
     def init(self, *args, **kwargs):
@@ -295,8 +295,7 @@ def get_collection(
     )
 
 
-def _get_fields(fields: dict[str, Annotation], namespace: dict[str, Any]) -> dict[str, FieldMetadata]:
-    some_namespace = Optional.Some(namespace)
+def _get_fields(fields: dict[str, Annotation]) -> dict[str, FieldMetadata]:
     ommi_fields = {}
     for name, annotation in fields.items():
         metadata = AggregateMetadata()
