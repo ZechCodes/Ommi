@@ -38,6 +38,13 @@ class SelectQuery:
     values: list[Any] = dc_field(default_factory=list)
     where: str = ""
 
+    def add_model(self, *models: Type[OmmiModel]):
+        if not self.model:
+            self.model, *models = models
+
+        if models:
+            self.models.extend(m for m in models if m not in self.models and m != self.model)
+
 
 def build_query(ast: ASTGroupNode) -> SelectQuery:
     query = SelectQuery(
@@ -53,14 +60,12 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 node_stack.append(iter(group))
 
             case ASTReferenceNode(None, model):
-                query.models.append(model)
-                query.model = query.model or model
+                query.add_model(model)
 
             case ASTReferenceNode(field, model):
                 name = f"{model.__ommi_metadata__.model_name}.{field.metadata.get('store_as')}"
                 where.append(name)
-                query.models.append(model)
-                query.model = query.model or model
+                query.add_model(model)
 
             case ASTLiteralNode(value):
                 where.append("?")
@@ -90,7 +95,6 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 raise TypeError(f"Unexpected node type: {node}")
 
     query.where = " ".join(where)
-    query.models.remove(query.model)
     return query
 
 
@@ -106,13 +110,17 @@ def build_subquery(model: Type[OmmiModel], models: list[Type[OmmiModel]], where:
         f"SELECT {model.__ommi_metadata__.model_name}.{model.get_primary_key_field().get('store_as')}",
         f"FROM {model.__ommi_metadata__.model_name}",
     ]
-    for join_model in models:
-        sub_query.append(_create_join(model, join_model))
+    sub_query.extend(generate_joins(model, models))
 
     if where:
         sub_query.append(f"WHERE {where}")
 
     return " ".join(sub_query)
+
+
+def generate_joins(model: Type[OmmiModel], models: list[Type[OmmiModel]]):
+    for join in models:
+        yield _create_join(model, join)
 
 
 def _create_join(model: Type[OmmiModel], join_model: Type[OmmiModel]) -> str:
