@@ -18,7 +18,7 @@ class MongoDBDeleteAction(DeleteAction[MongoDBConnection, OmmiModel]):
     @async_result
     async def delete(self) -> bool:
         pipeline, model = build_pipeline(when(*self._predicates))
-        query = pipeline["$match"]
+        query = pipeline[0]["$match"]
         if len(query) == 1 and len(query["$and"]) == 0:
             query = {}
 

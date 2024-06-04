@@ -19,13 +19,13 @@ class MongoDBCountAction(CountAction[MongoDBConnection, OmmiModel]):
     @async_result
     async def count(self) -> int:
         pipeline, model = build_pipeline(when(*self._predicates))
-        pipeline["$count"] = "count"
-        if not pipeline["$match"]:
-            del pipeline["$match"]
+        pipeline.append({"$count": "count"})
+        if not pipeline[0]["$match"]:
+            del pipeline[0]
 
         result = (
             await self._db[model.__ommi_metadata__.model_name]
-            .aggregate([pipeline])
+            .aggregate(pipeline)
             .to_list(1)
         )
         return result[0].get("count", 0)

@@ -19,7 +19,7 @@ class MongoDBSetFieldsAction(SetFieldsAction[MongoDBConnection, OmmiModel]):
     async def set_fields(self, **kwargs: Any) -> bool:
         pipeline, model = build_pipeline(when(*self._predicates))
         await self._db[model.__ommi_metadata__.model_name].update_many(
-            pipeline["$match"],
+            pipeline[0]["$match"],
             {
                 "$set": {
                     model.__ommi_metadata__.fields[name].get("store_as"): value

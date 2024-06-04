@@ -46,21 +46,34 @@ def model_to_dict(model: OmmiModel, *, preserve_pk: bool = False) -> dict[str, A
     }
 
 
-def build_pipeline(ast: ASTGroupNode) -> tuple[dict[str, Any], Type[OmmiModel]]:
-    pipeline = {"$match": {}}
+def build_pipeline(ast: ASTGroupNode) -> tuple[list[dict[str, Any]], Type[OmmiModel]]:
+    pipeline = [{"$match": (match := {})}]
     if ast.sorting:
-        pipeline["$sort"] = {
-            reference.field.name: (
-                1 if reference.ordering == ResultOrdering.ASCENDING else -1
-            )
-            for reference in ast.sorting
-        }
+        pipeline.append(
+            {
+                "$sort":  {
+                    reference.field.name: (
+                        1 if reference.ordering == ResultOrdering.ASCENDING else -1
+                    )
+                    for reference in ast.sorting
+
+                }
+            }
+        )
 
     if ast.max_results > 0:
-        pipeline["$limit"] = ast.max_results
+        pipeline.append(
+            {
+                "$limit": ast.max_results,
+            }
+        )
 
         if ast.results_page:
-            pipeline["$skip"] = ast.results_page * ast.max_results
+            pipeline.append(
+                {
+                    "$skip": ast.results_page * ast.max_results
+                }
+            )
 
     collections = []
     query = []
@@ -77,7 +90,7 @@ def build_pipeline(ast: ASTGroupNode) -> tuple[dict[str, Any], Type[OmmiModel]]:
 
             case ASTComparisonNode(left, right, op):
                 expression, collections_ = _process_comparison_ast(
-                    left, op, right
+                    left, op, right, collections[0] if collections else None
                 )
                 group_stack[~0].append(expression)
                 collections.extend(collections_)
@@ -114,15 +127,58 @@ def build_pipeline(ast: ASTGroupNode) -> tuple[dict[str, Any], Type[OmmiModel]]:
                 raise TypeError(f"Unexpected node type: {node}")
 
     if query:
-        pipeline["$match"]["$and"] = query
+        match["$and"] = query
 
-    return pipeline, collections[0]
+    model = collections[0]
+    collections = set(collections)
+    collections.remove(model)
+    if len(collections) >= 1:
+        lookups = []
+        project_hide = []
+        unwind = []
+        for collection in set(collections):
+            local_field, foreign_field = _get_reference_fields(model, collection)
+            lookups.append(
+                {
+                    "$lookup": {
+                        "from": collection.__ommi_metadata__.model_name,
+                        "localField": local_field,
+                        "foreignField": foreign_field,
+                        "as": f"__join__{collection.__ommi_metadata__.model_name}",
+                    }
+                }
+            )
+            project_hide.append(f"__join__{collection.__ommi_metadata__.model_name}")
+            unwind.append(
+                {
+                    "$unwind": {
+                        "path": f"$__join__{collection.__ommi_metadata__.model_name}",
+                        "preserveNullAndEmptyArrays": True,
+                    }
+                }
+            )
 
+            pipeline = lookups + unwind + pipeline + [{"$project": {field: 0 for field in project_hide}}]
+
+    return pipeline, model
+
+
+def _get_reference_fields(model: Type[OmmiModel], collection: Type[OmmiModel]) -> tuple[str, str]:
+    if model in collection.__ommi_metadata__.references:
+        reference = collection.__ommi_metadata__.references[model][0]
+        foreign, local = reference.from_field, reference.to_field
+
+    else:
+        reference = model.__ommi_metadata__.references[collection][0]
+        foreign, local = reference.to_field, reference.from_field
+
+    return local.get("store_as"), foreign.get("store_as")
 
 def _process_comparison_ast(
     left: ASTLiteralNode | ASTReferenceNode,
     op: ASTOperatorNode,
     right: ASTLiteralNode | ASTReferenceNode,
+    querying_model: Type[OmmiModel] | None,
 ) -> tuple[dict[str, Any], list[Type[OmmiModel]]]:
     collections = []
     match left, right:
@@ -131,22 +187,36 @@ def _process_comparison_ast(
             ASTLiteralNode(value=value),
         ):
             collections.append(model)
+
+            name = field.metadata.get("store_as")
+            if (querying_model and model != querying_model) or (not querying_model and collections and model != collections[0]):
+                name = f"__join__{model.__ommi_metadata__.model_name}.{name}"
+
             expr = {
-                field.metadata.get("store_as"):
-                (
+                name: (
                     value
                     if op == ASTOperatorNode.EQUALS
                     else {operator_mapping[op]: value}
                 )
             }
 
+
         case (
             ASTLiteralNode(value=value),
             ASTReferenceNode(field=field, model=model),
         ):
             collections.append(model)
+
+            name = field.metadata.get("store_as")
+            if model != querying_model or (not querying_model and model != collections[0]):
+                name = f"__join__{model.__ommi_metadata__.model_name}.{name}"
+
             expr = {
-                field.name: {flipped_operator_mapping.get(op, "$eq"): value}
+                name: (
+                    value
+                    if op == ASTOperatorNode.EQUALS
+                    else {flipped_operator_mapping[op]: value}
+                )
             }
 
         case _:
