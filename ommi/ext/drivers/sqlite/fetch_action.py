@@ -5,7 +5,7 @@ from typing import Type, Any, Generator, TypeVar, Callable, get_origin
 from ommi.drivers.database_results import async_result
 from ommi.drivers.fetch_actions import FetchAction
 from ommi.ext.drivers.sqlite.connection_protocol import SQLiteConnection
-from ommi.ext.drivers.sqlite.utils import build_query, SelectQuery
+from ommi.ext.drivers.sqlite.utils import build_query, SelectQuery, generate_joins
 from ommi.models import OmmiModel
 from ommi.query_ast import when, ASTGroupNode, ResultOrdering
 
@@ -45,7 +45,7 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
     def _build_select_query(self, query: SelectQuery):
         query_builder = [f"SELECT * FROM {query.model.__ommi_metadata__.model_name}"]
         if query.models:
-            query_builder.extend(self._generate_joins(query.models, query.model))
+            query_builder.extend(generate_joins(query.model, query.models))
 
         if query.where:
             query_builder.append(f"WHERE {query.where}")
@@ -65,23 +65,6 @@ class SQLiteFetchAction(FetchAction[SQLiteConnection, OmmiModel]):
             query_builder.append(ordering)
 
         return " ".join(query_builder) + ";"
-
-    def _generate_joins(self, models: list[OmmiModel], model: OmmiModel):
-        for join in models:
-            reference = (
-                join.__ommi_metadata__.references[model][0]
-                if model in join.__ommi_metadata__.references
-                else model.__ommi_metadata__.references[join][0]
-            )
-            from_model = reference.from_model.__ommi_metadata__.model_name
-            from_field = reference.from_field.get("store_as")
-            from_column = f"{from_model}.{from_field}"
-
-            to_model = reference.to_model.__ommi_metadata__.model_name
-            to_field = reference.to_field.get("store_as")
-            to_column = f"{to_model}.{to_field}"
-
-            yield f"JOIN {join.__ommi_metadata__.model_name} ON {from_column} = {to_column}"
 
     def _validate_row_values(
         self, model: Type[OmmiModel], row: tuple[Any]
