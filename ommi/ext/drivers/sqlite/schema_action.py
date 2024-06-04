@@ -63,7 +63,7 @@ class SQLiteSchemaAction(SchemaAction[SQLiteConnection, OmmiModel]):
     def _create_table(self, model: Type[OmmiModel], session: sqlite3.Cursor):
         pks = model.get_primary_key_fields()
         columns = ", ".join(
-            self._build_column(field, len(pks) == 1 and field in pks)
+            self._build_column(field)
             for field in model.__ommi__.fields.values()
         )
         session.execute(
@@ -74,7 +74,7 @@ class SQLiteSchemaAction(SchemaAction[SQLiteConnection, OmmiModel]):
             f");"
         )
 
-    def _build_column(self, field: FieldMetadata, pk: bool) -> str:
+    def _build_column(self, field: FieldMetadata) -> str:
         column = [
             field.get("store_as"),
             self._get_sqlite_type(field.get("field_type")),
