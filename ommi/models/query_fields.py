@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Any, Type
+from typing import Annotated, get_args, get_origin, Protocol, TypeVar, Generic, Any, Type
 
 from tramp.results import Result
 
@@ -10,6 +10,38 @@ import ommi.query_ast
 T = TypeVar("T")
 
 
+class QueryStrategy(Protocol):
+    def generate_query(
+        self, model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]"
+    ) -> "ommi.query_ast.ASTGroupNode":
+        ...
+
+
+class AssociateOnReference(QueryStrategy):
+    def generate_query(
+        self, model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]"
+    ) -> "ommi.query_ast.ASTGroupNode":
+        if refs := model.__ommi__.references.get(contains):
+            return ommi.query_ast.when(
+                *(
+                    getattr(r.to_model, r.to_field.get("field_name"))
+                    == getattr(model, r.from_field.get("field_name"))
+                    for r in refs
+                )
+            )
+
+        if refs := contains.__ommi__.references.get(type(model)):
+            return ommi.query_ast.when(
+                *(
+                    getattr(r.from_model, r.from_field.get("field_name"))
+                    == getattr(model, r.to_field.get("field_name"))
+                    for r in refs
+                )
+            )
+
+        raise RuntimeError(
+            f"No reference found between models {type(model)} and {contains}"
+        )
 class LazyQueryField(ABC):
     def __init__(
         self,
@@ -83,11 +115,27 @@ class LazyQueryField(ABC):
         return self._driver or ommi.active_driver.get()
 
     @classmethod
-    @abstractmethod
     def create(
-        cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]
+        cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...], *, query_strategy: QueryStrategy | None = None
     ) -> "LazyQueryField":
-        ...
+        contains, *_ = args
+        return cls(
+            cls._get_query_strategy(contains, query_strategy)
+            .generate_query(model, contains)
+        )
+
+    @staticmethod
+    def _get_query_strategy(
+        model: "Type[ommi.models.OmmiModel] | Any", query_strategy: QueryStrategy | None
+    ) -> QueryStrategy:
+        if query_strategy:
+            return query_strategy
+
+        if get_origin(model) is Annotated:
+            return get_args(model)[1]
+
+        return AssociateOnReference()
+
 
 
 class LazyLoadTheRelated(Generic[T], LazyQueryField):
@@ -108,13 +156,6 @@ class LazyLoadTheRelated(Generic[T], LazyQueryField):
 
         return builder.result
 
-    @classmethod
-    def create(
-        cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]
-    ) -> "LazyQueryField":
-        contains, *_ = args
-        return cls(_build_query(model, contains))
-
 
 class LazyLoadEveryRelated(Generic[T], LazyQueryField):
     async def get(self, default: list[T] | None = None) -> list[T] | None:
@@ -133,36 +174,3 @@ class LazyLoadEveryRelated(Generic[T], LazyQueryField):
             builder.set(await self._get_driver().find(self._query).fetch.all())
 
         return builder.result
-
-    @classmethod
-    def create(
-        cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...]
-    ) -> "LazyQueryField":
-        contains, *_ = args
-        return cls(_build_query(model, contains))
-
-
-def _build_query(
-    model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]"
-) -> "ommi.query_ast.ASTGroupNode":
-    if refs := model.__ommi__.references.get(contains):
-        return ommi.query_ast.when(
-            *(
-                getattr(r.to_model, r.to_field.get("field_name"))
-                == getattr(model, r.from_field.get("field_name"))
-                for r in refs
-            )
-        )
-
-    if refs := contains.__ommi__.references.get(type(model)):
-        return ommi.query_ast.when(
-            *(
-                getattr(r.from_model, r.from_field.get("field_name"))
-                == getattr(model, r.to_field.get("field_name"))
-                for r in refs
-            )
-        )
-
-    raise RuntimeError(
-        f"No reference found between models {type(model)} and {contains}"
-    )
