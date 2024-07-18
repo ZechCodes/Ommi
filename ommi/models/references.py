@@ -1,10 +1,16 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from enum import auto, Enum
 from typing import Type, Any
 
 from ommi import query_ast
 from ommi.models.field_metadata import ReferenceTo, FieldMetadata
 import ommi.models
+
+
+class LazyReferencesState(Enum):
+    ReferencesNotYetGenerated = auto()
+    ReferencesHaveBeenGenerated = auto()
 
 
 @dataclass
@@ -22,7 +28,7 @@ class LazyReferenceBuilder:
         model: "Type[ommi.models.OmmiModel]",
         namespace: dict[str, Any],
     ):
-        self._built = False
+        self._references_state = LazyReferencesState.ReferencesNotYetGenerated
         self._fields = fields
         self._model = model
         self._namespace = namespace
@@ -34,7 +40,7 @@ class LazyReferenceBuilder:
         return model in self._references
 
     def __getitem__(self, model: "Type[ommi.models.OmmiModel]") -> list[FieldReference]:
-        if not self._built:
+        if not self._references_state == LazyReferencesState.ReferencesNotYetGenerated:
             self._build_references()
 
         return self._references[model]
@@ -44,7 +50,7 @@ class LazyReferenceBuilder:
         model: "Type[ommi.models.OmmiModel]",
         default: list[FieldReference] | None = None,
     ) -> list[FieldReference]:
-        if not self._built:
+        if self._references_state == LazyReferencesState.ReferencesNotYetGenerated:
             self._build_references()
 
         return self._references.get(model, default)
@@ -76,4 +82,4 @@ class LazyReferenceBuilder:
                             )
                         )
 
-        self._built = True
+        self._references_state = LazyReferencesState.ReferencesHaveBeenGenerated
