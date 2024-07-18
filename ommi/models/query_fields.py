@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, get_args, get_origin, Protocol, TypeVar, Generic, Any, Type
+from functools import partial
+from typing import Annotated, Callable, get_args, get_origin, Protocol, TypeVar, Generic, Any, Type
 
 from tramp.results import Result
+from tramp.annotations import AnnotationForwardReference
 
 import ommi
 import ommi.drivers.drivers
@@ -15,6 +17,11 @@ class QueryStrategy(Protocol):
         self, model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]"
     ) -> "ommi.query_ast.ASTGroupNode":
         ...
+
+    def generate_query_factory(
+        self, model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]"
+    ) -> "Callable[[], ommi.query_ast.ASTGroupNode]":
+        return partial(self.generate_query, model, contains)
 
 
 class AssociateOnReference(QueryStrategy):
@@ -45,13 +52,17 @@ class AssociateOnReference(QueryStrategy):
 class LazyQueryField(ABC):
     def __init__(
         self,
-        query: "ommi.query_ast.ASTGroupNode",
+        query_factory: "Callable[[], ommi.query_ast.ASTGroupNode]",
         driver: "ommi.drivers.drivers.AbstractDatabaseDriver | None" = None,
     ):
-        self._query = query
+        self._query_factory = query_factory
         self._driver = driver
 
         self._cache = Result.Error(ValueError("Not cached yet"))
+
+    @property
+    def _query(self) -> "ommi.query_ast.ASTGroupNode"   :
+        return self._query_factory()
 
     def __await__(self):
         return self.value.__await__()
@@ -116,26 +127,29 @@ class LazyQueryField(ABC):
 
     @classmethod
     def create(
-        cls, model: "ommi.models.OmmiModel", args: tuple[Any, ...], *, query_strategy: QueryStrategy | None = None
+        cls, model: "ommi.models.OmmiModel", annotation_args: tuple[Any, ...], *, query_strategy: QueryStrategy | None = None
     ) -> "LazyQueryField":
-        contains, *_ = args
-        return cls(
-            cls._get_query_strategy(contains, query_strategy)
-            .generate_query(model, contains)
-        )
+        return cls(cls._get_query_factory(model, annotation_args[0], query_strategy))
+
+    @classmethod
+    def _get_query_factory(
+        cls,
+        model: "ommi.models.OmmiModel",
+        contains: "Type[ommi.models.OmmiModel] | Any",
+        query_strategy: QueryStrategy | None
+    ) -> "Callable[[], ommi.query_ast.ASTGroupNode]":
+        strategy = cls._get_query_strategy(contains, query_strategy)
+        return strategy.generate_query_factory(model, contains)
 
     @staticmethod
-    def _get_query_strategy(
-        model: "Type[ommi.models.OmmiModel] | Any", query_strategy: QueryStrategy | None
-    ) -> QueryStrategy:
+    def _get_query_strategy(contains: "Type[ommi.models.OmmiModel]", query_strategy: QueryStrategy | None):
         if query_strategy:
             return query_strategy
 
-        if get_origin(model) is Annotated:
-            return get_args(model)[1]
+        if get_origin(contains) is Annotated:
+            return get_args(contains)[1]
 
         return AssociateOnReference()
-
 
 
 class LazyLoadTheRelated(Generic[T], LazyQueryField):
