@@ -45,6 +45,13 @@ class LazyReferenceBuilder:
 
         return self._references[model]
 
+    def __repr__(self):
+        return (
+            f"<{type(self).__name__}: {'*Not Built*'
+            if self._references_state == LazyReferencesState.ReferencesNotYetGenerated
+            else dict(self._references)}>"
+        )
+
     def get(
         self,
         model: "Type[ommi.models.OmmiModel]",
