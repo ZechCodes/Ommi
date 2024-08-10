@@ -1,3 +1,9 @@
+"""
+Model Metadata Management
+
+This module defines the dataclass that is used for storing all metadata associated with Ommi model types.
+"""
+
 from dataclasses import dataclass, field as dc_field
 
 from ommi.models.collections import get_global_collection

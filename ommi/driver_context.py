@@ -1,3 +1,15 @@
+"""
+Context Manager for managing the active database driver
+
+This module provides a context management utility for handling the active
+database driver within the Ommi framework using Python's contextvars module.
+
+The context management implemented here ensures that the active driver is
+properly set and reset when entering and exiting the context, maintaining
+the correct driver context across different parts of the application.
+"""
+
+
 from contextvars import ContextVar
 from typing import TypeVar, Generic
 

@@ -1,3 +1,13 @@
+"""
+Lazy Evaluation of Query Fields for Ommi Models
+
+This module implements lazy loading of query fields from the database, using
+different strategies for associating models. It supports various approaches for
+deferring query execution until needed, thus managing model relationships and
+avoiding issues like circular imports efficiently.
+"""
+
+
 from abc import ABC, abstractmethod
 from functools import partial
 from typing import Annotated, Callable, get_args, get_origin, Protocol, TypeVar, Generic, Any, Type

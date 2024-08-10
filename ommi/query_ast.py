@@ -1,3 +1,13 @@
+"""
+AST (Abstract Syntax Tree) Implementation for Ommi Query System
+
+This module provides a set of classes for constructing and managing an abstract
+syntax tree (AST) for query operations within the Ommi framework. The classes
+defined here allow for the creation of logical operators, comparison nodes,
+and groupings of these nodes to form complex queries.
+"""
+
+
 from enum import auto, Enum
 from itertools import zip_longest
 from typing import Any

@@ -1,3 +1,11 @@
+"""
+Model Collection Management
+
+This module provides a model collection type for grouping models. It also provides a function for getting a global
+model collection that is the default collection.
+"""
+
+
 from typing import Type, Generic
 
 from ommi.drivers.driver_types import TModel

@@ -1,3 +1,12 @@
+"""
+Contextual Method Decorator for Instance and Class-Level Methods
+
+This module provides a decorator and utility class to manage methods that can
+be used at both instance and class levels, ensuring consistent behavior across
+contexts.
+"""
+
+
 from types import MethodType
 from typing import Callable, ParamSpec, TypeVar
 

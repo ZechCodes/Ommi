@@ -1,3 +1,14 @@
+"""
+Descriptor for Queryable Fields in Ommi Models
+
+This module defines a descriptor that enables fields within Ommi models to be
+queried through the AST (Abstract Syntax Tree) system. The QueryableFieldDescriptor
+allows for seamless interaction with the Ommi query system by returning an
+ASTReferenceNode when accessed from the class level, and the actual field when
+accessed from an instance.
+"""
+
+
 from ommi import query_ast
 
 

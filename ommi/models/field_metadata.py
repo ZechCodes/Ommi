@@ -1,9 +1,16 @@
+"""
+Field Metadata Types for Setting Properties of Model Fields
+
+This module defines the types that are used to store metadata about model fields. The metadata is intended to be stored
+as a typing.Annotated type annotation. Helper methods are provided for creating custom field metadata types.
+"""
+
+
 from collections import ChainMap
 from typing import Any, TypeVar, Type, cast, MutableMapping
 from tramp.optionals import Optional, Some, Nothing
 from itertools import zip_longest
 
-import ommi.query_ast as query_ast
 
 T = TypeVar("T")
 

@@ -1,3 +1,12 @@
+"""
+This module defines functionality for creating and managing database models
+using the Ommi framework. It includes the base `OmmiModel` class, which
+provides methods for database operations, as well as a decorator for defining
+models with Ommi metadata and query fields. It also includes helper functions
+and classes for managing model metadata, query fields, and database drivers.
+"""
+
+
 import sys
 from dataclasses import dataclass
 from inspect import get_annotations

@@ -1,3 +1,13 @@
+"""
+Lazy Reference Builder for Ommi Models
+
+This module handles the lazy evaluation of type annotations to avoid circular
+imports in the Ommi framework. It provides a mechanism for defining and
+resolving references between models only when they are needed, ensuring
+dependencies are managed without early binding.
+"""
+
+
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import auto, Enum
