@@ -10,7 +10,11 @@ from ommi.ext.drivers.sqlite import SQLiteDriver, SQLiteConfig
 from ommi.models.collections import ModelCollection
 from ommi.models import ommi_model
 from ommi.models.field_metadata import ReferenceTo, Key
-from ommi.models.query_fields import LazyLoadTheRelated, LazyLoadEveryRelated
+from ommi.models.query_fields import (
+    LazyLoadTheRelated,
+    LazyLoadEveryRelated,
+    AssociateUsing,
+)
 
 test_models = ModelCollection()
 
@@ -665,3 +669,52 @@ async def test_composite_key_lazy_loads(driver):
         assert result.id == 1
         assert len(a) == 1
         assert a[0].value == "foo"
+
+
+association_collection = ModelCollection()
+
+@ommi_model(collection=association_collection)
+@dataclass
+class AssociationModelA:
+    id: Annotated[int, Key]
+
+    b: "LazyLoadEveryRelated[Annotated[AssociationModelB, AssociateUsing(AssociationTable)]]"
+
+
+@ommi_model(collection=association_collection)
+@dataclass
+class AssociationModelB:
+    id: Annotated[int, Key]
+
+
+@ommi_model(collection=association_collection)
+@dataclass
+class AssociationTable:
+    id1: Annotated[int, Key | ReferenceTo(AssociationModelA)]
+    id2: Annotated[int, Key | ReferenceTo(AssociationModelB)]
+
+
+@pytest.mark.asyncio
+@parametrize_drivers()
+async def test_association_tables(driver):
+    async with driver as connection:
+        schema = connection.schema(association_collection)
+        await schema.delete_models().raise_on_errors()
+        await schema.create_models().raise_on_errors()
+
+        await connection.add(
+            AssociationModelA(id=10),
+            AssociationModelA(id=11),
+            AssociationModelB(id=20),
+            AssociationModelB(id=21),
+            AssociationModelB(id=22),
+            AssociationTable(id1=10, id2=20),
+            AssociationTable(id1=10, id2=21),
+            AssociationTable(id1=11, id2=22),
+        ).raise_on_errors()
+
+        result = await connection.find(AssociationModelA.id == 10).fetch.one()
+        b = await result.b
+        assert result.id == 10
+        assert len(b) == 2
+        assert {m.id for m in b} == {20, 21}

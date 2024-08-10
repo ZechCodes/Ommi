@@ -99,4 +99,15 @@ class LazyReferenceBuilder:
                             )
                         )
 
+                    case type() as model if issubclass(model, ommi.models.OmmiModel):
+                        self._references[model].append(
+                            FieldReference(
+                                from_model=self._model,
+                                from_field=metadata,
+                                to_model=model,
+
+                            )
+                        )
+
+
         self._references_state = LazyReferencesState.ReferencesHaveBeenGenerated

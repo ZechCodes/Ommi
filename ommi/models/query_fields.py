@@ -59,6 +59,30 @@ class AssociateOnReference(QueryStrategy):
         raise RuntimeError(
             f"No reference found between models {type(model)} and {contains}"
         )
+
+
+class AssociateUsing(QueryStrategy):
+    def __init__(self, association_model: Type[T]):
+        self._association_model = association_model
+
+    @property
+    def association_model(self) -> Type[T]:
+        if isinstance(self._association_model, AnnotationForwardReference):
+            return self._association_model.__evaluate__().annotation
+
+        return self._association_model
+
+    def generate_query(
+        self, model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]"
+    ) -> "ommi.query_ast.ASTGroupNode":
+        contains_model = get_args(contains)[0]
+        ref = self.association_model.__ommi__.references.get(contains_model)
+        return ommi.query_ast.when(
+            type(model),
+            getattr(self.association_model, ref.from_field.get("field_name")) == getattr(ref.to_model, ref.to_field.get("field_name"))
+        )
+
+
 class LazyQueryField(ABC):
     def __init__(
         self,
