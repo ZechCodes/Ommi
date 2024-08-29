@@ -56,11 +56,12 @@ class LazyReferenceBuilder:
         return self._references[model]
 
     def __repr__(self):
-        return (
-            f"<{type(self).__name__}: {'*Not Built*'
-            if self._references_state == LazyReferencesState.ReferencesNotYetGenerated
-            else dict(self._references)}>"
-        )
+        if self._references_state == LazyReferencesState.ReferencesHaveBeenGenerated:
+            content = repr(dict(self._references))
+        else:
+            content = f"{type(self._references_state).__name__}.{self._references_state.name}"
+
+        return f"<{type(self).__name__}: {content}>"
 
     def get(
         self,
