@@ -50,7 +50,7 @@ class LazyReferenceBuilder:
         return model in self._references
 
     def __getitem__(self, model: "Type[ommi.models.OmmiModel]") -> list[FieldReference]:
-        if not self._references_state == LazyReferencesState.ReferencesNotYetGenerated:
+        if self._references_state == LazyReferencesState.ReferencesNotYetGenerated:
             self._build_references()
 
         return self._references[model]
