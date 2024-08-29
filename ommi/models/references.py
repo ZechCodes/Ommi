@@ -47,6 +47,9 @@ class LazyReferenceBuilder:
         ] = defaultdict(list)
 
     def __contains__(self, model: "Type[ommi.models.OmmiModel]") -> bool:
+        if self._references_state == LazyReferencesState.ReferencesNotYetGenerated:
+            self._build_references()
+
         return model in self._references
 
     def __getitem__(self, model: "Type[ommi.models.OmmiModel]") -> list[FieldReference]:
