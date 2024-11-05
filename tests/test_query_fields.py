@@ -36,9 +36,9 @@ async def test_load_relation(loader):
         find=Mock(return_value=AsyncMock()),
     )
 
-    relation = loader(when(ModelB.a_id == a.id), driver=driver_mock)
+    relation = loader(lambda:when(ModelB.a_id == a.id), driver=driver_mock)
     result = await relation.result
-    driver_mock.find.assert_called_with(ModelB.a_id == a.id)
+    driver_mock.find.assert_called_with(when(ModelB.a_id == a.id))
 
     assert isinstance(result, Result.Value)
 
@@ -55,7 +55,7 @@ async def test_load_relation_fails(loader):
         find=Mock(side_effect=RuntimeError("Error")),
     )
 
-    relation = loader(when(ModelB.a_id == a.id), driver=driver_mock)
+    relation = loader(lambda:when(ModelB.a_id == a.id), driver=driver_mock)
     result = await relation.result
     driver_mock.find.assert_called_with(ModelB.a_id == a.id)
 
