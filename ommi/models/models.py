@@ -9,29 +9,31 @@ and classes for managing model metadata, query fields, and database drivers.
 
 import sys
 from dataclasses import dataclass
-from inspect import get_annotations
 from typing import (
+    Annotated,
+    Any,
     Callable,
+    Generator,
+    get_args,
+    get_origin,
     overload,
     Type,
     TypeVar,
-    Any,
-    Generator,
-    Annotated,
 )
-from tramp.annotations import Annotation
+
+import tramp.annotations
 from tramp.optionals import Optional
 
 import ommi.query_ast as query_ast
 import ommi
 from ommi.drivers.database_results import async_result, AsyncResultWrapper
 from ommi.models.field_metadata import (
+    AggregateMetadata,
+    create_metadata_type,
     FieldMetadata,
     FieldType,
-    StoreAs,
-    create_metadata_type,
-    AggregateMetadata,
     Key,
+    StoreAs,
 )
 from ommi.models.metadata import OmmiMetadata
 from ommi.contextual_method import contextual_method
@@ -245,20 +247,20 @@ def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
         c.__ommi__.clone if hasattr(c, METADATA_DUNDER_NAME) else OmmiMetadata
     )
 
-    annotations = {
-        name: Annotation(hint, Optional.Some(vars(sys.modules[c.__module__])))
-        for name, hint in get_annotations(c).items()
-    }
-    fields = _get_fields(annotations)
-    query_fields = _get_query_fields(annotations)
+    def init(self, *init_args, **init_kwargs):
+        annotations = tramp.annotations.get_annotations(c, tramp.annotations.Format.FORWARDREF)
+        query_fields = _get_query_fields(annotations)
 
-    def init(self, *args, **kwargs):
-        unset_query_fields = {name: None for name in query_fields if name not in kwargs}
-        super(model_type, self).__init__(*args, **kwargs | unset_query_fields)
+        unset_query_fields = {name: None for name in query_fields if name not in init_kwargs}
+        super(model_type, self).__init__(*init_args, **init_kwargs | unset_query_fields)
 
         for name, annotation in query_fields.items():
             if name in unset_query_fields:
-                setattr(self, name, annotation.origin.create(self, annotation.args))
+                setattr(self, name, get_origin(annotation).create(self, get_args(annotation)))
+
+    fields = _get_fields(
+        tramp.annotations.get_annotations(c, tramp.annotations.Format.FORWARDREF)
+    )
 
     model_type = type.__new__(
         type(c),
@@ -305,33 +307,45 @@ def get_collection(
     )
 
 
-def _get_fields(fields: dict[str, Annotation]) -> dict[str, FieldMetadata]:
+def _get_fields(fields: dict[str, Any]) -> dict[str, FieldMetadata]:
     ommi_fields = {}
     for name, annotation in fields.items():
         metadata = AggregateMetadata()
 
-        if annotation.origin == Annotated:
-            for arg in annotation.args:
+        if isinstance(annotation, tramp.annotations.ForwardRef):
+            annotation = annotation.evaluate()
+
+        origin = get_origin(annotation)
+        annotation_type = annotation
+        if origin == Annotated:
+            annotation_type, *args = get_args(annotation)
+            for arg in args:
                 match arg:
                     case FieldMetadata():
                         metadata |= arg
 
-        if not issubclass(annotation.type, ommi.models.query_fields.LazyQueryField):
-            ommi_fields[name] = metadata | FieldType(annotation.type)
+        if not isinstance(origin, type) or not issubclass(origin, ommi.models.query_fields.LazyQueryField):
+            ommi_fields[name] = metadata | FieldType(annotation_type)
             if not ommi_fields[name].matches(StoreAs):
                 ommi_fields[name] |= StoreAs(name)
 
             ommi_fields[name] |= create_metadata_type(
-                "FieldMetadata", field_name=name, field_type=annotation.type
+                "FieldMetadata", field_name=name, field_type=annotation_type
             )()
 
     return ommi_fields
 
 
-def _get_query_fields(fields: dict[str, Annotation]) -> dict[str, Annotation]:
+def _get_query_fields(fields: dict[str, Any]) -> dict[str, Any]:
     return {
         name: annotation
         for name, annotation in fields.items()
-        if annotation.is_generic()
-        and issubclass(annotation.type, ommi.models.query_fields.LazyQueryField)
+        if _is_lazy_query_field(annotation)
     }
+
+def _is_lazy_query_field(annotation: Any) -> bool:
+    origin = get_origin(annotation)
+    return (
+        isinstance(origin, type)
+        and issubclass(origin, ommi.models.query_fields.LazyQueryField)
+    )

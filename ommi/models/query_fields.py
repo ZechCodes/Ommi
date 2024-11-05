@@ -13,7 +13,7 @@ from functools import partial
 from typing import Annotated, Callable, get_args, get_origin, Protocol, TypeVar, Generic, Any, Type
 
 from tramp.results import Result
-from tramp.annotations import AnnotationForwardReference
+from tramp.annotations import ForwardRef
 
 import ommi
 import ommi.drivers.drivers
@@ -67,8 +67,8 @@ class AssociateUsing(QueryStrategy):
 
     @property
     def association_model(self) -> Type[T]:
-        if isinstance(self._association_model, AnnotationForwardReference):
-            return self._association_model.__evaluate__().annotation
+        if isinstance(self._association_model, ForwardRef):
+            return self._association_model.evaluate()
 
         return self._association_model
 
