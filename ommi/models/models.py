@@ -232,7 +232,7 @@ def ommi_model(
             (
                 Optional.Some(kwargs["collection"])
                 if "collection" in kwargs
-                else Optional.Nothing
+                else Optional.Nothing()
             ),
         )
         return model
