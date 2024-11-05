@@ -690,8 +690,8 @@ class AssociationModelB:
 @ommi_model(collection=association_collection)
 @dataclass
 class AssociationTable:
-    id1: Annotated[int, Key | ReferenceTo(AssociationModelA)]
-    id2: Annotated[int, Key | ReferenceTo(AssociationModelB)]
+    id_a: Annotated[int, Key | ReferenceTo(AssociationModelA.id)]
+    id_b: Annotated[int, Key | ReferenceTo(AssociationModelB.id)]
 
 
 @pytest.mark.asyncio
@@ -703,14 +703,17 @@ async def test_association_tables(driver):
         await schema.create_models().raise_on_errors()
 
         await connection.add(
+            # A Models
             AssociationModelA(id=10),
             AssociationModelA(id=11),
+            # B Models
             AssociationModelB(id=20),
             AssociationModelB(id=21),
             AssociationModelB(id=22),
-            AssociationTable(id1=10, id2=20),
-            AssociationTable(id1=10, id2=21),
-            AssociationTable(id1=11, id2=22),
+            # Association Table
+            AssociationTable(id_a=10, id_b=20),
+            AssociationTable(id_a=10, id_b=21),
+            AssociationTable(id_a=11, id_b=22),
         ).raise_on_errors()
 
         result = await connection.find(AssociationModelA.id == 10).fetch.one()
