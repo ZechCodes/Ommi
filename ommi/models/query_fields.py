@@ -76,10 +76,14 @@ class AssociateUsing(QueryStrategy):
         self, model: "ommi.models.OmmiModel", contains: "Type[ommi.models.OmmiModel]"
     ) -> "ommi.query_ast.ASTGroupNode":
         contains_model = get_args(contains)[0]
-        ref = self.association_model.__ommi__.references.get(contains_model)
+        refs = self.association_model.__ommi__.references.get(type(model))
         return ommi.query_ast.when(
-            type(model),
-            getattr(self.association_model, ref.from_field.get("field_name")) == getattr(ref.to_model, ref.to_field.get("field_name"))
+            contains_model,
+            *(
+                getattr(r.from_model, r.from_field.get("field_name"))
+                == getattr(model, r.to_field.get("field_name"))
+                for r in refs
+            )
         )
 
 
