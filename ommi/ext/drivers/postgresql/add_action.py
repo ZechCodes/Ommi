@@ -12,20 +12,12 @@ from ommi.models import OmmiModel
 class PostgreSQLAddAction(AddAction[PostgreSQLConnection, OmmiModel]):
     @async_result
     async def items(self, *items: TModel) -> Iterable[TModel]:
-        session = self._connection.cursor()
-        try:
+        async with self._connection.transaction():
+            session = self._connection.cursor()
             for model, group in self._group_by_model_type(items).items():
                 await self._insert(group, session, model)
 
-        except Exception:
-            await self._connection.rollback()
-            raise
-
-        else:
-            return items
-
-        finally:
-            await session.close()
+        return items
 
     def _group_by_model_type(self, items: Sequence[OmmiModel]):
         model_groups = {}

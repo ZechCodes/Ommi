@@ -4,12 +4,14 @@ from typing import Type, cast, TypeAlias
 
 from ommi.drivers import DatabaseDriver, DriverConfig
 from ommi.drivers.database_results import async_result
-from ommi.drivers.driver_types import TModel
+from ommi.drivers.driver_types import TConn, TModel
 from ommi.drivers.drivers import enforce_connection_protocol, connection_context_manager
+from ommi.drivers.transactions import Transaction
 from ommi.ext.drivers.postgresql.add_action import PostgreSQLAddAction
 from ommi.ext.drivers.postgresql.connection_protocol import PostgreSQLConnection
 from ommi.ext.drivers.postgresql.find_action import PostgreSQLFindAction
 from ommi.ext.drivers.postgresql.schema_action import PostgreSQLSchemaAction
+from ommi.ext.drivers.postgresql.transactions import PostgreSQLTransaction
 from ommi.models.collections import ModelCollection
 from ommi.models import OmmiModel
 from ommi.query_ast import ASTGroupNode
@@ -49,9 +51,12 @@ class PostgreSQLDriver(
         return PostgreSQLFindAction(self._connection, predicates)
 
     def schema(
-        self, model_collection: ModelCollection[Type[OmmiModel]] | None = None
+        self, model_collection: ModelCollection[Type[OmmiModel]] | None = None, **_
     ) -> PostgreSQLSchemaAction:
         return PostgreSQLSchemaAction(self._connection, model_collection)
+
+    def transaction(self) -> Transaction[TConn, TModel]:
+        return PostgreSQLTransaction(self)
 
     @classmethod
     @connection_context_manager
