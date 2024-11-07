@@ -132,6 +132,7 @@ async def test_insert_and_fetch(driver):
         decimal: float
 
     async with driver as connection:
+        await connection.schema(collection).delete_models().raise_on_errors()
         await connection.schema(collection).create_models().raise_on_errors()
 
         await connection.add(
