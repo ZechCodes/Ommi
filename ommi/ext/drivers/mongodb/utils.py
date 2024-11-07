@@ -212,13 +212,11 @@ def _create_sort_stage(sorts: list[ASTReferenceNode]) -> dict[str, Any]:
 def create_lookup_stages(
     model: Type[OmmiModel], collections: list[Type[OmmiModel]]
 ) -> tuple[LookupStages, UnwindStages, ProjectStage]:
+    hide = set()
     lookups = []
-    project = {
-        "$project": (hide := {}),
-    }
     unwind = []
     for collection in collections:
-        hide[f"__join__{collection.__ommi__.model_name}"] = 0
+        hide.add(f"__join__{collection.__ommi__.model_name}")
 
         refs = _get_reference_fields(model, collection)
         model_name = model.__ommi__.model_name.lower()
@@ -260,6 +258,10 @@ def create_lookup_stages(
                 }
             }
         )
+
+    project = {
+        "$project": dict.fromkeys(hide, 0),
+    }
 
     return lookups, unwind, project
 
