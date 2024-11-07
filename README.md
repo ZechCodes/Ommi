@@ -290,8 +290,10 @@ annotations. There are two supported relationship types using the `ommi.query_fi
 class User:
     id: int
 
-    posts: LazyLoadEveryRelated["Post"]
+    posts: "LazyLoadEveryRelated[Post]"
 
+@ommi_model
+@dataclass
 class Post:
     id: int
     author_id: Annotated[int, ReferenceTo(User)]
