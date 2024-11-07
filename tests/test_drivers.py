@@ -722,3 +722,78 @@ async def test_association_tables(driver):
         assert result.id == 10
         assert len(b) == 2
         assert {m.id for m in b} == {20, 21}
+
+
+@pytest.mark.asyncio
+@parametrize_drivers()
+async def test_transaction_commit(driver):
+    collection = ModelCollection()
+
+    @ommi_model(collection=collection)
+    @dataclass
+    class InnerTestModel:
+        id: int
+
+    async with driver as connection:
+        await connection.schema(collection).delete_models().raise_on_errors()
+        await connection.schema(collection).create_models().raise_on_errors()
+
+        async with connection.transaction() as transaction:
+            await transaction.add(
+                InnerTestModel(10)
+            ).raise_on_errors()
+
+        result = await connection.find(InnerTestModel.id == 10).fetch.one()
+        assert result.id == 10
+
+
+@pytest.mark.asyncio
+@parametrize_drivers()
+async def test_transaction_rollback(driver):
+    collection = ModelCollection()
+
+    @ommi_model(collection=collection)
+    @dataclass
+    class InnerTestModel:
+        id: int
+
+    async with driver as connection:
+        await connection.schema(collection).delete_models().raise_on_errors()
+        await connection.schema(collection).create_models().raise_on_errors()
+
+        async with connection.transaction() as transaction:
+            await transaction.add(
+                InnerTestModel(10)
+            ).raise_on_errors()
+            await transaction.rollback()
+
+        result = await connection.find(InnerTestModel).fetch()
+        assert len(result.value) == 0
+
+
+@pytest.mark.asyncio
+@parametrize_drivers()
+async def test_transaction_exception(driver):
+    collection = ModelCollection()
+
+    @ommi_model(collection=collection)
+    @dataclass
+    class InnerTestModel:
+        id: int
+
+    class TestException(Exception): ...
+
+    async with driver as connection:
+        await connection.schema(collection).delete_models().raise_on_errors()
+        await connection.schema(collection).create_models().raise_on_errors()
+
+        with pytest.raises(TestException):
+            async with connection.transaction() as transaction:
+                await transaction.add(
+                    InnerTestModel(10)
+                ).raise_on_errors()
+
+                raise TestException()
+
+        result = await connection.find(InnerTestModel).fetch()
+        assert len(result.value) == 0
