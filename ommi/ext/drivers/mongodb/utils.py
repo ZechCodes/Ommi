@@ -279,7 +279,7 @@ def _get_reference_fields(
 ) -> tuple[tuple[LocalField, ForeignField], ...]:
     if ref := collection.__ommi__.references.get(model):
         return tuple(
-            (r.from_field.get("store_as"), r.to_field.get("store_as")) for r in ref
+            (r.to_field.get("store_as"), r.from_field.get("store_as")) for r in ref
         )
 
     ref = model.__ommi__.references[collection]
