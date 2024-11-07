@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import TypeAlias, Type, Any, Generic, get_args, TypeVar, Callable, Awaitable
+from typing import TypeAlias, Type, Any, Generic, get_args, TypeVar, Callable, Awaitable, overload
 
 import ommi
 import ommi.drivers.add_actions as add_action
 import ommi.drivers.find_actions as find_action
 import ommi.drivers.schema_actions as schema_action
+import ommi.drivers.transactions as transactions
 
 from ommi.drivers.database_results import AsyncResultWrapper
 from ommi.drivers.driver_configs import DriverConfig
@@ -47,17 +48,41 @@ class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
 
     @property
     @abstractmethod
-    def add(self, *items: TModel) -> "add_action.AddAction[TConn, TModel]":
+    def add(self) -> "add_action.AddAction[TConn, TModel]":
+        ...
+
+    @overload
+    def find(self, *predicates: Predicate) -> "find_action.FindAction[TConn, TModel]":
+        ...
+
+    @overload
+    def find(self, *predicates: Predicate, **kwargs) -> "find_action.FindAction[TConn, TModel]":
         ...
 
     @abstractmethod
-    def find(self, *predicates: Predicate) -> "find_action.FindAction[TConn, TModel]":
+    def find(self, *predicates: Predicate, **kwargs) -> "find_action.FindAction[TConn, TModel]":
+        ...
+
+    @overload
+    def schema(
+        self, model_collection: ModelCollection[Type[TModel]] | None = None
+    ) -> "schema_action.SchemaAction[TConn, TModel]":
+        ...
+
+    @overload
+    def schema(
+        self, model_collection: ModelCollection[Type[TModel]] | None = None, **kwargs
+    ) -> "schema_action.SchemaAction[TConn, TModel]":
         ...
 
     @abstractmethod
     def schema(
-        self, model_collection: ModelCollection[Type[TModel]] | None = None
+        self, model_collection: ModelCollection[Type[TModel]] | None = None, **kwargs
     ) -> "schema_action.SchemaAction[TConn, TModel]":
+        ...
+
+    @abstractmethod
+    def transaction(self) -> "transactions.Transaction[TConn, TModel]":
         ...
 
     # ---------------------------- #
