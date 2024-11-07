@@ -312,6 +312,30 @@ posts = await user.posts
 
 Lazy fields will only fetch once and then cache the result.
 
+Additionally, `LazyLoadTheRelated` and `LazyLoadEveryRelated` can associate with models using an association model that
+has references to model being defined and the model being lazily queried. To do this annotate the referenced model with
+`ommi.query_fields.AssociateUsing` which is passed the model that is to be used to associate the models.
+
+```python
+@ommi_model
+@dataclass
+class User:
+    id: int
+
+    permissions: "LazyLoadEveryRelated[Annotated[Permission, AssociateUsing(UserPermission)]]"
+
+@ommi_model
+@dataclass
+class Permission:
+    id: int
+    
+@ommi_model
+@dataclass
+class UserPermission:
+    user_id: Annotated[int, ReferenceTo(User.id)]
+    permission_id: Annotated[int, ReferenceTo(Permission.id)]
+```
+
 #### Get
 
 'LazyQueryFields` provide a `get` method that takes a default value and returns the value of the relationship or the
