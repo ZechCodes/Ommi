@@ -20,7 +20,7 @@ Predicate: TypeAlias = ASTGroupNode | Type[TModel] | bool
 ConnectionProtocol = TypeVar("ConnectionProtocol")
 
 
-class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
+class AbstractDatabaseDriver(Generic[TConn], ABC):
     __drivers__: "dict[DriverName, Type[AbstractDatabaseDriver]]"
     driver_name: DriverName
 
@@ -109,7 +109,7 @@ class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
         ...
 
 
-class DatabaseDriver(AbstractDatabaseDriver[TConn, TModel], ABC):
+class DatabaseDriver(AbstractDatabaseDriver[TConn], ABC):
     __drivers__ = {}
 
     def __init_subclass__(cls, **kwargs):
