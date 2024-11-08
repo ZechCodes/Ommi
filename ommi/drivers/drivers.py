@@ -111,6 +111,7 @@ class AbstractDatabaseDriver(Generic[TConn, TModel], ABC):
 
 class DatabaseDriver(AbstractDatabaseDriver[TConn, TModel], ABC):
     __drivers__ = {}
+    __disabled_drivers__ = {}
 
     def __init_subclass__(cls, **kwargs):
         cls.driver_name = kwargs.pop(
@@ -166,7 +167,8 @@ class DatabaseDriver(AbstractDatabaseDriver[TConn, TModel], ABC):
 
     @classmethod
     def disable_driver(cls, name: DriverName):
-        cls.__drivers__.pop(name, None)
+        if driver := cls.__drivers__.pop(name, False):
+            cls.__disabled_drivers__[name] = driver
 
 
 class ConnectionFromConfigContextManager:
