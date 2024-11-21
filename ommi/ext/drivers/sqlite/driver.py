@@ -8,8 +8,10 @@ from ommi.drivers.exceptions import DriverConnectFailed
 from ommi.ext.drivers.sqlite.transaction import SQLiteTransaction
 
 import ommi.ext.drivers.sqlite.add_query as add_query
+import ommi.ext.drivers.sqlite.delete_query as delete_query
 import ommi.ext.drivers.sqlite.fetch_query as fetch_query
 import ommi.ext.drivers.sqlite.schema_management as schema_management
+import ommi.ext.drivers.sqlite.update_query as update_query
 
 
 if TYPE_CHECKING:
@@ -53,13 +55,13 @@ class SQLiteDriver(BaseDriver):
         pass
 
     async def delete(self, predicate: "ASTGroupNode"):
-        pass
+        await delete_query.delete_models(self.connection.cursor(), predicate)
 
     def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
         return fetch_query.fetch_models(self.connection.cursor(), predicate)
 
     async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[DBModel]":
-        pass
+        return await update_query.update_models(self.connection.cursor(), predicate, values)
 
     async def apply_schema(self, model_collection: "ModelCollection"):
         await schema_management.apply_schema(self.connection.cursor(), model_collection)

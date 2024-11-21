@@ -6,8 +6,10 @@ from tramp.async_batch_iterator import AsyncBatchIterator
 from ommi.drivers import BaseDriverTransaction
 
 import ommi.ext.drivers.sqlite.add_query as add_query
+import ommi.ext.drivers.sqlite.delete_query as delete_query
 import ommi.ext.drivers.sqlite.fetch_query as fetch_query
 import ommi.ext.drivers.sqlite.schema_management as schema_management
+import ommi.ext.drivers.sqlite.update_query as update_query
 
 if TYPE_CHECKING:
     from ommi.ext.drivers.sqlite.shared_types import Cursor
@@ -40,13 +42,13 @@ class SQLiteTransaction(BaseDriverTransaction):
         pass
 
     async def delete(self, predicate: "ASTGroupNode"):
-        pass
+        await delete_query.delete_models(self.cursor, predicate)
 
     def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
         return fetch_query.fetch_models(self.cursor, predicate)
 
     async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[DBModel]":
-        pass
+        return await update_query.update_models(self.cursor, predicate, values)
 
     async def apply_schema(self, model_collection: "ModelCollection"):
         await schema_management.apply_schema(self.cursor, model_collection)
