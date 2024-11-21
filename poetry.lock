@@ -62,20 +62,6 @@ trio = ["trio (>=0.23)"]
 wmi = ["wmi (>=1.5.1)"]
 
 [[package]]
-name = "exceptiongroup"
-version = "1.2.1"
-description = "Backport of PEP 654 (exception groups)"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "exceptiongroup-1.2.1-py3-none-any.whl", hash = "sha256:5258b9ed329c5bbdd31a309f53cbfb0b155341807f6ff7606a1e801a891b29ad"},
-    {file = "exceptiongroup-1.2.1.tar.gz", hash = "sha256:a4785e48b045528f5bfe627b6ad554ff32def154f42372786903b7abcfe1aa16"},
-]
-
-[package.extras]
-test = ["pytest (>=6)"]
-
-[[package]]
 name = "iniconfig"
 version = "2.0.0"
 description = "brain-dead simple config-ini parsing"
@@ -430,11 +416,9 @@ files = [
 
 [package.dependencies]
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
-exceptiongroup = {version = ">=1.0.0rc8", markers = "python_version < \"3.11\""}
 iniconfig = "*"
 packaging = "*"
 pluggy = ">=0.12,<2.0"
-tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
 
 [package.extras]
 testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
@@ -458,25 +442,14 @@ docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1.0)"]
 testing = ["coverage (>=6.2)", "hypothesis (>=5.7.1)"]
 
 [[package]]
-name = "tomli"
-version = "2.0.1"
-description = "A lil' TOML parser"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
-    {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
-]
-
-[[package]]
 name = "tramp"
-version = "0.1.13"
+version = "0.1.16"
 description = "A collection of utlities that can be used in other projects."
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "tramp-0.1.13-py3-none-any.whl", hash = "sha256:558897411be3384ff67a26c364aabeb5614e26b93619b51b5317b08f42f730e8"},
-    {file = "tramp-0.1.13.tar.gz", hash = "sha256:3aa2a3b862876cd4ea44cc32ddf2619f471a5e557bfd17a675304eab8cd240ec"},
+    {file = "tramp-0.1.16-py3-none-any.whl", hash = "sha256:aa5fac5ba55b581176c2735120772b256bf4f344aabbbc075e54f4b571d81e4d"},
+    {file = "tramp-0.1.16.tar.gz", hash = "sha256:0b49f923191f9cc769b2062de2a9bbcaa786c2c6e4efa39019a87d537aa9440d"},
 ]
 
 [[package]]
@@ -503,5 +476,5 @@ files = [
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.10"
-content-hash = "ff278f2d3732bd798b8f12042f978c8676f1198907212cb4801a39d889d70ef9"
+python-versions = "^3.12"
+content-hash = "d153122caa5787c62eb4c4a48091f22c36d5c933f573d8ec778a36ba28261357"

@@ -9,8 +9,8 @@ homepage = "https://github.com/ZechCodes/Ommi"
 keywords = ["database", "orm", "object model mapper", "dataclasses", "attrs", "pydantic", "sqlite"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
-tramp = "^0.1.13"
+python = "^3.12"
+tramp = "^0.1.16"
 
 [tool.poetry.group.dev.dependencies]
 pydantic = "^2.5.3"
