@@ -12,7 +12,7 @@ class Cursor(Protocol):
     def close(self) -> None:
         ...
 
-    def execute(self, sql: SQLStatement, params: SQLParams) -> "Cursor"
+    def execute(self, sql: SQLStatement, params: SQLParams) -> "Cursor":
         ...
 
     def fetchone(self) -> tuple[Any, ...]:
