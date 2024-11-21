@@ -5,6 +5,7 @@ from typing import Any, Iterable, TYPE_CHECKING
 if TYPE_CHECKING:
     from ommi.query_ast import ASTGroupNode
     from ommi.models import OmmiModel
+    from ommi.models.collections import ModelCollection
     from tramp.async_batch_iterator import AsyncBatchIterator
 
 
@@ -60,6 +61,19 @@ class BaseDriverTransaction(ABC):
     async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[OmmiModel]":
         """Updates all models in the database that match the given predicate with the given values and returns the
         updated models."""
+        ...
+
+    # ---------------------------------------- #
+    # Schema Management                        #
+    # ---------------------------------------- #
+    @abstractmethod
+    async def apply_schema(self, model_collection: "ModelCollection"):
+        """Applies the schema for the given model collection to the database."""
+        ...
+
+    @abstractmethod
+    async def delete_schema(self, model_collection: "ModelCollection"):
+        """Deletes the schema for the given model collection from the database."""
         ...
 
     # ---------------------------------------- #
