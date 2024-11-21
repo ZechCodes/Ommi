@@ -1,3 +1,11 @@
+"""Drivers are the interface between Ommi and the database. They are responsible for connecting to the database,
+managing transactions, and executing queries. Each driver must implement the BaseDriver interface, which defines the
+methods that Ommi uses to interact with the database.
+
+Drivers should avoid over engineering and should allow exceptions to bubble up to the caller. Common exceptions should
+be replaced with the Ommi driver exceptions in ommi.drivers.exceptions. This allows the caller to handle exceptions in a
+way that makes sense for their application. OmmiDatabase catches exceptions raised by the driver and wraps them in
+DatabaseFailure results, which are then returned to the caller."""
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, TYPE_CHECKING
 
