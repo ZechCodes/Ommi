@@ -23,6 +23,8 @@ class BaseDriverTransaction(ABC):
         ...
 
     @abstractmethod
+    async def open(self):
+        """Opens the transaction for changes."""
         ...
 
     @abstractmethod
