@@ -11,17 +11,16 @@ import ommi.ext.drivers.sqlite.schema_management as schema_management
 
 
 if TYPE_CHECKING:
-    from ommi.models import OmmiModel
     from ommi.models.collections import ModelCollection
     from ommi.query_ast import ASTGroupNode
+    from ommi.shared_types import DBModel
 
 
 class SQLiteSettings(TypedDict):
     database: str
 
 
-class SQLiteDriver(BaseDriver):
-    def __init__(self, connection: sqlite3.Connection):
+class SQLiteDriver(BaseDriver):    def __init__(self, connection: sqlite3.Connection):
         super().__init__()
         self.connection = connection
 
@@ -44,8 +43,8 @@ class SQLiteDriver(BaseDriver):
     def transaction(self) -> SQLiteTransaction:
         return SQLiteTransaction(self.connection.cursor())
 
-    async def add(self, models: "Iterable[OmmiModel]") -> "Iterable[OmmiModel]":
         pass
+    async def add(self, models: "Iterable[DBModel]") -> "Iterable[DBModel]":
 
     async def count(self, predicate: "ASTGroupNode") -> int:
         pass
@@ -53,10 +52,10 @@ class SQLiteDriver(BaseDriver):
     async def delete(self, predicate: "ASTGroupNode"):
         pass
 
-    def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[OmmiModel]":
+    def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
         pass
 
-    async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[OmmiModel]":
+    async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[DBModel]":
         pass
 
     async def apply_schema(self, model_collection: "ModelCollection"):
