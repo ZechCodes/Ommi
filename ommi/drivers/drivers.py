@@ -54,7 +54,8 @@ class BaseDriver(ABC):
         ...
 
     @abstractmethod
-    async def delete(self, predicate: "ASTGroupNode"):        """Deletes all models in the database that match the given predicate."""
+    async def delete(self, predicate: "ASTGroupNode"):
+        """Deletes all models in the database that match the given predicate."""
         ...
 
     @abstractmethod
