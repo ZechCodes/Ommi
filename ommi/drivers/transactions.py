@@ -13,18 +13,21 @@ class BaseDriverTransaction(ABC):
     # Transaction Management                   #
     # ---------------------------------------- #
     @abstractmethod
+    async def close(self):
+        """Closes the transaction to further changes."""
+        ...
+
+    @abstractmethod
     async def commit(self):
         """Commits the transaction to the database."""
         ...
 
     @abstractmethod
-    async def rollback(self):
-        """Rolls back all changes to the database that have happened inside the transaction."""
         ...
 
     @abstractmethod
-    async def close(self):
-        """Closes the transaction to further changes and commits all changes to the database."""
+    async def rollback(self):
+        """Rolls back all changes to the database that have happened inside the transaction."""
         ...
 
     # ---------------------------------------- #
