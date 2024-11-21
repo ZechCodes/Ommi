@@ -60,8 +60,8 @@ class SQLiteDriver(BaseDriver):
     def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
         return fetch_query.fetch_models(self.connection.cursor(), predicate)
 
-    async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[DBModel]":
-        return await update_query.update_models(self.connection.cursor(), predicate, values)
+    async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]):
+        await update_query.update_models(self.connection.cursor(), predicate, values)
 
     async def apply_schema(self, model_collection: "ModelCollection"):
         await schema_management.apply_schema(self.connection.cursor(), model_collection)

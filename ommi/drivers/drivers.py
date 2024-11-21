@@ -67,9 +67,8 @@ class BaseDriver(ABC):
         ...
 
     @abstractmethod
-    async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[OmmiModel]":
-        """Updates all models in the database that match the given predicate with the given values and returns the
-        updated models."""
+    async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]):
+        """Updates all models in the database that match the given predicate with the given values."""
         ...
 
     # ---------------------------------------- #
