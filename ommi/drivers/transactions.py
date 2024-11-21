@@ -61,3 +61,18 @@ class BaseDriverTransaction(ABC):
         """Updates all models in the database that match the given predicate with the given values and returns the
         updated models."""
         ...
+
+    # ---------------------------------------- #
+    # Context Management                       #
+    # ---------------------------------------- #
+    async def __aenter__(self):
+        await self.open()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            await self.rollback()
+        else:
+            await self.commit()
+
+        await self.close()
