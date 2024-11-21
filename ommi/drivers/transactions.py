@@ -52,7 +52,7 @@ class BaseDriverTransaction(ABC):
         ...
 
     @abstractmethod
-    async def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[OmmiModel]":
+    def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
         """Fetches all models from the database that match the given predicate and returns them using an
         AsyncBatchIterator. This allows for efficient fetching of large datasets."""
         ...
