@@ -48,8 +48,6 @@ try:
 except ImportError:
     Self = Any
 
-T = TypeVar("T", bound=Type)
-
 DRIVER_DUNDER_NAME = "__ommi_driver__"
 MODEL_NAME_DUNDER_NAME = "__ommi_model_name__"
 MODEL_NAME_CLASS_PARAM = "name"
@@ -206,38 +204,34 @@ class OmmiModel:
 
 
 @overload
-def ommi_model(
-    cls: None = None,
-    *,
-    collection: "ommi.model_collections.ModelCollection | None" = None,
-) -> Callable[[T], T | Type[OmmiModel]]:
+def ommi_model[T](
+    *, collection: "ommi.models.collections.ModelCollection",
+) -> Callable[[Type[T]], Type[T] | Type[OmmiModel]]:
     ...
 
 
 @overload
-def ommi_model(cls: T) -> T | Type[OmmiModel]:
+def ommi_model[T](model_type: Type[T]) -> Type[T] | Type[OmmiModel]:
     ...
 
 
-def ommi_model(
-    cls: T | None = None, /, **kwargs
-) -> T | Type[OmmiModel] | Callable[[T], T | Type[OmmiModel]]:
-    def wrap_model(c: T) -> T | Type[OmmiModel]:
-        model = _create_model(c, **kwargs)
+def ommi_model[T](
+    model_type: Type[T] | None = None,
+    *,
+    collection: "ommi.models.collections.ModelCollection | None" = None
+) -> Type[T] | Callable[[Type[T]], Type[T]]:
+    def wrap_model(c: Type[T]) -> Type[T]:
+        model = _create_model(c, collection=collection)
         _register_model(
             model,
-            (
-                Optional.Some(kwargs["collection"])
-                if "collection" in kwargs
-                else Optional.Nothing()
-            ),
+            Optional.Some(collection) if collection else Optional.Nothing(),
         )
         return model
 
-    return wrap_model if cls is None else wrap_model(cls)
+    return wrap_model if model_type is None else wrap_model(model_type)
 
 
-def _create_model(c: T, **kwargs) -> T | Type[OmmiModel]:
+def _create_model(c, **kwargs) -> Type[OmmiModel]:
     metadata_factory = (
         c.__ommi__.clone if hasattr(c, METADATA_DUNDER_NAME) else OmmiMetadata
     )
