@@ -13,13 +13,13 @@ class BaseDriverException(Exception):
         self.add_note(f" - Using Driver: {driver!r}")
 
 
-class FailedToConnect(BaseDriverException):
+class DriverConnectFailed(BaseDriverException):
     """Raised when a driver fails to connect to a database."""
 
 
-class FailedToAdd(BaseDriverException):
+class DriverAddFailed(BaseDriverException):
     """Raised when a driver fails to add models to a database."""
 
 
-class FailedQuery(BaseDriverException):
+class DriverQueryFailed(BaseDriverException):
     """Raised when a driver fails to execute a predicate query."""
