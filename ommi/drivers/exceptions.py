@@ -23,3 +23,7 @@ class DriverAddFailed(BaseDriverException):
 
 class DriverQueryFailed(BaseDriverException):
     """Raised when a driver fails to execute a predicate query."""
+
+
+class DriverModelNotFound(BaseDriverException):
+    """Raised when a model is not found using a driver."""
