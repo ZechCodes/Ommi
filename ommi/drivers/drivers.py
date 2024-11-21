@@ -83,3 +83,13 @@ class BaseDriver(ABC):
     async def delete_schema(self, model_collection: "ModelCollection"):
         """Deletes the schema for the given model collection from the database."""
         ...
+
+    # ---------------------------------------- #
+    # Context Management                       #
+    # ---------------------------------------- #
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.disconnect()
+
