@@ -4,8 +4,8 @@ from typing import Any, Iterable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ommi.query_ast import ASTGroupNode
-    from ommi.models import OmmiModel
     from ommi.models.collections import ModelCollection
+    from ommi.shared_types import DBModel
     from tramp.async_batch_iterator import AsyncBatchIterator
 
 
@@ -37,7 +37,7 @@ class BaseDriverTransaction(ABC):
     # Query Execution                          #
     # ---------------------------------------- #
     @abstractmethod
-    async def add(self, models: "Iterable[OmmiModel]") -> "Iterable[OmmiModel]":
+    async def add(self, models: "Iterable[DBModel]") -> "Iterable[DBModel]":
         """Adds a series of models to the database and returns the models with their primary keys set."""
         ...
 
@@ -58,7 +58,7 @@ class BaseDriverTransaction(ABC):
         ...
 
     @abstractmethod
-    async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[OmmiModel]":
+    async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[DBModel]":
         """Updates all models in the database that match the given predicate with the given values and returns the
         updated models."""
         ...

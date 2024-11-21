@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from ommi.models import OmmiModel
     from ommi.models.collections import ModelCollection
     from ommi.query_ast import ASTGroupNode
+    from ommi.shared_types import DBModel
     from tramp.async_batch_iterator import AsyncBatchIterator
 
 
@@ -45,7 +46,7 @@ class BaseDriver(ABC):
     # Query Execution                          #
     # ---------------------------------------- #
     @abstractmethod
-    async def add(self, models: "Iterable[OmmiModel]") -> "Iterable[OmmiModel]":
+    async def add[DBModel:"DBModel"](self, models: Iterable[DBModel]) -> Iterable[DBModel]:
         """Adds a series of models to the database and returns the models with their primary keys set."""
         ...
 
@@ -60,7 +61,7 @@ class BaseDriver(ABC):
         ...
 
     @abstractmethod
-    async def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[OmmiModel]":
+    def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
         """Fetches all models from the database that match the given predicate and returns them using an
         AsyncBatchIterator. This allows for efficient fetching of large datasets."""
         ...
