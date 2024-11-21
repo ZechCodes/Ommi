@@ -12,9 +12,9 @@ from typing import Any, Iterable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ommi.drivers import BaseDriverTransaction
-    from ommi.query_ast import ASTGroupNode
     from ommi.models import OmmiModel
     from ommi.models.collections import ModelCollection
+    from ommi.query_ast import ASTGroupNode
     from tramp.async_batch_iterator import AsyncBatchIterator
 
 
