@@ -8,6 +8,7 @@ from ommi.drivers.exceptions import DriverConnectFailed
 from ommi.ext.drivers.sqlite.transaction import SQLiteTransaction
 
 import ommi.ext.drivers.sqlite.add_query as add_query
+import ommi.ext.drivers.sqlite.fetch_query as fetch_query
 import ommi.ext.drivers.sqlite.schema_management as schema_management
 
 
@@ -55,7 +56,7 @@ class SQLiteDriver(BaseDriver):
         pass
 
     def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
-        pass
+        return fetch_query.fetch_models(self.connection.cursor(), predicate)
 
     async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[DBModel]":
         pass

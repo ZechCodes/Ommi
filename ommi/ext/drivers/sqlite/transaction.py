@@ -6,6 +6,7 @@ from tramp.async_batch_iterator import AsyncBatchIterator
 from ommi.drivers import BaseDriverTransaction
 
 import ommi.ext.drivers.sqlite.add_query as add_query
+import ommi.ext.drivers.sqlite.fetch_query as fetch_query
 import ommi.ext.drivers.sqlite.schema_management as schema_management
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ class SQLiteTransaction(BaseDriverTransaction):
         pass
 
     def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
-        pass
+        return fetch_query.fetch_models(self.cursor, predicate)
 
     async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[DBModel]":
         pass

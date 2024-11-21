@@ -1,13 +1,15 @@
 import sqlite3
-from typing import Any, Protocol
+from typing import Any, Protocol, Sequence
 
 type SQLStatement = str
-type SQLParams = tuple[Any, ...]
+type SQLParams = Sequence[Any, ...]
 type SQLQuery = tuple[SQLStatement, SQLParams]
 
 
 class Cursor(Protocol):
-    connection: sqlite3.Connection
+    @property
+    def connection(self) -> sqlite3.Connection:
+        ...
 
     def close(self) -> None:
         ...
@@ -17,3 +19,5 @@ class Cursor(Protocol):
 
     def fetchone(self) -> tuple[Any, ...]:
         ...
+
+    def fetchall(self) -> list[tuple[Any, ...]]:
