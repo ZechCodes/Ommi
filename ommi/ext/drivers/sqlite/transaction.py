@@ -5,8 +5,8 @@ from tramp.async_batch_iterator import AsyncBatchIterator
 
 from ommi.drivers import BaseDriverTransaction
 
-import ommi.ext.drivers.sqlite.schema_management as schema_management
 import ommi.ext.drivers.sqlite.add_query as add_query
+import ommi.ext.drivers.sqlite.schema_management as schema_management
 
 if TYPE_CHECKING:
     from ommi.ext.drivers.sqlite.shared_types import Cursor

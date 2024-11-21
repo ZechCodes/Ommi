@@ -7,8 +7,8 @@ from ommi.drivers import BaseDriver
 from ommi.drivers.exceptions import DriverConnectFailed
 from ommi.ext.drivers.sqlite.transaction import SQLiteTransaction
 
-import ommi.ext.drivers.sqlite.schema_management as schema_management
 import ommi.ext.drivers.sqlite.add_query as add_query
+import ommi.ext.drivers.sqlite.schema_management as schema_management
 
 
 if TYPE_CHECKING:
