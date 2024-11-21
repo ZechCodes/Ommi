@@ -26,7 +26,6 @@ from tramp.optionals import Optional
 
 import ommi.query_ast as query_ast
 import ommi
-from ommi.drivers.database_results import async_result, AsyncResultWrapper
 from ommi.models.field_metadata import (
     AggregateMetadata,
     create_metadata_type,
@@ -39,8 +38,6 @@ from ommi.models.metadata import OmmiMetadata
 from ommi.contextual_method import contextual_method
 import ommi.models.collections
 
-import ommi.drivers.delete_actions as delete_actions
-import ommi.drivers.fetch_actions as fetch_actions
 import ommi.models.query_fields
 from ommi.models.queryable_descriptors import QueryableFieldDescriptor
 from ommi.models.references import LazyReferenceBuilder
@@ -114,7 +111,7 @@ class OmmiModel:
         *predicates: "ASTGroupNode | DatabaseModel | bool",
         columns: Any | None = None,
         driver: "drivers.DatabaseDriver | None" = None,
-    ) -> AsyncResultWrapper[int]:
+    ) -> "AsyncResultWrapper[int]":
         driver = cls.get_driver(driver)
         if not predicates and not columns:
             predicates = (cls,)
@@ -131,7 +128,6 @@ class OmmiModel:
         driver = cls.get_driver(driver)
         return driver.find(*predicates, *cls._build_column_predicates(columns)).fetch
 
-    @async_result
     async def reload(self, driver: "drivers.DatabaseDriver | None" = None) -> Self:
         result = await (
             self.get_driver(driver)
@@ -151,7 +147,6 @@ class OmmiModel:
 
         return self
 
-    @async_result
     async def save(self, driver: "drivers.DatabaseDriver | None" = None) -> bool:
         pks = self.get_primary_key_fields()
         driver = self.get_driver(driver)
