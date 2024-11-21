@@ -20,7 +20,8 @@ class SQLiteSettings(TypedDict):
     database: str
 
 
-class SQLiteDriver(BaseDriver):    def __init__(self, connection: sqlite3.Connection):
+class SQLiteDriver(BaseDriver):
+    def __init__(self, connection: sqlite3.Connection):
         super().__init__()
         self.connection = connection
 
