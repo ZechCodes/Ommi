@@ -443,13 +443,13 @@ testing = ["coverage (>=6.2)", "hypothesis (>=5.7.1)"]
 
 [[package]]
 name = "tramp"
-version = "0.1.16"
+version = "0.1.17"
 description = "A collection of utlities that can be used in other projects."
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "tramp-0.1.16-py3-none-any.whl", hash = "sha256:aa5fac5ba55b581176c2735120772b256bf4f344aabbbc075e54f4b571d81e4d"},
-    {file = "tramp-0.1.16.tar.gz", hash = "sha256:0b49f923191f9cc769b2062de2a9bbcaa786c2c6e4efa39019a87d537aa9440d"},
+    {file = "tramp-0.1.17-py3-none-any.whl", hash = "sha256:51a0a5de7174440d53686976298bf039f71fc0f84f759adc8416ef56d2af876d"},
+    {file = "tramp-0.1.17.tar.gz", hash = "sha256:2e3dc7f7306234759fd3d7d62715b210501e93d7d5e04a1a6aed68c138f8b076"},
 ]
 
 [[package]]
@@ -477,4 +477,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "d153122caa5787c62eb4c4a48091f22c36d5c933f573d8ec778a36ba28261357"
+content-hash = "d1cc0da075ac4a71238016f36264f19559b8e1067f7b973b8a8eb8120b02d680"

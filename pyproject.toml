@@ -10,7 +10,7 @@ keywords = ["database", "orm", "object model mapper", "dataclasses", "attrs", "p
 
 [tool.poetry.dependencies]
 python = "^3.12"
-tramp = "^0.1.16"
+tramp = "^0.1.17"
 
 [tool.poetry.group.dev.dependencies]
 pydantic = "^2.5.3"
