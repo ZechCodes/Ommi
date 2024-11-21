@@ -2,11 +2,13 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import pytest
+import pytest_asyncio
 import attrs
 import pydantic
+from ommi import BaseDriver
 
 from ommi import StoreAs
-from ommi.ext.drivers.sqlite import SQLiteDriver, SQLiteConfig
+from ommi.ext.drivers.sqlite import SQLiteDriver
 from ommi.models.collections import ModelCollection
 from ommi.models import ommi_model
 from ommi.models.field_metadata import ReferenceTo, Key
@@ -15,6 +17,7 @@ from ommi.models.query_fields import (
     LazyLoadEveryRelated,
     AssociateUsing,
 )
+from ommi.query_ast import when
 
 test_models = ModelCollection()
 
@@ -26,101 +29,16 @@ class TestModel:
     id: int = None
 
 
-class DriverFactory:
-    def __init__(self, factory):
-        self.factory = factory
-        self.driver = None
-
-    @property
-    def name(self):
-        return self.factory.__name__
-
-    async def __aenter__(self):
-        self.driver = await self.factory()
-        return await self.driver.__aenter__()
-
-    async def __aexit__(self, *args):
-        return await self.driver.__aexit__(*args)
+@pytest_asyncio.fixture(params=[SQLiteDriver], scope="function")
+async def driver(request):
+    async with request.param.connect() as driver:
+        await driver.apply_schema(test_models)
+        yield driver
+        await driver.delete_schema(test_models)
 
 
-@DriverFactory
-async def sqlite():
-    driver = await SQLiteDriver.from_config(SQLiteConfig(filename=":memory:"))
-    schema = driver.schema(test_models)
-    await schema.delete_models().raise_on_errors()
-    await schema.create_models().raise_on_errors()
-    return driver
-
-
-@DriverFactory
-async def mongo():
-    config = MongoDBConfig(
-        host="127.0.0.1", port=27017, database_name="tests", timeout=100
-    )
-    try:
-        driver = await MongoDBDriver.from_config(config)
-        await driver.schema(test_models).delete_models().raise_on_errors()
-    except pymongo.errors.ServerSelectionTimeoutError as exc:
-        raise RuntimeError(
-            f"Could not connect to MongoDB. Is it running? {config}"
-        ) from exc
-    else:
-        await driver.schema(test_models).create_models().raise_on_errors()
-        return driver
-
-
-@DriverFactory
-async def postgresql():
-    config = PostgreSQLConfig(
-        host="127.0.0.1",
-        port=5432,
-        database_name="postgres",
-        username="postgres",
-        password="password",
-    )
-    try:
-        driver = await PostgreSQLDriver.from_config(config)
-        schema = driver.schema(test_models)
-        await schema.delete_models().raise_on_errors()
-    except psycopg.OperationalError as exc:
-        raise RuntimeError(
-            f"Could not connect to PostgreSQL. Is it running? {config}"
-        ) from exc
-    else:
-        await schema.create_models().raise_on_errors()
-        return driver
-
-
-def id_factory(param):
-    return param.name
-
-
-def parametrize_drivers():
-    return pytest.mark.parametrize("driver", connections, ids=id_factory)
-
-
-connections = [sqlite]
-
-try:
-    from ommi.ext.drivers.mongodb import MongoDBDriver, MongoDBConfig
-    import pymongo.errors
-except ImportError:
-    MongoDBDriver = MongoDBConfig = pymongo = None
-else:
-    connections.append(mongo)
-
-try:
-    from ommi.ext.drivers.postgresql import PostgreSQLConfig, PostgreSQLDriver
-    import psycopg
-except ImportError:
-    PostgreSQLConfig = PostgreSQLDriver = psycopg = None
-else:
-    connections.append(postgresql)
-
-
-@pytest.mark.asyncio
-@parametrize_drivers()
-async def test_insert_and_fetch(driver):
+@pytest.mark.asyncio()
+async def test_insert_and_fetch(driver: "BaseDriver"):
     collection = ModelCollection()
 
     @ommi_model(collection=collection)
@@ -131,46 +49,41 @@ async def test_insert_and_fetch(driver):
         toggle: bool
         decimal: float
 
-    async with driver as connection:
-        await connection.schema(collection).delete_models().raise_on_errors()
-        await connection.schema(collection).create_models().raise_on_errors()
+    await driver.delete_schema(collection)
+    await driver.apply_schema(collection)
 
-        await connection.add(
-            model := InnerTestModel(10, "testing", True, 1.23)
-        ).raise_on_errors()
-        assert model.id == 10
-        assert model.name == "testing"
-        assert model.toggle == True
-        assert model.decimal == 1.23
+    await driver.add(
+        (model := InnerTestModel(10, "testing", True, 1.23),)
+    )
+    assert model.id == 10
+    assert model.name == "testing"
+    assert model.toggle == True
+    assert model.decimal == 1.23
 
-        result = await connection.find(InnerTestModel.id == 10).fetch.one()
-        assert result.id == model.id
-        assert result.name == model.name
-        assert result.toggle == model.toggle
-        assert result.decimal == model.decimal
-
-
-@pytest.mark.asyncio
-@parametrize_drivers()
-async def test_driver(driver):
-    async with driver as connection:
-        await connection.add(model := TestModel(name="dummy")).raise_on_errors()
-
-        result = await connection.find(TestModel.name == "dummy").fetch.one()
-        assert result.name == model.name
-
-        model.name = "Dummy"
-        await model.save().raise_on_errors()
-        result = await connection.find(TestModel.name == "Dummy").fetch.one()
-        assert result.name == model.name
-
-        await model.delete().raise_on_errors()
-        result = await connection.find(TestModel.name == "Dummy").fetch.all()
-        assert len(result) == 0
+    result = await driver.fetch(when(InnerTestModel.id == 10)).one()
+    assert result.id == model.id
+    assert result.name == model.name
+    assert result.toggle == model.toggle
+    assert result.decimal == model.decimal
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
+async def test_driver(driver: BaseDriver):
+    await driver.add([model := TestModel(name="dummy")])
+
+    result = await driver.fetch(when(TestModel.name == "dummy")).one()
+    assert result.name == model.name
+
+    await driver.update(when(TestModel.id == result.id), {"name": "Dummy"})
+    result = await driver.fetch(when(TestModel.id == result.id)).one()
+    assert result.name == "Dummy"
+
+    await driver.delete(when(TestModel.name == "Dummy"))
+    result = await driver.fetch(when(TestModel.name == "Dummy")).get()
+    assert len(result) == 0
+
+
+@pytest.mark.asyncio()
 async def test_fetch(driver):
     async with driver as connection:
         await connection.add(model := TestModel(name="dummy")).raise_on_errors()
@@ -179,8 +92,7 @@ async def test_fetch(driver):
         assert result.name == model.name
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_update(driver):
     async with driver as connection:
         await connection.add(model := TestModel(name="dummy")).raise_on_errors()
@@ -192,8 +104,7 @@ async def test_update(driver):
         assert result.name == model.name
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_delete(driver):
     async with driver as connection:
         await connection.add(model := TestModel(name="dummy")).raise_on_errors()
@@ -203,8 +114,7 @@ async def test_delete(driver):
         assert len(result.value) == 0
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_count(driver):
     async with driver as connection:
         await connection.add(
@@ -215,8 +125,7 @@ async def test_count(driver):
         assert result == 2
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_sync_schema(driver):
     async with driver as connection:
         await connection.schema(test_models).create_models().raise_on_errors()
@@ -231,8 +140,7 @@ async def test_sync_schema(driver):
         assert a.id != b.id
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_detached_model_sync(driver):
     async with driver as connection:
         await connection.add(a := TestModel(name="dummy")).raise_on_errors()
@@ -244,8 +152,7 @@ async def test_detached_model_sync(driver):
         assert r.name == "Dummy"
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_detached_model_delete(driver):
     async with driver as connection:
         await connection.add(a := TestModel(name="dummy")).raise_on_errors()
@@ -257,8 +164,7 @@ async def test_detached_model_delete(driver):
         assert len(r.value) == 0
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_driver_delete_query(driver):
     async with driver as connection:
         await connection.add(
@@ -273,8 +179,7 @@ async def test_driver_delete_query(driver):
         assert r[0].name == "dummy2"
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_driver_update_query(driver):
     async with driver as connection:
         await connection.add(
@@ -303,8 +208,7 @@ async def test_driver_update_query(driver):
         assert all(m.id != ignore_id for m in result)
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_load_changes(driver):
     async with driver as connection:
         await connection.add(m := TestModel(name="dummy")).raise_on_errors()
@@ -381,8 +285,7 @@ class LazyLoadFieldBPydantic(pydantic.BaseModel):
     a: LazyLoadTheRelated[LazyLoadFieldAPydantic]
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 @pytest.mark.parametrize(
     "models",
     [
@@ -412,8 +315,7 @@ async def test_lazy_load_field(driver, models):
         assert {b.id, c.id} == {m.id for m in a_b}
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_join_queries(driver):
     join_collection = ModelCollection()
 
@@ -450,8 +352,7 @@ async def test_join_queries(driver):
         assert {10, 11} == {m.id for m in result}
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_join_deletes(driver):
     join_collection = ModelCollection()
 
@@ -489,8 +390,7 @@ async def test_join_deletes(driver):
         assert {m.id for m in result} == {12}
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_join_updates(driver):
     join_collection = ModelCollection()
 
@@ -530,8 +430,7 @@ async def test_join_updates(driver):
         assert {m.id for m in result} == {10, 11}
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_join_counts(driver):
     join_collection = ModelCollection()
 
@@ -570,8 +469,7 @@ async def test_join_counts(driver):
         assert result == 2
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_composite_keys(driver):
     composite_collection = ModelCollection()
 
@@ -629,8 +527,7 @@ async def test_composite_keys(driver):
         assert len(result) == 1
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_composite_key_lazy_loads(driver):
     composite_collection = ModelCollection()
 
@@ -695,8 +592,7 @@ class AssociationTable:
     id_b: Annotated[int, Key | ReferenceTo(AssociationModelB.id)]
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_association_tables(driver):
     async with driver as connection:
         schema = connection.schema(association_collection)
@@ -724,8 +620,7 @@ async def test_association_tables(driver):
         assert {m.id for m in b} == {20, 21}
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_transaction_commit(driver):
     collection = ModelCollection()
 
@@ -747,8 +642,7 @@ async def test_transaction_commit(driver):
         assert result.id == 10
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_transaction_rollback(driver):
     collection = ModelCollection()
 
@@ -771,8 +665,7 @@ async def test_transaction_rollback(driver):
         assert len(result.value) == 0
 
 
-@pytest.mark.asyncio
-@parametrize_drivers()
+@pytest.mark.asyncio()
 async def test_transaction_exception(driver):
     collection = ModelCollection()
 
