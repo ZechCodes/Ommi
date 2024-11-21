@@ -24,7 +24,7 @@ class BaseDriver(ABC):
     # ---------------------------------------- #
     @classmethod
     @abstractmethod
-    async def connect(cls, settings: dict[str, Any] | None = None) -> "BaseDriver":
+    def connect(cls, settings: dict[str, Any] | None = None) -> "BaseDriver":
         """Connects to the database."""
         ...
 
@@ -37,7 +37,7 @@ class BaseDriver(ABC):
     # Transaction Management                   #
     # ---------------------------------------- #
     @abstractmethod
-    async def transaction(self) -> "BaseDriverTransaction":
+    def transaction(self) -> "BaseDriverTransaction":
         """Creates a transaction for the database."""
         ...
 
