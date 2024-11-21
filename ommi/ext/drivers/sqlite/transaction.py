@@ -1,4 +1,3 @@
-import sqlite3
 from typing import Any, Iterable, TYPE_CHECKING
 
 from tramp.async_batch_iterator import AsyncBatchIterator
