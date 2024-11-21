@@ -39,7 +39,7 @@ class SQLiteTransaction(BaseDriverTransaction):
     async def delete(self, predicate: "ASTGroupNode"):
         pass
 
-    async def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[OmmiModel]":
+    def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[OmmiModel]":
         pass
 
     async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]) -> "Iterable[OmmiModel]":
