@@ -8,6 +8,7 @@ from ommi.drivers.exceptions import DriverConnectFailed
 from ommi.ext.drivers.sqlite.transaction import SQLiteTransaction
 
 import ommi.ext.drivers.sqlite.schema_management as schema_management
+import ommi.ext.drivers.sqlite.add_query as add_query
 
 
 if TYPE_CHECKING:
@@ -44,8 +45,8 @@ class SQLiteDriver(BaseDriver):
     def transaction(self) -> SQLiteTransaction:
         return SQLiteTransaction(self.connection.cursor())
 
-        pass
     async def add(self, models: "Iterable[DBModel]") -> "Iterable[DBModel]":
+        return await add_query.add_models(self.connection.cursor(), models)
 
     async def count(self, predicate: "ASTGroupNode") -> int:
         pass
