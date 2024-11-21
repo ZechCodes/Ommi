@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 class BaseDriverException(Exception):
     """Base exception for driver exceptions."""
-    def __init__(self, *args, driver: "BaseDriver"):
+    def __init__(self, *args, driver: "BaseDriver | Type[BaseDriver]"):
         super().__init__(*args)
 
         self.driver = driver
