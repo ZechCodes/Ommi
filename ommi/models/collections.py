@@ -6,18 +6,20 @@ model collection that is the default collection.
 """
 
 
-from typing import Type, Generic
+from typing import Type, TYPE_CHECKING
 
-from ommi.drivers.driver_types import TModel
+if TYPE_CHECKING:
+    from ommi.models import OmmiModel
+
 
 _global_collection = None
 
 
-class ModelCollection(Generic[TModel]):
+class ModelCollection:
     def __init__(self):
         self.models = set()
 
-    def add(self, model: "Type[TModel]"):
+    def add(self, model: "Type[OmmiModel]"):
         self.models.add(model)
 
     def __repr__(self):
