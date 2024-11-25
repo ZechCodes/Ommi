@@ -56,6 +56,13 @@ async def driver(request) -> Generator[BaseDriver, None, None]:
 
 
 @pytest.mark.asyncio()
+async def test_async_batch_iterator_offset(driver):
+    await driver.add([TestModel(name=f"dummy_{i}") for i in range(10)])
+    result = await driver.fetch(when(TestModel).limit(5, 1)).get()
+    assert result[0].name == "dummy_5"
+
+
+@pytest.mark.asyncio()
 async def test_insert_and_fetch(driver):
     collection = ModelCollection()
 
