@@ -52,7 +52,7 @@ class SQLiteDriver(BaseDriver):
         return await add_query.add_models(self.connection.cursor(), models)
 
     async def count(self, predicate: "ASTGroupNode") -> int:
-        pass
+        return await fetch_query.count_models(self.connection.cursor(), predicate)
 
     async def delete(self, predicate: "ASTGroupNode"):
         await delete_query.delete_models(self.connection.cursor(), predicate)
