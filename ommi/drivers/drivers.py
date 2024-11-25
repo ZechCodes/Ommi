@@ -9,6 +9,7 @@ DatabaseFailure results, which are then returned to the caller."""
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, TYPE_CHECKING
 
+import ommi
 
 if TYPE_CHECKING:
     from ommi.drivers import BaseDriverTransaction
@@ -88,8 +89,14 @@ class BaseDriver(ABC):
     # Context Management                       #
     # ---------------------------------------- #
     async def __aenter__(self):
+        self.__active_driver_reset_token = ommi.driver_context.active_driver.set(self)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        try:
+            ommi.driver_context.active_driver.reset(self.__active_driver_reset_token)
+        except ValueError:
+            pass
+
         await self.disconnect()
 
