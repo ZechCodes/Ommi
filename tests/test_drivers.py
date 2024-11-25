@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Generator
 
 import pytest
 import pytest_asyncio
@@ -8,6 +8,7 @@ import pydantic
 from ommi import BaseDriver
 
 from ommi import StoreAs
+from ommi.driver_context import UseDriver
 from ommi.ext.drivers.sqlite import SQLiteDriver
 from ommi.models.collections import ModelCollection
 from ommi.models import ommi_model
@@ -22,6 +23,26 @@ from ommi.query_ast import when
 test_models = ModelCollection()
 
 
+
+
+class WithModels:
+    def __init__(self, driver, models):
+        self.driver = driver
+        self.models = models
+    async def __aenter__(self):
+        await self.driver.apply_schema(self.models)
+        return
+
+    async def __aexit__(self, *_):
+        await self.driver.delete_schema(self.models)
+
+
+@pytest.fixture(autouse=True)
+def use_driver(driver):
+    with UseDriver(driver):
+        yield
+
+
 @ommi_model(collection=test_models)
 @dataclass
 class TestModel:
@@ -30,15 +51,14 @@ class TestModel:
 
 
 @pytest_asyncio.fixture(params=[SQLiteDriver], scope="function")
-async def driver(request):
+async def driver(request) -> Generator[BaseDriver, None, None]:
     async with request.param.connect() as driver:
-        await driver.apply_schema(test_models)
-        yield driver
-        await driver.delete_schema(test_models)
+        async with WithModels(driver, test_models):
+            yield driver
 
 
 @pytest.mark.asyncio()
-async def test_insert_and_fetch(driver: "BaseDriver"):
+async def test_insert_and_fetch(driver):
     collection = ModelCollection()
 
     @ommi_model(collection=collection)
@@ -49,26 +69,24 @@ async def test_insert_and_fetch(driver: "BaseDriver"):
         toggle: bool
         decimal: float
 
-    await driver.delete_schema(collection)
-    await driver.apply_schema(collection)
+    async with WithModels(driver, collection):
+        await driver.add(
+            (model := InnerTestModel(10, "testing", True, 1.23),)
+        )
+        assert model.id == 10
+        assert model.name == "testing"
+        assert model.toggle == True
+        assert model.decimal == 1.23
 
-    await driver.add(
-        (model := InnerTestModel(10, "testing", True, 1.23),)
-    )
-    assert model.id == 10
-    assert model.name == "testing"
-    assert model.toggle == True
-    assert model.decimal == 1.23
-
-    result = await driver.fetch(when(InnerTestModel.id == 10)).one()
-    assert result.id == model.id
-    assert result.name == model.name
-    assert result.toggle == model.toggle
-    assert result.decimal == model.decimal
+        result = await driver.fetch(when(InnerTestModel.id == 10)).one()
+        assert result.id == model.id
+        assert result.name == model.name
+        assert result.toggle == model.toggle
+        assert result.decimal == model.decimal
 
 
 @pytest.mark.asyncio()
-async def test_driver(driver: BaseDriver):
+async def test_driver(driver):
     await driver.add([model := TestModel(name="dummy")])
 
     result = await driver.fetch(when(TestModel.name == "dummy")).one()
@@ -85,149 +103,99 @@ async def test_driver(driver: BaseDriver):
 
 @pytest.mark.asyncio()
 async def test_fetch(driver):
-    async with driver as connection:
-        await connection.add(model := TestModel(name="dummy")).raise_on_errors()
+    await driver.add([model := TestModel(name="dummy")])
 
-        result = await connection.find(TestModel.name == "dummy").fetch.one()
-        assert result.name == model.name
+    result = await driver.fetch(when(TestModel.name == "dummy")).one()
+    assert result.name == model.name
 
 
 @pytest.mark.asyncio()
 async def test_update(driver):
-    async with driver as connection:
-        await connection.add(model := TestModel(name="dummy")).raise_on_errors()
+    await driver.add([model := TestModel(name="dummy")])
 
-        model.name = "Dummy"
-        await model.save().raise_on_errors()
+    model.name = "Dummy"
+    await driver.update(when(TestModel.name == "dummy"), {"name": "Dummy"})
 
-        result = await connection.find(TestModel.name == "Dummy").fetch.one()
-        assert result.name == model.name
+    result = await driver.fetch(when(TestModel.name == "Dummy")).one()
+    assert result.name == model.name
 
 
 @pytest.mark.asyncio()
 async def test_delete(driver):
-    async with driver as connection:
-        await connection.add(model := TestModel(name="dummy")).raise_on_errors()
+    await driver.add([model := TestModel(name="dummy")])
 
-        await model.delete().raise_on_errors()
-        result = await connection.find(TestModel).fetch()
-        assert len(result.value) == 0
+    await driver.delete(when(TestModel.id == model.id))
+    result = await driver.fetch(when(TestModel)).get()
+    assert len(result) == 0
 
 
 @pytest.mark.asyncio()
 async def test_count(driver):
-    async with driver as connection:
-        await connection.add(
-            TestModel(name="dummy1"), TestModel(name="dummy2")
-        ).raise_on_errors()
+    await driver.add(
+        [TestModel(name="dummy1"), TestModel(name="dummy2")]
+    )
 
-        result = await TestModel.count().value
-        assert result == 2
+    result = await driver.count(when(TestModel))
+    assert result == 2
 
 
 @pytest.mark.asyncio()
 async def test_sync_schema(driver):
-    async with driver as connection:
-        await connection.schema(test_models).create_models().raise_on_errors()
+    a, b = await driver.add(
+        [
+            TestModel(name="dummy1"),
+            TestModel(name="dummy2"),
+        ],
+    )
 
-        await connection.add(
-            a := TestModel(name="dummy1"),
-            b := TestModel(name="dummy2"),
-        ).raise_on_errors()
-
-        assert isinstance(a.id, int)
-        assert isinstance(b.id, int)
-        assert a.id != b.id
-
-
-@pytest.mark.asyncio()
-async def test_detached_model_sync(driver):
-    async with driver as connection:
-        await connection.add(a := TestModel(name="dummy")).raise_on_errors()
-
-        b = TestModel(name="Dummy", id=a.id)
-        await b.save().raise_on_errors()
-
-        r = await connection.find(TestModel).fetch.one()
-        assert r.name == "Dummy"
-
-
-@pytest.mark.asyncio()
-async def test_detached_model_delete(driver):
-    async with driver as connection:
-        await connection.add(a := TestModel(name="dummy")).raise_on_errors()
-
-        b = TestModel(name="Dummy", id=a.id)
-        await b.delete().raise_on_errors()
-
-        r = await connection.find(TestModel).fetch()
-        assert len(r.value) == 0
+    assert isinstance(a.id, int)
+    assert isinstance(b.id, int)
+    assert a.id != b.id
 
 
 @pytest.mark.asyncio()
 async def test_driver_delete_query(driver):
-    async with driver as connection:
-        await connection.add(
+    await driver.add(
+        [
             TestModel(name="dummy1"),
             TestModel(name="dummy2"),
-        ).raise_on_errors()
+        ],
+    )
 
-        await connection.find(TestModel.name == "dummy1").delete().raise_on_errors()
+    await driver.delete(when(TestModel.name == "dummy1"))
 
-        r = await connection.find(TestModel).fetch.all()
-        assert len(r) == 1
-        assert r[0].name == "dummy2"
+    r = await driver.fetch(when(TestModel)).get()
+    assert len(r) == 1
+    assert r[0].name == "dummy2"
 
 
 @pytest.mark.asyncio()
 async def test_driver_update_query(driver):
-    async with driver as connection:
-        await connection.add(
+    await driver.add(
+        [
             TestModel(name="dummy1"),
             TestModel(name="dummy2"),
             TestModel(name="dummy3"),
             TestModel(name="dummy4"),
-        ).raise_on_errors()
+        ],
+    )
 
-        ignore_id, new_name = 2, "dummy"
-        await connection.find(TestModel.id != ignore_id).set(
-            name=new_name
-        ).raise_on_errors()
-        result = await connection.find(TestModel.name == new_name).fetch.all()
-        assert len(result) > 1
-        assert all(m.name == new_name for m in result)
-        assert all(m.id != ignore_id for m in result)
+    ignore_id, new_name = 2, "dummy"
+    await driver.update(when(TestModel.id != ignore_id), {"name": new_name})
+    result = await driver.fetch(when(TestModel.name == new_name)).get()
+    assert len(result) > 1
+    assert all(m.name == new_name for m in result)
+    assert all(m.id != ignore_id for m in result)
 
-        ignore_id, new_name = 1, "DUMMY"
-        await connection.find(
-            (TestModel.id != ignore_id).And(TestModel.name == "dummy")
-        ).set(name=new_name).raise_on_errors()
-        result = await connection.find(TestModel.name == new_name).fetch.all()
-        assert len(result) > 1
-        assert all(m.name == new_name for m in result)
-        assert all(m.id != ignore_id for m in result)
-
-
-@pytest.mark.asyncio()
-async def test_load_changes(driver):
-    async with driver as connection:
-        await connection.add(m := TestModel(name="dummy")).raise_on_errors()
-
-        await connection.find(TestModel.name == "dummy").set(
-            name="Dummy"
-        ).raise_on_errors()
-        assert m.name == "dummy"
-
-        await m.reload().raise_on_errors()
-        assert m.name == "Dummy"
-
-
-@pytest.mark.asyncio
-async def test_async_with_connection():
-    async with SQLiteDriver.from_config(
-        SQLiteConfig(filename=":memory:")
-    ) as connection:
-        assert isinstance(connection, SQLiteDriver)
+    ignore_id, new_name = 1, "DUMMY"
+    await driver.update(
+        when(TestModel.id != ignore_id).And(TestModel.name == "dummy"),
+        {"name": new_name},
+    )
+    result = await driver.fetch(when(TestModel.name == new_name)).get()
+    assert len(result) > 1
+    assert all(m.name == new_name for m in result)
+    assert all(m.id != ignore_id for m in result)
 
 
 lazy_load_field_collection = ModelCollection()
@@ -298,15 +266,12 @@ class LazyLoadFieldBPydantic(pydantic.BaseModel):
     ids=lambda params: params[~0],
 )
 async def test_lazy_load_field(driver, models):
-    model_a, model_b, _ = models
-    async with driver as connection:
-        schema = connection.schema(lazy_load_field_collection)
-        await schema.delete_models().raise_on_errors()
-        await schema.create_models().raise_on_errors()
+    async with WithModels(driver, lazy_load_field_collection):
+        model_a, model_b, _ = models
 
-        await connection.add(a := model_a(id=10, name="testing")).raise_on_errors()
-        await connection.add(b := model_b(id=10, a_id=a.id)).raise_on_errors()
-        await connection.add(c := model_b(id=11, a_id=a.id)).raise_on_errors()
+        await driver.add([a := model_a(id=10, name="testing")])
+        await driver.add([b := model_b(id=10, a_id=a.id)])
+        await driver.add([c := model_b(id=11, a_id=a.id)])
 
         b_a = await b.a
         assert b_a.id == a.id
@@ -331,24 +296,22 @@ async def test_join_queries(driver):
         id: int
         a_id: Annotated[int, ReferenceTo(JoinModelA.id)]
 
-    async with driver as connection:
-        schema = connection.schema(join_collection)
-        await schema.delete_models().raise_on_errors()
-        await schema.create_models().raise_on_errors()
+    async with WithModels(driver, join_collection):
+        await driver.add(
+            [
+                JoinModelA(id=10, name="testing"),
+                JoinModelB(id=10, a_id=10),
+                JoinModelB(id=11, a_id=10),
+            ],
+        )
 
-        await connection.add(
-            JoinModelA(id=10, name="testing"),
-            JoinModelB(id=10, a_id=10),
-            JoinModelB(id=11, a_id=10),
-        ).raise_on_errors()
+        await driver.add(
+            [JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11)],
+        )
 
-        await connection.add(
-            JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11)
-        ).raise_on_errors()
-
-        result = await connection.find(
-            JoinModelB, JoinModelA.name == "testing"
-        ).fetch.all()
+        result = await driver.fetch(
+            when(JoinModelB, JoinModelA.name == "testing")
+        ).get()
         assert {10, 11} == {m.id for m in result}
 
 
@@ -368,25 +331,23 @@ async def test_join_deletes(driver):
         id: int
         a_id: Annotated[int, ReferenceTo(JoinModelA.id)]
 
-    async with driver as connection:
-        schema = connection.schema(join_collection)
-        await schema.delete_models().raise_on_errors()
-        await schema.create_models().raise_on_errors()
+    async with WithModels(driver, join_collection):
+        await driver.add(
+            [
+                JoinModelA(id=10, name="testing"),
+                JoinModelB(id=10, a_id=10),
+                JoinModelB(id=11, a_id=10),
+            ],
+        )
 
-        await connection.add(
-            JoinModelA(id=10, name="testing"),
-            JoinModelB(id=10, a_id=10),
-            JoinModelB(id=11, a_id=10),
-        ).raise_on_errors()
+        await driver.add(
+            [JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11)],
+        )
 
-        await connection.add(
-            JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11)
-        ).raise_on_errors()
-
-        await connection.find(
-            JoinModelB, JoinModelA.name == "testing"
-        ).delete().raise_on_errors()
-        result = await connection.find(JoinModelB).fetch.all()
+        await driver.delete(
+            when(JoinModelB, JoinModelA.name == "testing")
+        )
+        result = await driver.fetch(when(JoinModelB)).get()
         assert {m.id for m in result} == {12}
 
 
@@ -408,25 +369,21 @@ async def test_join_updates(driver):
 
         a_id: Annotated[int, ReferenceTo(JoinModelA.id)]
 
-    async with driver as connection:
-        schema = connection.schema(join_collection)
-        await schema.delete_models().raise_on_errors()
-        await schema.create_models().raise_on_errors()
+    async with WithModels(driver, join_collection):
+        await driver.add(
+            [
+                JoinModelA(id=10, name="testing"),
+                JoinModelB(id=10, value="foo", a_id=10),
+                JoinModelB(id=11, value="bar", a_id=10),
+            ],
+        )
 
-        await connection.add(
-            JoinModelA(id=10, name="testing"),
-            JoinModelB(id=10, value="foo", a_id=10),
-            JoinModelB(id=11, value="bar", a_id=10),
-        ).raise_on_errors()
+        await driver.add(
+            [JoinModelA(id=11, name="foobar"), JoinModelB(id=12, value="foo", a_id=11)],
+        )
 
-        await connection.add(
-            JoinModelA(id=11, name="foobar"), JoinModelB(id=12, value="foo", a_id=11)
-        ).raise_on_errors()
-
-        await connection.find(JoinModelB, JoinModelA.name == "testing").set(
-            value="foobar"
-        ).raise_on_errors()
-        result = await connection.find(JoinModelB.value == "foobar").fetch.all()
+        await driver.update(when(JoinModelB, JoinModelA.name == "testing"), {"value": "foobar"})
+        result = await driver.fetch(when(JoinModelB.value == "foobar")).get()
         assert {m.id for m in result} == {10, 11}
 
 
@@ -446,26 +403,20 @@ async def test_join_counts(driver):
         id: int
         a_id: Annotated[int, ReferenceTo(JoinModelA.id)]
 
-    async with driver as connection:
-        schema = connection.schema(join_collection)
-        await schema.delete_models().raise_on_errors()
-        await schema.create_models().raise_on_errors()
-
-        await connection.add(
-            JoinModelA(id=10, name="testing"),
-            JoinModelB(id=10, a_id=10),
-            JoinModelB(id=11, a_id=10),
-        ).raise_on_errors()
-
-        await connection.add(
-            JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11)
-        ).raise_on_errors()
-
-        result = (
-            await connection.find(JoinModelB, JoinModelA.name == "testing")
-            .count()
-            .value
+    async with WithModels(driver, join_collection):
+        await driver.add(
+            [
+                JoinModelA(id=10, name="testing"),
+                JoinModelB(id=10, a_id=10),
+                JoinModelB(id=11, a_id=10),
+            ],
         )
+
+        await driver.add(
+            [JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11),]
+        )
+
+        result = await driver.count(when(JoinModelB, JoinModelA.name == "testing"))
         assert result == 2
 
 
@@ -487,43 +438,35 @@ async def test_composite_keys(driver):
         id1: Annotated[int, ReferenceTo(CompositeModelA.id1)]
         id2: Annotated[int, ReferenceTo(CompositeModelA.id2)]
 
-    async with driver as connection:
-        schema = connection.schema(composite_collection)
-        await schema.delete_models().raise_on_errors()
-        await schema.create_models().raise_on_errors()
+    async with WithModels(driver, composite_collection):
+        await driver.add(
+            [
+                CompositeModelA(id1=10, id2=20, value="foo"),
+                CompositeModelA(id1=10, id2=21, value="bar"),
+                CompositeModelB(id=1, id1=10, id2=20),
+                CompositeModelB(id=2, id1=10, id2=21),
+            ],
+        )
 
-        await connection.add(
-            CompositeModelA(id1=10, id2=20, value="foo"),
-            CompositeModelA(id1=10, id2=21, value="bar"),
-            CompositeModelB(id=1, id1=10, id2=20),
-            CompositeModelB(id=2, id1=10, id2=21),
-        ).raise_on_errors()
-
-        result = await connection.find(
-            CompositeModelB, CompositeModelA.value == "foo"
-        ).fetch.all()
+        result = await driver.fetch(
+            when(CompositeModelB, CompositeModelA.value == "foo")
+        ).get()
         assert len(result) == 1
         assert result[0].id == 1
 
-        result = (
-            await connection.find(CompositeModelA, CompositeModelB.id == 1)
-            .count()
-            .value
-        )
+        result = await driver.count(when(CompositeModelA, CompositeModelB.id == 1))
         assert result == 1
 
-        await connection.find(CompositeModelA, CompositeModelB.id == 1).set(
-            value="FOOBAR"
-        ).raise_on_errors()
-        result = await connection.find(CompositeModelA.value == "FOOBAR").fetch.all()
+        await driver.update(when(CompositeModelA, CompositeModelB.id == 1), {"value": "FOOBAR"})
+        result = await driver.fetch(when(CompositeModelA.value == "FOOBAR")).get()
         assert len(result) == 1
         assert result[0].id1 == 10
         assert result[0].id2 == 20
 
-        await connection.find(
-            CompositeModelA, CompositeModelB.id == 1
-        ).delete().raise_on_errors()
-        result = await connection.find(CompositeModelA).fetch.all()
+        await driver.delete(
+            when(CompositeModelA, CompositeModelB.id == 1)
+        )
+        result = await driver.fetch(when(CompositeModelA)).get()
         assert len(result) == 1
 
 
@@ -547,22 +490,20 @@ async def test_composite_key_lazy_loads(driver):
 
         a: LazyLoadEveryRelated[CompositeModelA]
 
-    async with driver as connection:
-        schema = connection.schema(composite_collection)
-        await schema.delete_models().raise_on_errors()
-        await schema.create_models().raise_on_errors()
+    async with WithModels(driver, composite_collection):
+        await driver.add(
+            [
+                CompositeModelA(id1=10, id2=20, value="foo"),
+                CompositeModelA(id1=10, id2=21, value="bar"),
+                CompositeModelB(
+                    id=1,
+                    id1=10,
+                    id2=20,
+                ),
+            ],
+        )
 
-        await connection.add(
-            CompositeModelA(id1=10, id2=20, value="foo"),
-            CompositeModelA(id1=10, id2=21, value="bar"),
-            CompositeModelB(
-                id=1,
-                id1=10,
-                id2=20,
-            ),
-        ).raise_on_errors()
-
-        result = await connection.find(CompositeModelB).fetch.one()
+        result = await driver.fetch(when(CompositeModelB)).one()
         a = await result.a
         assert result.id == 1
         assert len(a) == 1
@@ -594,26 +535,24 @@ class AssociationTable:
 
 @pytest.mark.asyncio()
 async def test_association_tables(driver):
-    async with driver as connection:
-        schema = connection.schema(association_collection)
-        await schema.delete_models().raise_on_errors()
-        await schema.create_models().raise_on_errors()
+    async with WithModels(driver, association_collection):
+        await driver.add(
+            [
+                # A Models
+                AssociationModelA(id=10),
+                AssociationModelA(id=11),
+                # B Models
+                AssociationModelB(id=20),
+                AssociationModelB(id=21),
+                AssociationModelB(id=22),
+                # Association Table
+                AssociationTable(id_a=10, id_b=20),
+                AssociationTable(id_a=10, id_b=21),
+                AssociationTable(id_a=11, id_b=22),
+            ],
+        )
 
-        await connection.add(
-            # A Models
-            AssociationModelA(id=10),
-            AssociationModelA(id=11),
-            # B Models
-            AssociationModelB(id=20),
-            AssociationModelB(id=21),
-            AssociationModelB(id=22),
-            # Association Table
-            AssociationTable(id_a=10, id_b=20),
-            AssociationTable(id_a=10, id_b=21),
-            AssociationTable(id_a=11, id_b=22),
-        ).raise_on_errors()
-
-        result = await connection.find(AssociationModelA.id == 10).fetch.one()
+        result = await driver.fetch(when(AssociationModelA.id == 10)).one()
         b = await result.b
         assert result.id == 10
         assert len(b) == 2
@@ -629,16 +568,13 @@ async def test_transaction_commit(driver):
     class InnerTestModel:
         id: int
 
-    async with driver as connection:
-        await connection.schema(collection).delete_models().raise_on_errors()
-        await connection.schema(collection).create_models().raise_on_errors()
-
-        async with connection.transaction() as transaction:
+    async with WithModels(driver, collection):
+        async with driver.transaction() as transaction:
             await transaction.add(
-                InnerTestModel(10)
-            ).raise_on_errors()
+                [InnerTestModel(10)],
+            )
 
-        result = await connection.find(InnerTestModel.id == 10).fetch.one()
+        result = await driver.fetch(when(InnerTestModel.id == 10)).one()
         assert result.id == 10
 
 
@@ -651,18 +587,15 @@ async def test_transaction_rollback(driver):
     class InnerTestModel:
         id: int
 
-    async with driver as connection:
-        await connection.schema(collection).delete_models().raise_on_errors()
-        await connection.schema(collection).create_models().raise_on_errors()
-
-        async with connection.transaction() as transaction:
+    async with WithModels(driver, collection):
+        async with driver.transaction() as transaction:
             await transaction.add(
-                InnerTestModel(10)
-            ).raise_on_errors()
+                [InnerTestModel(10)],
+            )
             await transaction.rollback()
 
-        result = await connection.find(InnerTestModel).fetch()
-        assert len(result.value) == 0
+        result = await driver.count(when(InnerTestModel))
+        assert result == 0
 
 
 @pytest.mark.asyncio()
@@ -676,17 +609,14 @@ async def test_transaction_exception(driver):
 
     class TestException(Exception): ...
 
-    async with driver as connection:
-        await connection.schema(collection).delete_models().raise_on_errors()
-        await connection.schema(collection).create_models().raise_on_errors()
-
+    async with WithModels(driver, collection):
         with pytest.raises(TestException):
-            async with connection.transaction() as transaction:
+            async with driver.transaction() as transaction:
                 await transaction.add(
-                    InnerTestModel(10)
-                ).raise_on_errors()
+                    [InnerTestModel(10)],
+                )
 
                 raise TestException()
 
-        result = await connection.find(InnerTestModel).fetch()
-        assert len(result.value) == 0
+        result = await driver.fetch(when(InnerTestModel)).get()
+        assert len(result) == 0
