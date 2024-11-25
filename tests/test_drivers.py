@@ -23,8 +23,6 @@ from ommi.query_ast import when
 test_models = ModelCollection()
 
 
-
-
 class WithModels:
     def __init__(self, driver, models):
         self.driver = driver
