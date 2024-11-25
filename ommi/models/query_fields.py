@@ -203,10 +203,10 @@ class LazyLoadTheRelated(Generic[T], LazyQueryField):
         return (await self.result).value
 
     async def _fetch(self):
-        with Result.build() as builder:
-            builder.set(await self._get_driver().find(self._query.limit(1)).fetch.one())
+        with Result.build() as result:
+            result.value = await self._get_driver().fetch(self._query.limit(1)).one()
 
-        return builder.result
+        return result
 
 
 class LazyLoadEveryRelated(Generic[T], LazyQueryField):
@@ -222,7 +222,7 @@ class LazyLoadEveryRelated(Generic[T], LazyQueryField):
         return (await self.result).value
 
     async def _fetch(self):
-        with Result.build() as builder:
-            builder.set(await self._get_driver().find(self._query).fetch.all())
+        with Result.build() as result:
+            result.value = await self._get_driver().fetch(self._query).get()
 
-        return builder.result
+        return result
