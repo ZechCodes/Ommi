@@ -1,3 +1,4 @@
+import dataclasses
 from collections.abc import Callable
 
 from tramp.async_batch_iterator import AsyncBatchIterator
@@ -19,7 +20,7 @@ def fetch_models(cursor: "Cursor", predicate: "ASTGroupNode") -> "AsyncBatchIter
 
 
 async def count_models(cursor: "Cursor", predicate: "ASTGroupNode") -> "int":
-    (sql, params), model = _generate_select_sql(predicate, count=True)
+    (sql, params), model = _generate_select_sql(build_query(predicate), count=True)
     cursor.execute(sql, params)
     return cursor.fetchone()[0]
 
@@ -27,8 +28,12 @@ async def count_models(cursor: "Cursor", predicate: "ASTGroupNode") -> "int":
 def _create_fetch_query_batcher(
     cursor: "Cursor", predicate: "ASTGroupNode",
 ) -> "Callable[[int], Awaitable[Iterable[DBModel]]]":
+    query = build_query(predicate)
     async def fetch_query_batcher(batch_index: int) -> "Iterable[DBModel]":
-        (sql, params), model = _generate_select_sql(predicate, batch_index, BATCH_SIZE)
+        if query.limit > 0 and BATCH_SIZE * batch_index >= query.limit:
+            return ()
+
+        (sql, params), model = _generate_select_sql(query, batch_index, BATCH_SIZE)
         cursor.execute(sql, params)
         return (map_to_model(row, model) for row in cursor.fetchall())
 
@@ -36,7 +41,7 @@ def _create_fetch_query_batcher(
 
 @overload
 def _generate_select_sql(
-    predicate: "ASTGroupNode",
+    query: "SelectQuery",
     batch_index: int,
     batch_size: int,
 ) -> "tuple[SQLQuery, Type[DBModel]]":
@@ -45,7 +50,7 @@ def _generate_select_sql(
 
 @overload
 def _generate_select_sql(
-    predicate: "ASTGroupNode",
+    query: "SelectQuery",
     *,
     count: bool,
 ) -> "tuple[SQLQuery, Type[DBModel]]":
@@ -53,19 +58,18 @@ def _generate_select_sql(
 
 
 def _generate_select_sql(
-    predicate: "ASTGroupNode",
+    query: "SelectQuery",
     batch_index: int = 0,
     batch_size: int = -1,
     *,
     count: bool = False,
 ) -> "tuple[SQLQuery, Type[DBModel]]":
-    query = build_query(predicate)
     if not count and batch_size > 0:
-        query.offset = batch_index * batch_size
-        if 0 < query.limit < query.offset + batch_size:
-            query.limit = query.limit - query.offset
-        else:
-            query.limit = batch_size
+        limit, offset = batch_size, batch_index * batch_size
+        if 0 < query.limit <= offset + batch_size:
+            limit = query.limit - offset
+
+        query = dataclasses.replace(query, offset=offset + query.offset, limit=limit)
 
     query_str = _build_select_query(query, count=count)
     return (query_str, query.values), query.model
