@@ -27,6 +27,7 @@ class WithModels:
     def __init__(self, driver, models):
         self.driver = driver
         self.models = models
+
     async def __aenter__(self):
         await self.driver.apply_schema(self.models)
         return
