@@ -40,6 +40,11 @@ class ModelInsertError(DriverAddFailed):
     pass
 
 
+class ModelUpdateError(DriverOperationError):
+    """Raised specifically when updating a model instance fails."""
+    pass
+
+
 class SchemaError(BaseDriverException):
     """Raised for errors encountered during schema manipulation (apply/delete)."""
     pass
