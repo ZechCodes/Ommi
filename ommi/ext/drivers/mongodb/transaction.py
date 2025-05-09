@@ -63,20 +63,14 @@ class MongoDBTransaction(BaseDriverTransaction):
         self._is_open = False
 
     async def commit(self):
-        print("MongoDBTransaction: Attempting commit.") # DEBUG PRINT
         if not self._is_open: # Check if transaction was already closed (e.g., by rollback)
-            print("MongoDBTransaction: Commit attempted on a closed transaction (self._is_open is False). Skipping.") # DEBUG PRINT
             return
 
         if not self.session or not self.session.in_transaction:
-            print(f"MongoDBTransaction: Commit check failed. Session: {self.session}, InTransaction: {self.session.in_transaction if self.session else 'N/A'}") # DEBUG PRINT
             raise TransactionError("No active transaction to commit.")
         try:
-            print("MongoDBTransaction: Calling session.commit_transaction()") # DEBUG PRINT
             await self.session.commit_transaction()
-            print("MongoDBTransaction: session.commit_transaction() successful.") # DEBUG PRINT
         except Exception as e:
-            print(f"MongoDBTransaction: session.commit_transaction() error: {e}") # DEBUG PRINT
             # As per Motor docs, abort transaction if commit fails and transaction is still active.
             if self.session and self.session.in_transaction:
                 try:
@@ -90,27 +84,20 @@ class MongoDBTransaction(BaseDriverTransaction):
             await self.close() # Ensures session is closed
 
     async def rollback(self):
-        print("MongoDBTransaction: Attempting rollback.") # DEBUG PRINT
         if not self._is_open: # Check if transaction was already closed (e.g., by commit or another rollback)
-            print("MongoDBTransaction: Rollback attempted on a closed transaction (self._is_open is False). Skipping.") # DEBUG PRINT
             return
 
         if not self.session: # No session, nothing to rollback
-            print("MongoDBTransaction: Rollback check failed - no session.") # DEBUG PRINT
             self._is_open = False # Ensure state is consistent
             return
         
         if not self.session.in_transaction:
-            print(f"MongoDBTransaction: Rollback check failed - session not in transaction. Session: {self.session}") # DEBUG PRINT
             await self.close() # Just close the session
             return
 
         try:
-            print("MongoDBTransaction: Calling session.abort_transaction()") # DEBUG PRINT
             await self.session.abort_transaction()
-            print("MongoDBTransaction: session.abort_transaction() successful.") # DEBUG PRINT
         except Exception as e:
-            print(f"MongoDBTransaction: session.abort_transaction() error: {e}") # DEBUG PRINT
             raise TransactionError(f"Failed to rollback transaction: {e}") from e
         finally:
             await self.close() # Ensures session is closed
