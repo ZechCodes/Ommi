@@ -1,1 +1,1 @@
-from .driver import MongoDBDriver, MongoDBConfig, MongoDBConnection
+from .driver import MongoDBDriver, MongoDBSettings

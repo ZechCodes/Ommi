@@ -1,64 +1,93 @@
-from typing import Type, TypeAlias
-from dataclasses import dataclass
+from typing import Type, TypeAlias, Any, Iterable, AsyncIterator
+from dataclasses import dataclass, field
 
 import motor.motor_asyncio
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
 
-from ommi.drivers import DatabaseDriver, DriverConfig
-from ommi.drivers.database_results import async_result
-from ommi.drivers.driver_types import TModel
-from ommi.drivers.drivers import enforce_connection_protocol, connection_context_manager
-from ommi.ext.drivers.mongodb.add_action import MongoDBAddAction
-from ommi.ext.drivers.mongodb.connection_protocol import MongoDBConnection
-from ommi.ext.drivers.mongodb.find_action import MongoDBFindAction
-from ommi.ext.drivers.mongodb.schema_action import MongoDBSchemaAction
+from ommi.drivers import BaseDriver
+from ommi.drivers.exceptions import DriverConnectFailed
 from ommi.models.collections import ModelCollection
-from ommi.models import OmmiModel
 from ommi.query_ast import ASTGroupNode
+from ommi.ext.drivers.mongodb.transaction import MongoDBTransaction
+from ommi.shared_types import DBModel
+from tramp.async_batch_iterator import AsyncBatchIterator
 
-Predicate: TypeAlias = ASTGroupNode | Type[TModel] | bool
+# Import the new helper modules
+import ommi.ext.drivers.mongodb.mongodb_add as mongodb_add
+import ommi.ext.drivers.mongodb.mongodb_fetch as mongodb_fetch
+import ommi.ext.drivers.mongodb.mongodb_delete as mongodb_delete
+import ommi.ext.drivers.mongodb.mongodb_update as mongodb_update
+import ommi.ext.drivers.mongodb.mongodb_schema as mongodb_schema
+
+Predicate: TypeAlias = ASTGroupNode
 
 
 @dataclass
-class MongoDBConfig(DriverConfig):
-    host: str
-    port: int
-    database_name: str
+class MongoDBSettings:
+    host: str = "localhost"
+    port: int = 27017
+    database_name: str = "ommi"
+    username: str | None = None
+    password: str | None = None
+    authSource: str | None = "admin"
     timeout: int = 20000
+    # Example: connection_options: dict[str, Any] = field(default_factory=lambda: {"tlsAllowInvalidCertificates": True})
+    connection_options: dict[str, Any] = field(default_factory=dict)
 
 
-@enforce_connection_protocol
-class MongoDBDriver(
-    DatabaseDriver[MongoDBConnection, OmmiModel],
-    driver_name="mongodb",
-    nice_name="MongoDB",
-):
-    def __init__(self, connection: MongoDBConnection, database):
-        super().__init__(connection)
-        self._db = database
-
-    @async_result
-    async def disconnect(self) -> bool:
-        self._connection.close()
-        self._connected = False
-        return True
-
-    @property
-    def add(self) -> MongoDBAddAction:
-        return MongoDBAddAction(self._connection, self._db)
-
-    def find(self, *predicates: Predicate) -> MongoDBFindAction:
-        return MongoDBFindAction(self._connection, predicates, self._db)
-
-    def schema(
-        self, model_collection: ModelCollection[Type[OmmiModel]] | None = None
-    ) -> MongoDBSchemaAction:
-        return MongoDBSchemaAction(self._connection, model_collection, self._db)
+class MongoDBDriver(BaseDriver):
+    def __init__(self, client: AsyncIOMotorClient, database_name: str):
+        super().__init__()
+        self.client: AsyncIOMotorClient = client
+        self.db: AsyncIOMotorDatabase = client[database_name]
+        self._database_name: str = database_name
 
     @classmethod
-    @connection_context_manager
-    async def from_config(cls, config: MongoDBConfig) -> "MongoDBDriver":
-        connection = motor.motor_asyncio.AsyncIOMotorClient(
-            config.host, config.port, timeoutMS=config.timeout
-        )
-        db = connection.get_database(config.database_name)
-        return cls(connection, db)
+    def connect(cls, settings: MongoDBSettings | None = None) -> "MongoDBDriver":
+        _settings = settings or MongoDBSettings()
+        try:
+            # Ensure the client is properly awaited if necessary, though Motor is non-blocking init
+            client = motor.motor_asyncio.AsyncIOMotorClient(
+                host=_settings.host,
+                port=_settings.port,
+                username=_settings.username,
+                password=_settings.password,
+                authSource=_settings.authSource,
+                serverSelectionTimeoutMS=_settings.timeout,
+                **_settings.connection_options
+            )
+            # Add a ping to ensure server is reachable upon connect
+            # loop = asyncio.get_event_loop()
+            # loop.run_until_complete(client.admin.command('ping')) # This blocks, not good for async method
+            # Instead, let operations fail if connection is bad, or implement an async ping if desired for connect.
+            return cls(client, _settings.database_name)
+
+        except Exception as error:
+            raise DriverConnectFailed(f"Failed to initialize MongoDB client: {error}", driver=cls) from error
+
+    async def disconnect(self):
+        self.client.close()
+
+    def transaction(self) -> MongoDBTransaction:
+        return MongoDBTransaction(self.client, self.db)
+
+    async def add(self, models: Iterable[DBModel]) -> Iterable[DBModel]:
+        return await mongodb_add.add_models(self.db, models)
+
+    async def count(self, predicate: ASTGroupNode) -> int:
+        return await mongodb_fetch.count_models(self.db, predicate)
+
+    async def delete(self, predicate: ASTGroupNode) -> int:
+        return await mongodb_delete.delete_models(self.db, predicate)
+
+    def fetch(self, predicate: ASTGroupNode) -> AsyncBatchIterator[DBModel]:
+        return mongodb_fetch.fetch_models(self.db, predicate)
+
+    async def update(self, predicate: ASTGroupNode, values: dict[str, Any]) -> int:
+        return await mongodb_update.update_models(self.db, predicate, values)
+
+    async def apply_schema(self, model_collection: ModelCollection):
+        await mongodb_schema.apply_schema(self.db, model_collection)
+
+    async def delete_schema(self, model_collection: ModelCollection):
+        await mongodb_schema.delete_schema(self.db, model_collection)
