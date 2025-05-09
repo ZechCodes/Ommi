@@ -5,11 +5,13 @@ import pytest
 import pytest_asyncio
 import attrs
 import pydantic
+import asyncio
 from ommi import BaseDriver
 
 from ommi import StoreAs
 from ommi.driver_context import UseDriver
 from ommi.ext.drivers.mongodb.driver import MongoDBDriver
+from ommi.ext.drivers.postgresql.driver import PostgreSQLDriver
 from ommi.ext.drivers.sqlite import SQLiteDriver
 from ommi.models.collections import ModelCollection
 from ommi.models import ommi_model
@@ -50,11 +52,13 @@ class TestModel:
     id: int = None
 
 
-@pytest_asyncio.fixture(params=[SQLiteDriver, MongoDBDriver], scope="function")
+@pytest_asyncio.fixture(params=[SQLiteDriver, MongoDBDriver, PostgreSQLDriver], scope="function")
 async def driver(request) -> Generator[BaseDriver, None, None]:
-    async with request.param.connect() as driver:
-        async with WithModels(driver, test_models):
-            yield driver
+    connect_val = request.param.connect()
+    driver_obj = await connect_val if asyncio.iscoroutine(connect_val) else connect_val
+    async with driver_obj as d:
+        async with WithModels(d, test_models):
+            yield d
 
 
 @pytest.mark.asyncio()
