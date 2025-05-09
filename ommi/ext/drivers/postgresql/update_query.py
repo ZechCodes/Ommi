@@ -57,9 +57,10 @@ async def update_models(cursor: "AsyncCursor", predicate: "ASTGroupNode", values
                     on_conditions = join_on_clause.split(" ON ", 1)[1]
                     join_conditions_for_where.append(f"({on_conditions})") 
                 except ValueError as e:
-                    # This might happen if a model is in query_info.models but no direct reference exists.
-                    # Should be rare if AST and model setup are correct.
-                    print(f"Warning: Could not generate join condition for UPDATE with {other_model.__ommi__.model_name}: {e}")
+                    # If a join condition can't be created (e.g., indirect join not supported by _create_pg_join),
+                    # this specific join is skipped. This might lead to incorrect behavior if the join was essential.
+                    # The ValueError from _create_pg_join itself provides details.
+                    pass
         
         if from_parts:
             from_statement = ", ".join(from_parts)

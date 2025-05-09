@@ -5,7 +5,6 @@ from motor.motor_asyncio import AsyncIOMotorClientSession, AsyncIOMotorClient, A
 from ommi.drivers import BaseDriverTransaction
 from ommi.drivers.exceptions import TransactionError, DriverOperationError
 
-# Import the new helper modules
 import ommi.ext.drivers.mongodb.mongodb_add as mongodb_add
 import ommi.ext.drivers.mongodb.mongodb_fetch as mongodb_fetch
 import ommi.ext.drivers.mongodb.mongodb_delete as mongodb_delete
@@ -55,7 +54,6 @@ class MongoDBTransaction(BaseDriverTransaction):
                     await self.session.abort_transaction()
             except Exception as e:
                 # Log or handle error during abort if necessary, but proceed to end session
-                # print(f"Error aborting transaction during close: {e}") # Or use proper logging
                 pass # Swallow error here as main goal is to end session
             finally:
                 await self.session.end_session()
@@ -77,7 +75,6 @@ class MongoDBTransaction(BaseDriverTransaction):
                     await self.session.abort_transaction()
                 except Exception as abort_exc:
                     # Log abort error, but raise original commit error
-                    # print(f"Failed to abort transaction after commit error: {abort_exc}")
                     pass 
             raise TransactionError(f"Failed to commit transaction: {e}") from e
         finally:
@@ -139,7 +136,7 @@ class MongoDBTransaction(BaseDriverTransaction):
         # Consider raising NotImplementedError if strict transactional DDL is expected by Ommi for MongoDB.
         # For now, let's allow it but with caveats.
         try:
-            await mongodb_schema.apply_schema(self.db, model_collection, session=self.session) # Pass session
+            await mongodb_schema.apply_schema(self.db, model_collection, session=self.session)
         except Exception as e:
             # More specific error handling for schema operations within a transaction might be needed.
             raise DriverOperationError(f"Error applying schema within transaction: {e}. Schema operations may not be fully transactional in MongoDB.") from e
@@ -149,6 +146,6 @@ class MongoDBTransaction(BaseDriverTransaction):
         self._ensure_session_active()
         # Similar caveats as apply_schema regarding transactions.
         try:
-            await mongodb_schema.delete_schema(self.db, model_collection, session=self.session) # Pass session
+            await mongodb_schema.delete_schema(self.db, model_collection, session=self.session)
         except Exception as e:
             raise DriverOperationError(f"Error deleting schema within transaction: {e}. Schema operations may not be fully transactional in MongoDB.") from e 

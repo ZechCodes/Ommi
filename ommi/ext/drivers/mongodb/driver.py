@@ -12,7 +12,6 @@ from ommi.ext.drivers.mongodb.transaction import MongoDBTransaction
 from ommi.shared_types import DBModel
 from tramp.async_batch_iterator import AsyncBatchIterator
 
-# Import the new helper modules
 import ommi.ext.drivers.mongodb.mongodb_add as mongodb_add
 import ommi.ext.drivers.mongodb.mongodb_fetch as mongodb_fetch
 import ommi.ext.drivers.mongodb.mongodb_delete as mongodb_delete
@@ -56,10 +55,9 @@ class MongoDBDriver(BaseDriver):
                 serverSelectionTimeoutMS=_settings.timeout,
                 **_settings.connection_options
             )
-            # Add a ping to ensure server is reachable upon connect
-            # loop = asyncio.get_event_loop()
-            # loop.run_until_complete(client.admin.command('ping')) # This blocks, not good for async method
-            # Instead, let operations fail if connection is bad, or implement an async ping if desired for connect.
+            # A direct ping on connect is not performed here to avoid blocking in an async method.
+            # Operations will fail later if the connection is unavailable.
+            # An async ping could be added if immediate connection validation is critical.
             return cls(client, _settings.database_name)
 
         except Exception as error:

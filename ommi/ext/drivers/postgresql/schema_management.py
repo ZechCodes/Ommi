@@ -135,7 +135,6 @@ async def apply_schema(cursor: "AsyncCursor", model_collection: "ModelCollection
             pk_constraint_sql = f", PRIMARY KEY ({', '.join(sorted(list(pk_store_as_names)))})" # sorted for consistent order
             
         create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_sql}{pk_constraint_sql});"
-        # print(f"[DEBUG apply_schema] SQL: {create_table_sql}") 
         await cursor.execute(create_table_sql)
 
 async def delete_schema(cursor: "AsyncCursor", model_collection: "ModelCollection"):

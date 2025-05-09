@@ -23,8 +23,7 @@ def _determine_model_type_from_predicate_items(items: list[ASTNode]) -> Type[Omm
         elif isinstance(item, ASTComparisonNode): # Covers comparison like Model.field == value
             if isinstance(item.left, ASTReferenceNode):
                 return item.left.model
-            # Could also check item.right if it can be an ASTReferenceNode referring to a model's field
-        elif isinstance(item, ASTGroupNode): # If item is a group, recurse
+        elif isinstance(item, ASTGroupNode):
             model_from_group = _determine_model_type_from_predicate_items(item.items)
             if model_from_group:
                 return model_from_group
@@ -91,10 +90,10 @@ def _create_mongodb_batcher(
 
         # Create query parts for this specific batch
         batch_query_parts = MongoDBQueryParts(
-            filter=original_query_parts.filter, # Use original filter
-            sort=original_query_parts.sort,     # Use original sort
-            skip=db_query_skip, # Use the calculated db_query_skip
-            limit=db_query_limit, # Use the calculated db_query_limit
+            filter=original_query_parts.filter,
+            sort=original_query_parts.sort,
+            skip=db_query_skip,
+            limit=db_query_limit,
             pipeline=None, # Will be reconstructed if needed
             target_collection_name=original_query_parts.target_collection_name
         )
@@ -175,9 +174,12 @@ async def count_models(
     predicate: ASTGroupNode,
     session: AsyncIOMotorClientSession | None = None,
 ) -> int:
-    # Determine model_type from the predicate
+    # Determine model_type from the predicate for count operations.
+    # This is needed to find the correct collection if not explicitly in query_parts.pipeline.
     model_type: Type[OmmiModel] | None = None
     if predicate and predicate.items:
+        # Simplified search for model type in predicate items.
+        # AST for count might be like when(Model) or when(Model, Model.field == val).
         for item in predicate.items:
             if isinstance(item, ASTReferenceNode):
                 model_type = item.model
@@ -185,27 +187,17 @@ async def count_models(
             elif hasattr(item, 'left') and isinstance(item.left, ASTReferenceNode):
                 model_type = item.left.model
                 break
+            # Check right side of comparison if it could be a model field (less common for typical query structure)
             elif hasattr(item, 'right') and isinstance(item.right, ASTReferenceNode):
                 model_type = item.right.model
                 break
     
     if not model_type:
-        # A predicate for count might be empty (e.g., count all in a model)
-        # In this case, the ASTGroupNode might be empty or not easily give model_type.
-        # The `when()` function might create an ASTGroupNode where model_type is less obvious.
-        # If predicate.items is empty, we need another way to know the target model.
-        # This implies count() might need explicit model_type if predicate is too generic.
-        # For now, let's assume when() used for count includes the model type explicitly like when(MyModel)
-        # or when(MyModel, MyModel.field == value).
-        # If the test uses when(Model, condition), model_type will be in predicate.items[0]
-        # If it uses when(condition_on_model_A_joined_with_model_B), it's more complex.
-        # The current logic searches only top-level items or direct children of comparisons.
-        # Let's check if the AST for count is simple like `when(JoinModelB, JoinModelA.name == "testing")`
-        # predicate.items = [ASTReferenceNode(JoinModelB), ASTGroupNode(comparison on JoinModelA)]
-        # The current loop should find JoinModelB.
-        raise ValueError("Could not determine model_type from predicate for count_models.")
+        # Predicates like when() for a specific model usually provide enough info.
+        # Complex joins might require target_collection_name to be set by build_query_parts.
+        raise ValueError("Could not determine model_type from predicate for count_models. Ensure predicate references a model.")
 
-    query_parts = build_query_parts(predicate) # model_type no longer passed
+    query_parts = build_query_parts(predicate) # model_type no longer passed to build_query_parts
     collection_name = query_parts.target_collection_name or get_collection_name(model_type)
 
     try:

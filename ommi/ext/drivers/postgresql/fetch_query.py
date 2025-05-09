@@ -5,7 +5,6 @@ import dataclasses
 from tramp.async_batch_iterator import AsyncBatchIterator
 
 from ommi.query_ast import ASTGroupNode, ResultOrdering
-# Assuming utils.py is in the same directory
 from .utils import build_query, map_to_model, SelectQuery, generate_joins 
 
 if TYPE_CHECKING:
@@ -121,7 +120,6 @@ def _generate_select_sql(
     if not count_mode and cols_to_select == "*" and final_query.model:
         primary_model_name = final_query.model.__ommi__.model_name
         primary_model_fields = final_query.model.__ommi__.fields.values()
-        # Corrected f-string for column selection
         cols_to_select = ", ".join(
             f'{primary_model_name}."{field_meta.get("store_as")}"' 
             for field_meta in primary_model_fields
@@ -149,7 +147,6 @@ def _generate_select_sql(
             direction_sql = "ASC" if direction == ResultOrdering.ASCENDING else "DESC"
             ordering_parts.append(f"{column_name} {direction_sql}")
         if ordering_parts:
-            # Corrected f-string for ORDER BY clause
             query_builder.append(f"ORDER BY {', '.join(ordering_parts)}")
 
     # Add LIMIT and OFFSET (not for COUNT(*))

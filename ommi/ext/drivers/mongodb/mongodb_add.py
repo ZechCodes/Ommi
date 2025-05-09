@@ -40,8 +40,7 @@ async def add_models(
 
             if not hasattr(model_type, '__ommi__') or not hasattr(model_type.__ommi__, 'fields'):
                 # This model type hasn't been fully processed by Ommi (e.g. @ommi_model decorator)
-                # Skip or raise, depending on strictness. For now, skip with a warning/log.
-                # print(f"Warning: Skipping add for model type {model_type.__name__} due to missing Ommi metadata.")
+                # Skip or raise, depending on strictness.
                 processed_models.extend(instances) # Or handle as error if this state is unexpected
                 continue
 
@@ -133,9 +132,8 @@ async def add_models(
                         setattr(instance_to_update, pk_attr_name, generated_id_from_mongo)
                     except StopIteration:
                         # This indicates a mismatch between our tracking and mongo's result.
-                        # Log or raise, as this implies a logic error.
-                        # For now, we'll assume consistency.
-                        print(f"Warning: Mismatch in number of MongoDB generated IDs for {model_type.__name__} at index {i}")
+                        # Log or raise, as this implies a logic error. For now, we assume consistency.
+                        pass
                 # Else: ID was pre-set by user, or it's a custom PK (not _id) that was pre-set. No update needed from result.
                 
                 processed_models.append(instance_to_update)

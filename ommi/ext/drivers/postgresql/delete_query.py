@@ -8,9 +8,6 @@ if TYPE_CHECKING:
 
 async def delete_models(cursor: "AsyncCursor", predicate: "ASTGroupNode"):
     """Deletes models from the database based on the predicate."""
-    # TODO: This implementation currently does not support joined deletes.
-    # This will need to be addressed to pass all tests, specifically those
-    # involving deletes with conditions on related models (e.g., test_join_deletes).
 
     query_info = build_query(predicate)
 
@@ -42,7 +39,10 @@ async def delete_models(cursor: "AsyncCursor", predicate: "ASTGroupNode"):
                     on_conditions = join_on_clause.split(" ON ", 1)[1]
                     join_conditions_for_where.append(f"({on_conditions})")
                 except ValueError as e:
-                    print(f"Warning: Could not generate join condition for DELETE with {other_model.__ommi__.model_name}: {e}")
+                    # If a join condition can't be created, this specific join is skipped from the USING clause.
+                    # This might lead to incorrect behavior if the join was essential for the delete logic.
+                    # The ValueError from _create_pg_join itself provides details.
+                    pass
         
         if using_parts:
             using_statement = ", ".join(using_parts)
@@ -63,9 +63,6 @@ async def delete_models(cursor: "AsyncCursor", predicate: "ASTGroupNode"):
 
     final_sql = " ".join(sql_parts) + ";"
     
-    # print(f"Delete SQL: {final_sql}") # For debugging
-    # print(f"Delete Params: {final_params}") # For debugging
-
     await cursor.execute(final_sql, tuple(final_params))
     # DELETE statements also don't typically return rows unless RETURNING is used.
     # The current driver interface for delete doesn't expect anything back. 

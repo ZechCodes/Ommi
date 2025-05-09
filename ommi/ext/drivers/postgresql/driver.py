@@ -7,7 +7,7 @@ from tramp.async_batch_iterator import AsyncBatchIterator
 
 from ommi.drivers import BaseDriver
 from ommi.drivers.exceptions import DriverConnectFailed
-from ommi.ext.drivers.postgresql.transaction import PostgreSQLTransaction # Restored
+from ommi.ext.drivers.postgresql.transaction import PostgreSQLTransaction
 
 # Import new query modules (will have placeholders)
 import ommi.ext.drivers.postgresql.add_query as add_query
@@ -42,43 +42,19 @@ class PostgreSQLDriver(BaseDriver):
     @classmethod
     async def connect(cls, settings: PostgreSQLSettings | None = None) -> "PostgreSQLDriver":
         if settings is None:
-            # This will be called by the test fixture without settings.
-            # The original postgres driver in tests might have relied on default env vars or a default config.
-            # For now, to match test expectations, we should provide some defaults if settings is None.
-            # The test fixture passes request.param.connect(), which means it passes no explicit settings.
-            # It relies on the driver's connect method to handle this case.
-            # The old driver used a PostgreSQLConfig with default values or env var loading.
-            # We need to replicate that, or make tests provide settings.
-            # For now, let's assume tests expect connect() to work without args for default local connection.
-            # This is a common pattern for test fixtures.
-            # The error "ValueError: PostgreSQLSettings must be provided for connect." will cause test setup to fail.
-            # The original tests/test_drivers.py driver fixture:
-            # @pytest_asyncio.fixture(params=[..., PostgreSQLDriver], ...)
-            # async def driver(request):
-            #     async with request.param.connect() as driver: <--- called with no args
-            #         ...
-            # This means our connect() must handle settings=None.
-            # We need to create a default PostgreSQLSettings if None is provided.
-            # Defaulting to typical local postgres settings for testing.
+            # Default to typical local postgres settings for testing if no settings are provided.
             settings = PostgreSQLSettings(
                 host="localhost",
                 port=5432,
-                user="ommi_test_user", # Placeholder, user might need to create this or use env vars
-                password="ommi_test_password", # Placeholder
+                user="postgres", # Default user for official postgres image
+                password="mysecretpassword", # Matches default in dev environment setup
                 database="ommi_test"
             )
-            # The podman run command uses: POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=ommi_test
-            # User is typically 'postgres' if not specified.
-            settings["user"] = "postgres" # Default user for postgres image
-            settings["password"] = "mysecretpassword"
-            # settings["database_name"] = "ommi_test" # old name
 
         conn_str = f"postgresql://{settings['user']}:{settings['password']}@{settings['host']}:{settings['port']}/{settings['database']}"
         try:
-            # Ensure autocommit is True, as schema operations in tests might rely on it outside explicit transactions.
-            # Or, manage commits carefully in each schema/add/update/delete operation if autocommit=False.
-            # SQLite driver uses connection.commit() in its transaction, but cursor operations are often autocommitted or need explicit commit.
-            # For psycopg3, autocommit=True on connect means operations outside a transaction block are committed immediately.
+            # Ensure autocommit is True. For psycopg3, autocommit=True on connect means
+            # operations outside a transaction block are committed immediately.
             # This is generally simpler for individual operations if not part of a larger transaction.
             connection = await psycopg.AsyncConnection.connect(conn_str, autocommit=True)
             return cls(connection)
@@ -90,8 +66,8 @@ class PostgreSQLDriver(BaseDriver):
             await self.connection.close()
         self._connected = False
 
-    def transaction(self) -> PostgreSQLTransaction: # Restored
-        return PostgreSQLTransaction(self.connection) # Restored
+    def transaction(self) -> PostgreSQLTransaction:
+        return PostgreSQLTransaction(self.connection)
 
     async def add(self, models: "Iterable[DBModel]") -> "Iterable[DBModel]":
         async with self.connection.cursor() as cur:
@@ -106,9 +82,8 @@ class PostgreSQLDriver(BaseDriver):
             await delete_query.delete_models(cur, predicate)
 
     def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
-        # psycopg3 cursor() is synchronous, but returns an AsyncCursor.
-        # The fetch_models function needs to be designed to work with an AsyncCursor.
-        # It will likely involve async iteration or await execute/fetchall on the cursor.
+        # psycopg3 connection.cursor() is synchronous, but returns an AsyncCursor.
+        # fetch_models is designed to work with this AsyncCursor.
         return fetch_query.fetch_models(self.connection.cursor(), predicate)
 
     async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]):
@@ -126,8 +101,3 @@ class PostgreSQLDriver(BaseDriver):
     @property
     def connected(self) -> bool:
         return self._connected and self.connection is not None and not self.connection.closed
-
-# Remove old class and imports no longer needed
-# The old PostgreSQLConfig can be removed or adapted into PostgreSQLSettings
-# The old @enforce_connection_protocol and @connection_context_manager might not be needed
-# or will be re-evaluated with the new structure.

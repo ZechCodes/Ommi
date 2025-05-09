@@ -251,10 +251,9 @@ def generate_joins(main_model: "Type[DBModel]", join_models: "List[Type[DBModel]
             try:
                 join_clauses.append(_create_pg_join(main_model, jm))
             except ValueError as e:
-                # Potentially log this warning or handle more gracefully.
-                # For now, if a join can't be created, it might be an issue with the query structure
-                # or model definitions. Or it could be an indirect join not yet supported.
-                print(f"Warning: Could not generate join for {jm.__ommi__.model_name}: {e}")
-                # Depending on desired strictness, could re-raise or skip.
-                pass # Skipping for now, which might lead to UndefinedTable if not handled elsewhere.
+                # If _create_pg_join raises a ValueError (e.g., no direct reference found for a join),
+                # that specific join clause is omitted. This could lead to UndefinedTable errors later
+                # if the query structure relies on this join.
+                # The ValueError from _create_pg_join contains details about the problematic models.
+                pass 
     return join_clauses

@@ -15,7 +15,6 @@ async def add_models(cursor: "AsyncCursor", models: "Iterable[DBModel]") -> "Ite
 
         is_single_serial_pk_case = False
         serial_pk_field_name: str | None = None # Python attribute name
-        # serial_pk_store_as_name: str | None = None # DB column name (not strictly needed here anymore)
 
         if len(pk_metas) == 1:
             pk_meta_candidate = pk_metas[0]
@@ -26,13 +25,11 @@ async def add_models(cursor: "AsyncCursor", models: "Iterable[DBModel]") -> "Ite
             # For our logic, if it's in pk_metas, it's a PK.
             is_candidate_field_pk = True 
             candidate_field_name = pk_meta_candidate.get("field_name")
-            # candidate_store_as_name = pk_meta_candidate.get("store_as") # Not strictly needed for this logic block
             candidate_value = getattr(model_instance, candidate_field_name)
 
             if issubclass(candidate_field_type, int) and is_candidate_field_pk and candidate_value is None:
                 is_single_serial_pk_case = True
                 serial_pk_field_name = candidate_field_name
-                # serial_pk_store_as_name = candidate_store_as_name
 
         fields_to_insert: Dict[str, Any] = {}
         for field_idx, field_meta in enumerate(all_field_metas):

@@ -32,13 +32,13 @@ class PostgreSQLTransaction(BaseDriverTransaction):
                 # This case should ideally not happen if open() is always called.
                 # However, as a fallback, start a transaction.
                 await self.open()
-            self._cursor = self._connection.cursor() # type: ignore # transaction is not None here
-        return self._cursor # type: ignore
+            self._cursor = self._connection.cursor()
+        return self._cursor
 
 
     async def open(self):
         if self._transaction is None:
-            self._transaction = self._connection.transaction() # type: ignore
+            self._transaction = self._connection.transaction()
             await self._transaction.__aenter__()
         # The cursor is obtained on-demand to ensure it's associated with the active transaction.
 
@@ -56,27 +56,27 @@ class PostgreSQLTransaction(BaseDriverTransaction):
         # Explicit commit might not be needed if using `async with transaction:` block properly
         # However, if called, we ensure the transaction is exited cleanly, which implies commit.
         if self._transaction is not None:
-            await self._transaction.__aexit__(None, None, None) # type: ignore
+            await self._transaction.__aexit__(None, None, None)
             self._transaction = None # Reset transaction state
 
     async def rollback(self):
         if self._transaction is not None:
             # Signal rollback to the context manager
-            await self._transaction.__aexit__(ValueError, ValueError("Rollback"), None) # type: ignore
+            await self._transaction.__aexit__(ValueError, ValueError("Rollback"), None)
             self._transaction = None # Reset transaction state
 
 
     async def add(self, models: "Iterable[DBModel]") -> "Iterable[DBModel]":
         cur = await self._get_cursor()
-        return await add_query.add_models(cur, models) # type: ignore
+        return await add_query.add_models(cur, models)
 
     async def count(self, predicate: "ASTGroupNode") -> int:
         cur = await self._get_cursor()
-        return await fetch_query.count_models(cur, predicate) # Changed from count_query # type: ignore
+        return await fetch_query.count_models(cur, predicate)
 
     async def delete(self, predicate: "ASTGroupNode"):
         cur = await self._get_cursor()
-        await delete_query.delete_models(cur, predicate) # type: ignore
+        await delete_query.delete_models(cur, predicate)
 
     async def fetch(self, predicate: "ASTGroupNode") -> "AsyncBatchIterator[DBModel]":
         """Fetches models using the transaction's cursor."""
@@ -88,12 +88,12 @@ class PostgreSQLTransaction(BaseDriverTransaction):
 
     async def update(self, predicate: "ASTGroupNode", values: dict[str, Any]):
         cur = await self._get_cursor()
-        await update_query.update_models(cur, predicate, values) # type: ignore
+        await update_query.update_models(cur, predicate, values)
 
     async def apply_schema(self, model_collection: "ModelCollection"):
         cur = await self._get_cursor()
-        await schema_management.apply_schema(cur, model_collection) # type: ignore
+        await schema_management.apply_schema(cur, model_collection)
 
     async def delete_schema(self, model_collection: "ModelCollection"):
         cur = await self._get_cursor()
-        await schema_management.delete_schema(cur, model_collection) # type: ignore 
+        await schema_management.delete_schema(cur, model_collection) 

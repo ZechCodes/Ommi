@@ -17,15 +17,14 @@ MONGO_OPERATORS = {
     ASTOperatorNode.GREATER_THAN_OR_EQUAL: "$gte",
     ASTOperatorNode.LESS_THAN: "$lt",
     ASTOperatorNode.LESS_THAN_OR_EQUAL: "$lte",
-    # ASTOperatorNode.IN and ASTOperatorNode.NOT_IN are not in the enum, comment out for now
     # ASTOperatorNode.IN: "$in", 
     # ASTOperatorNode.NOT_IN: "$nin",
 }
 
-MONGO_LOGICAL_OPERATORS = { # This seems correct as ASTLogicalOperatorNode has AND, OR
+MONGO_LOGICAL_OPERATORS = {
     ASTLogicalOperatorNode.AND: "$and",
     ASTLogicalOperatorNode.OR: "$or",
-    # ASTLogicalOperatorNode.NOT: "$not" # NOT is not in ASTLogicalOperatorNode
+    # ASTLogicalOperatorNode.NOT: "$not"
 }
 
 @dataclass
@@ -78,144 +77,72 @@ def _parse_comparison_node(node: ASTComparisonNode, current_model_type: Type[Omm
 
     if operator in MONGO_OPERATORS:
         return {db_field_name: {MONGO_OPERATORS[operator]: value}}
-    # Removed elif for LIKE, IS_NULL, IS_NOT_NULL as they are not in ASTOperatorNode
+    # LIKE, IS_NULL, IS_NOT_NULL are not in ASTOperatorNode
     # or should be handled by EQUALS/NOT_EQUALS with None value.
-    # elif operator == ASTOperatorNode.LIKE:
-    #     return {db_field_name: {"$regex": str(value), "$options": "i"}}
-    # elif operator == ASTOperatorNode.IS_NULL:
-    #     return {db_field_name: {"$eq": None}}
-    # elif operator == ASTOperatorNode.IS_NOT_NULL:
-    #     return {db_field_name: {"$ne": None}}
     else:
-        # This else implies that if an operator is not in MONGO_OPERATORS (e.g. IN, NOT_IN if they were defined in AST)
-        # it would fall here.
+        # This implies that if an operator is not in MONGO_OPERATORS
+        # it would fall here (e.g., IN, NOT_IN if they were defined in ASTOperatorNode and handled).
         raise NotImplementedError(f"MongoDB translation for operator {operator} not implemented.")
 
 
 def _parse_group_node(node: ASTGroupNode, current_model_type: Type[OmmiModel], model_field_prefix_map: dict[Type[OmmiModel], str]) -> dict[str, Any]:
-    if not node.items: # Should be node.items based on ASTGroupNode definition
+    if not node.items:
         return {}
 
-    # Check ASTGroupNode.operator attribute, current ASTGroupNode doesn't seem to have it.
-    # ASTGroupNode has self.items: list[ASTComparableNode | ASTLogicalOperatorNode]
-    # The logical operation (AND/OR) seems to be represented by ASTLogicalOperatorNode instances *within* node.items.
-    # This function's logic needs to be re-evaluated against the actual ASTGroupNode structure.
-    # For now, let's assume node.operator exists and is ASTLogicalOperatorNode.AND or .OR as per original logic.
-    # This is a potential future bug if node.operator is not what's expected.
+    # Attempt to determine the logical operator for the group.
+    # The ASTGroupNode structure has 'items' like [Cond1, AND, Cond2, OR, Cond3].
+    # This function currently assumes a simpler model where a group has one overarching operator
+    # or implies AND for a list of conditions. This might need future refinement for complex nested logic.
+    group_operator_attr = getattr(node, 'operator', None) # 'operator' is not a standard attr of ASTGroupNode
 
-    # if node.operator == ASTLogicalOperatorNode.NOT: # ASTLogicalOperatorNode doesn't have NOT
-    #    if len(node.items) != 1: # Should be node.items
-    #        raise ValueError("AST NOT node must have exactly one child.")
-    #    # ... NOT handling logic ...
-    #    raise NotImplementedError("General AST NOT group node translation to MongoDB is complex and not yet fully implemented...")
+    # Note: Handling of logical NOT for a group is not straightforward with MongoDB's $not operator
+    # and is currently not implemented here. $not is field-level or requires $nor for group-level negation.
 
-    # The following logic assumes node.operator is the group's logical operator (e.g. AND, OR for all children)
-    # This needs to be verified with how ASTGroupNode actually structures its items and represents group logic.
-    # If items can be mixed (e.g., comp1 AND comp2 OR comp3), this flat processing is too simple.
-    # mongo_op = MONGO_LOGICAL_OPERATORS.get(node.operator) # node.operator may not exist or be the right thing
-    # if not mongo_op:
-    #    # If there are multiple children, and no explicit operator, perhaps implicit AND?
-    #    # This is a significant point of ambiguity.
-    #    # For now, sticking to the original structure that expects a node.operator
-    #    raise NotImplementedError(f"MongoDB translation for logical operator {getattr(node, 'operator', 'undefined')} not implemented.")
+    mongo_op_str: str | None = None
+    children_to_parse = node.items
 
-    # Re-evaluating _parse_group_node:
-    # An ASTGroupNode contains a list of items. These items can be ASTComparisonNodes or ASTLogicalOperatorNodes.
-    # Example: [Comp1, AND, Comp2, OR, Comp3]
-    # The structure is not a single operator for all children, but a sequence.
+    if group_operator_attr and group_operator_attr in MONGO_LOGICAL_OPERATORS:
+        mongo_op_str = MONGO_LOGICAL_OPERATORS[group_operator_attr]
+    else:
+        # If no explicit group operator, or not a recognized one, analyze items.
+        # This simplified logic doesn't fully parse sequences like [Cond1, AND, Cond2, OR, Cond3].
+        # It currently defaults to AND if multiple conditions are present without a clear group operator.
+        
+        # Filter out ASTLogicalOperatorNodes from items for now, as they are not directly parsed as children here.
+        # This is a simplification; proper parsing would handle them to structure nested $and/$or.
+        conditions = [item for item in node.items if not isinstance(item, ASTLogicalOperatorNode)]
+        
+        if not conditions:
+            return {} # Only logical operators, or empty after filter
+        
+        if len(conditions) == 1:
+            # Single condition in the group, parse it directly without a surrounding $and/$or.
+            return _parse_node(conditions[0], current_model_type, model_field_prefix_map)
+        else:
+            # Multiple conditions, default to $and.
+            mongo_op_str = MONGO_LOGICAL_OPERATORS[ASTLogicalOperatorNode.AND]
+            children_to_parse = conditions # Parse only the condition nodes
 
-    # Simplified _parse_group_node based on ASTGroupNode.items
-    # This is a basic interpretation and might need significant enhancement for complex groups.
-    # It assumes an implicit AND for a list of comparison/group nodes,
-    # or uses the explicit ASTLogicalOperatorNode if present. This is still very basic.
+    if not mongo_op_str:
+        # Fallback or error if no mongo_op could be determined (should ideally be handled above)
+        # This might happen if group_operator_attr was something unexpected and items didn't fall into AND default.
+        if children_to_parse: # If there was only one child, it should have returned directly.
+             # This path indicates multiple children but no resolvable group operator, which implies an issue.
+             # Defaulting to AND as a last resort if multiple children remain.
+             mongo_op_str = MONGO_LOGICAL_OPERATORS[ASTLogicalOperatorNode.AND]
+        else: # No children to parse, e.g. group was empty or only logical ops
+            return {}
 
-    # The original code for _parse_group_node had:
-    # mongo_op = MONGO_LOGICAL_OPERATORS.get(node.operator)
-    # return {mongo_op: [_parse_node(child, current_model_type, model_field_prefix_map) for child in node.items]}
-    # This assumed ASTGroupNode has a single 'operator' and 'children'.
-    # ASTGroupNode has 'items'. The 'operator' of the group is not a direct attribute.
-
-    # Let's try to process items. If it's just a list of conditions, assume AND.
-    # If ASTLogicalOperatorNode is found, it's more complex.
-    # This part is very tricky without knowing how complex queries are formed using ASTGroupNode.items.
-
-    # Fallback: If node.items has one direct ASTGroupNode or ASTComparisonNode, parse it.
-    # If multiple, assume AND for now. This is a guess.
-    
-    parsed_children = []
-    # Defaulting to AND if multiple items are purely conditions.
-    # This does not correctly handle explicit ASTLogicalOperatorNode instances in node.items
-    # e.g. [Cond1, AND, Cond2, OR, Cond3]
-    # This part of the logic is highly likely to be incorrect for complex queries.
-
-    # The original logic seems to expect ASTGroupNode to have an 'operator' attribute
-    # (like AND/OR for the whole group) and 'children'.
-    # The provided ASTGroupNode has 'items'.
-    # Let's look at the original structure again from the prompt context:
-    # `build_query_parts` calls `_parse_node(node, effective_filter_model, model_field_prefix_map)`
-    # where `node` can be `ASTComparisonNode` or `ASTGroupNode`.
-    # Then `_parse_node` calls `_parse_group_node`.
-
-    # If `node.operator` (from original code of _parse_group_node) was referring to
-    # an attribute of ASTGroupNode that defined its type (e.g. an AND group, an OR group),
-    # this attribute is missing in the current `ommi.query_ast.ASTGroupNode` definition.
-    # The `ASTGroupNode.add` method takes a `logical_type` (defaulting to AND),
-    # and appends it if there are existing items. So `items` looks like `[item1, AND, item2, OR, item3]`.
-
-    # Given the mismatch, I will make minimal changes to MONGO_OPERATORS for now to fix the immediate AttributeError
-    # and then will likely need to re-evaluate _parse_group_node structure against test cases.
-    # For now, I will assume the MONGO_LOGICAL_OPERATORS part was somewhat functional and that
-    # ASTGroupNode might have an 'operator' attr in some contexts or that the interpretation was simplified.
-    # The error is about MONGO_OPERATORS keys.
-    
-    # Let's assume for the purpose of fixing THIS specific error, that ASTGroupNode.operator exists and is valid.
-    # The `node.items` should be `node.items`.
-
-    if not node.items: # Changed from node.children
+    parsed_children = [_parse_node(child, current_model_type, model_field_prefix_map) for child in children_to_parse]
+    # Filter out empty dicts that might result from parsing non-condition nodes (e.g. ASTLogicalOperatorNode if not filtered earlier)
+    parsed_children = [pc for pc in parsed_children if pc]
+    if not parsed_children:
         return {}
+    if len(parsed_children) == 1 and mongo_op_str == MONGO_LOGICAL_OPERATORS[ASTLogicalOperatorNode.AND]:
+        # If only one condition results after parsing for an AND group, no need for explicit $and
+        return parsed_children[0]
 
-    # Assuming node.operator exists for this group node, as per original structure of _parse_group_node
-    # This is a MAJOR assumption and likely needs fixing.
-    group_operator_attr = getattr(node, 'operator', None) 
-
-    # if group_operator_attr == ASTLogicalOperatorNode.NOT: # NOT is not in ASTLogicalOperatorNode
-    #     # This block is problematic as ASTLogicalOperatorNode.NOT does not exist.
-    #     # If NOT logic is needed, it must be represented differently in the AST or handled specially.
-    #     if len(node.items) != 1:
-    #         raise ValueError("AST NOT group node must have exactly one child for MongoDB $not usage.")
-    #     # MongoDB's $not is a query operator, not a logical operator for combining clauses directly like $and/$or.
-    #     # It's used like { field: { $not: { <operator-expression> } } }.
-    #     # A general group NOT is more complex, e.g., $nor if it's NOT (A OR B OR ...).
-    #     # This requires a deeper understanding of how NOT groups are intended to be formed by `when()`.
-    #     # For now, commenting out this problematic block.
-    #     parsed_child = _parse_node(node.items[0], current_model_type, model_field_prefix_map)
-    #     # This is a naive attempt if parsed_child is {field: expr}. It might not be general enough.
-    #     # Example: if parsed_child is { "status": "A" }, result could be { "status": { "$not": { "$eq": "A" } } }
-    #     # or if parsed_child is { "age": { "$gt": 10 } }, result { "age": { "$not": { "$gt": 10 } } }
-    #     # This needs to extract the inner expression for the $not operator.
-    #     # This simplified version is likely incorrect for many cases.
-    #     # field_name, op_expr = list(parsed_child.items())[0]
-    #     # return {field_name: {"$not": op_expr}}
-    #     raise NotImplementedError("General AST NOT group node translation to MongoDB is not correctly implemented yet.")
-
-    # The original logic for AND/OR expected node.operator to be the group's operator.
-    # Current ASTGroupNode has items like [Cond1, AND, Cond2, OR, Cond3]
-
-    mongo_op = MONGO_LOGICAL_OPERATORS.get(group_operator_attr)
-    if not mongo_op:
-        # If no explicit operator for the group, and multiple items, this implies an AND.
-        # This part of original logic was:
-        # raise NotImplementedError(f"MongoDB translation for logical operator {node.operator} not implemented.")
-        # If group_operator_attr is None (not set on ASTGroupNode), and items exist, assume AND.
-        if len(node.items) > 1:
-             mongo_op = MONGO_LOGICAL_OPERATORS[ASTLogicalOperatorNode.AND] # Default to AND
-        elif len(node.items) == 1: # Single child, no logical operator needed for the child itself
-             return _parse_node(node.items[0], current_model_type, model_field_prefix_map)
-        else: # No items
-             return {}
-
-
-    return {mongo_op: [_parse_node(child, current_model_type, model_field_prefix_map) for child in node.items]} # Changed from node.children
+    return {mongo_op_str: parsed_children}
 
 
 def _parse_node(node: ASTNode, current_model_type: Type[OmmiModel], model_field_prefix_map: dict[Type[OmmiModel], str]) -> dict[str, Any]:
