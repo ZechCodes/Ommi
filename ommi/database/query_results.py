@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Awaitable, Callable, Self, Type
+from typing import Any, Awaitable, Callable, overload, Self, Type
 
 from tramp.async_batch_iterator import AsyncBatchIterator
 
@@ -161,3 +161,23 @@ class DBQueryResultBuilder[T]:
     @WrapInResult
     async def delete(self) -> None:
         await self._driver.delete(self._predicate)
+
+    @overload
+    def update(self, values: dict[str, Any]) -> Awaitable[None]:
+        ...
+
+    @overload
+    def update(self, **values: Any) -> Awaitable[None]:
+        ...
+
+    @WrapInResult
+    async def update(self, values: dict[str, Any] | None = None, **kwargs: Any) -> None:
+        if values is None:
+            values = {}
+
+        values |= kwargs
+
+        if not values:
+            raise ValueError("Update requires at least one field to update")
+
+        await self._driver.update(self._predicate, values)

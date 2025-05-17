@@ -83,6 +83,6 @@ async def test_ommi_find_multiple(db):
 @pytest.mark.asyncio
 async def test_ommi_update(db):
     await db.add(TestModel(1, "test")).or_raise()
-    await db.find(TestModel.id == 1).update({"name": "test2"}).or_raise()
+    await db.find(TestModel.id == 1).update(name="test2").or_raise()
     result = await db.find(TestModel.id == 1).one.or_raise()
     assert result.name == "test2"
