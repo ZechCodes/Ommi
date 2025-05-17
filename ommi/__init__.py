@@ -51,13 +51,11 @@ for _path in Path(__file__).parent.iterdir():
 
 def __getattr__(name):
     if name in __lookup:
-        print("Importing from ", __lookup[name])
         try:
             module = importlib.import_module(__lookup[name])
         except Exception as e:
-            print(e)
             raise ImportError(f"Failed to import {name} from {__lookup[name]}: {e}") from e
-        print(module)
+
         return getattr(module, name)
 
     if name in __modules:
