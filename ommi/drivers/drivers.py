@@ -13,7 +13,6 @@ import ommi
 
 if TYPE_CHECKING:
     from ommi.drivers import BaseDriverTransaction
-    from ommi.models import OmmiModel
     from ommi.models.collections import ModelCollection
     from ommi.query_ast import ASTGroupNode
     from ommi.shared_types import DBModel
