@@ -3,9 +3,9 @@ from typing import Annotated
 
 import pytest
 import pytest_asyncio
-from tramp.results import Result
 
 from ommi import ommi_model
+from ommi.database import DBResult
 from ommi.ext.drivers.sqlite import SQLiteDriver
 from ommi.models.collections import ModelCollection
 from ommi.models.field_metadata import ReferenceTo
@@ -59,23 +59,17 @@ async def driver():
 @pytest.mark.asyncio
 async def test_lazy_load_the_related(driver):
     relation = LazyLoadTheRelated(lambda:when(ModelB.a_id == a.id), driver=driver)
-    result = await relation.result
-
-    assert isinstance(result, Result.Value)
-
-    await relation.value
-    assert await relation.value == b
+    result = await relation.get_result()
+    assert isinstance(result, DBResult.DBSuccess)
+    assert await relation == b
 
 
 @pytest.mark.asyncio
 async def test_load_relation(driver):
     relation = LazyLoadEveryRelated(lambda:when(ModelB.a_id == a.id), driver=driver)
-    result = await relation.result
-
-    assert isinstance(result, Result.Value)
-
-    await relation.value
-    assert await relation.value == [b]
+    result = await relation.get_result()
+    assert isinstance(result, DBResult.DBSuccess)
+    assert await relation == [b]
 
 
 @pytest.mark.asyncio
@@ -89,6 +83,7 @@ async def test_associate_using_strategy(driver):
         await driver.add((c, a2, association_a, association_b))
 
         # Get the result
-        result = await c.a.result
-        assert isinstance(result, Result.Value)
-        assert result.value == [a, a2]
+        result = await c.a.get_result()
+        assert isinstance(result, DBResult.DBSuccess)
+
+        assert await c.a == [a, a2]

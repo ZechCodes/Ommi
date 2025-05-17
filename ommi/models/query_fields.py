@@ -10,14 +10,14 @@ avoiding issues like circular imports efficiently.
 
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import Annotated, Callable, get_args, get_origin, Protocol, TypeVar, Generic, Any, Type
+from typing import Annotated, Callable, get_args, get_origin, Protocol, TypeVar, Any, Type
 
-from tramp.results import Result
 from tramp.annotations import ForwardRef
 
 import ommi
 import ommi.drivers.drivers
 import ommi.query_ast
+from ommi.database import DBResult
 
 T = TypeVar("T")
 
@@ -87,7 +87,7 @@ class AssociateUsing(QueryStrategy):
         )
 
 
-class LazyQueryField(ABC):
+class LazyQueryField[T](ABC):
     def __init__(
         self,
         query_factory: "Callable[[], ommi.query_ast.ASTGroupNode]",
@@ -96,14 +96,14 @@ class LazyQueryField(ABC):
         self._query_factory = query_factory
         self._driver = driver
 
-        self._cache = Result.Error(ValueError("Not cached yet"))
+        self._cache = DBResult.DBFailure(ValueError("Not cached yet"))
 
     @property
     def _query(self) -> "ommi.query_ast.ASTGroupNode"   :
         return self._query_factory()
 
     def __await__(self):
-        return self.value.__await__()
+        return self._value.__await__()
 
     def __get_pydantic_core_schema__(self, *_):
         import pydantic_core
@@ -123,28 +123,29 @@ class LazyQueryField(ABC):
         raise TypeError(f"Expected LazyQueryField, got {type(value)}")
 
     @abstractmethod
-    async def get(self, default=None):
+    async def or_use[D](self, default: D) -> T | D:
         ...
 
     async def refresh(self) -> None:
-        with Result.build() as builder:
-            builder.set(await self._fetch())
+        try:
+            result = DBResult.DBSuccess(await self._fetch())
+        except Exception as e:
+            result = DBResult.DBFailure(e)
 
-        self._cache = builder.result
+        self._cache = result
 
     async def refresh_if_needed(self) -> None:
         match self._cache:
-            case Result.Error():
+            case DBResult.DBFailure():
                 await self.refresh()
 
-    @property
     @abstractmethod
-    async def result(self):
+    async def get_result(self) -> DBResult[T]:
         ...
 
     @property
     @abstractmethod
-    async def value(self):
+    async def _value(self):
         ...
 
     @abstractmethod
@@ -153,12 +154,15 @@ class LazyQueryField(ABC):
 
     async def _get_result(self):
         match self._cache:
-            case Result.Value() as result:
+            case DBResult.DBSuccess() as result:
                 return result
 
-            case Result.Error():
+            case DBResult.DBFailure():
                 self._cache = await self._fetch()
                 return self._cache
+
+            case _:
+                raise ValueError("Invalid cache state")
 
     def _get_driver(self):
         return self._driver or ommi.active_driver.get()
@@ -190,39 +194,41 @@ class LazyQueryField(ABC):
         return AssociateOnReference()
 
 
-class LazyLoadTheRelated(Generic[T], LazyQueryField):
-    async def get(self, default: T | None = None) -> T | None:
-        return (await self.result).value_or(default)
+class LazyLoadTheRelated[T](LazyQueryField):
+    async def or_use[D](self, default: D) -> T | D:
+        return (await self.get_result()).result_or(default)
 
-    @property
-    async def result(self) -> Result[T]:
+    async def get_result(self) -> DBResult[T]:
         return await self._get_result()
 
     @property
-    async def value(self) -> T:
-        return (await self.result).value
+    async def _value(self) -> T:
+        return (await self.get_result()).result
 
     async def _fetch(self):
-        with Result.build() as result:
-            result.value = await self._get_driver().fetch(self._query.limit(1)).one()
+        try:
+            result = DBResult.DBSuccess(await self._get_driver().fetch(self._query.limit(1)).one())
+        except Exception as e:
+            result = DBResult.DBFailure(e)
 
         return result
 
 
-class LazyLoadEveryRelated(Generic[T], LazyQueryField):
-    async def get(self, default: list[T] | None = None) -> list[T] | None:
-        return (await self.result).value_or(default)
+class LazyLoadEveryRelated[T](LazyQueryField):
+    async def or_use[D](self, default: list[D]) -> list[T] | list[D]:
+        return (await self.get_result()).result_or(default)
 
-    @property
-    async def result(self) -> Result[list[T]]:
+    async def get_result(self) -> DBResult[list[T]]:
         return await self._get_result()
 
     @property
-    async def value(self) -> list[T]:
-        return (await self.result).value
+    async def _value(self) -> list[T]:
+        return (await self.get_result()).result
 
     async def _fetch(self):
-        with Result.build() as result:
-            result.value = await self._get_driver().fetch(self._query).get()
+        try:
+            result = DBResult.DBSuccess(await self._get_driver().fetch(self._query).get())
+        except Exception as e:
+            result = DBResult.DBFailure(e)
 
         return result
