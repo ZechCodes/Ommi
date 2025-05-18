@@ -9,7 +9,6 @@ model collection that is the default collection.
 from typing import Type, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import ommi
     from ommi.models import OmmiModel
 
 
@@ -22,13 +21,6 @@ class ModelCollection:
 
     def add(self, model: "Type[OmmiModel]"):
         self.models.add(model)
-
-    async def setup_on(self, db: "ommi.Ommi"):
-        await db.driver.delete_schema(self)
-        await db.driver.apply_schema(self)
-
-    async def remove_from(self, db: "ommi.Ommi"):
-        await db.driver.delete_schema(self)
 
     def __repr__(self):
         return f"<{type(self).__name__}: contains {len(self.models)} model{'' if len(self.models) == 1 else 's'}>"
