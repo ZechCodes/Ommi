@@ -17,7 +17,7 @@ from tramp.annotations import ForwardRef
 import ommi
 import ommi.drivers.drivers
 import ommi.query_ast
-from ommi.database import DBResult
+from ommi.database.results import DBResult
 
 T = TypeVar("T")
 

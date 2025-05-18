@@ -4,8 +4,7 @@ from typing import Any, Awaitable, Callable, overload, Self, Type
 from tramp.async_batch_iterator import AsyncBatchIterator
 
 import ommi
-from ommi.database import DBResult
-from ommi.database.results import DBStatusNoResultException
+from ommi.database.results import DBResult, DBStatusNoResultException
 from contextlib import suppress
 
 
