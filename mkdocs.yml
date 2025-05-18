@@ -84,7 +84,13 @@ nav:
     - 'Model Collections': 'usage/model-collections.md'
     - 'Handling Results': 'usage/handling-results.md'
     # TODO: Add more tutorials as needed
-  - 'API Reference': 'api.md'
+  - 'API Reference':
+    - 'Overview': 'api/overview.md'
+    - 'Core': 'api/core.md'
+    - 'Drivers': 'api/drivers.md'
+    - 'Models & Fields': 'api/models.md'
+    - 'Results': 'api/results.md'
+    - 'Lazy Fields': 'api/lazy_fields.md'
 
 extra_css:
   - 'stylesheets/extra.css' # For custom styles like soft corners and shadows
