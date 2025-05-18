@@ -1,11 +1,11 @@
 import sqlite3
-from typing import Any, Iterable, TYPE_CHECKING, TypedDict
+from typing import Any, Iterable, NotRequired, TYPE_CHECKING, TypedDict, Literal, Optional
 
 from tramp.async_batch_iterator import AsyncBatchIterator
 
 from ommi.drivers import BaseDriver
 from ommi.drivers.exceptions import DriverConnectFailed
-from ommi.ext.drivers.sqlite.transaction import SQLiteTransaction
+from ommi.ext.drivers.sqlite.transaction import SQLiteTransaction, SQLiteTransactionManualTransactions
 
 import ommi.ext.drivers.sqlite.add_query as add_query
 import ommi.ext.drivers.sqlite.delete_query as delete_query
@@ -20,24 +20,39 @@ if TYPE_CHECKING:
     from ommi.shared_types import DBModel
 
 
+# Define the user-facing literal type for clarity
+SQLiteIsolationLevelAlias = Literal["OMMI_DEFAULT", "SQLITE_DEFAULT", "DEFERRED", "IMMEDIATE", "EXCLUSIVE", "NONE"]
+
 class SQLiteSettings(TypedDict):
     database: str
+    isolation_level: NotRequired[SQLiteIsolationLevelAlias]
 
 
 class SQLiteDriver(BaseDriver):
-    def __init__(self, connection: sqlite3.Connection):
+    _default_settings = SQLiteSettings(database=":memory:", isolation_level="OMMI_DEFAULT")
+
+    def __init__(self, connection: sqlite3.Connection, settings: SQLiteSettings):
         super().__init__()
         self.connection = connection
+        self._settings = settings
 
     @classmethod
     def connect(cls, settings: SQLiteSettings | None = None) -> "SQLiteDriver":
         try:
-            _settings = settings or SQLiteSettings(database=":memory:")
-            return cls(
-                sqlite3.connect(
-                    _settings["database"]
-                )
-            )
+            _settings = cls._default_settings
+            if settings:
+                _settings |= settings
+
+            connection = sqlite3.connect(_settings["database"])
+            match isolation_level := _settings["isolation_level"]:
+                case "SQLITE_DEFAULT":
+                    pass # Do nothing, it's the default
+                case "OMMI_DEFAULT" | "NONE":
+                    connection.isolation_level = None
+                case _: # DEFERRED, IMMEDIATE, EXCLUSIVE, any other string
+                    connection.isolation_level = isolation_level
+
+            return cls(connection, _settings)
 
         except sqlite3.Error as error:
             raise DriverConnectFailed("Failed to connect to the SQLite database.", driver=cls) from error
@@ -46,7 +61,12 @@ class SQLiteDriver(BaseDriver):
         self.connection.close()
 
     def transaction(self) -> SQLiteTransaction:
-        return SQLiteTransaction(self.connection.cursor())
+        cursor = self.connection.cursor()
+        transaction_type = SQLiteTransaction
+        if self._settings.get("isolation_level", "OMMI_DEFAULT") in ["OMMI_DEFAULT", "NONE"]:
+            transaction_type = SQLiteTransactionManualTransactions
+
+        return transaction_type(cursor)
 
     async def add(self, models: "Iterable[DBModel]") -> "Iterable[DBModel]":
         return await add_query.add_models(self.connection.cursor(), models)

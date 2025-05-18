@@ -1,3 +1,4 @@
+import sqlite3
 from typing import Any, Iterable, TYPE_CHECKING
 
 from tramp.async_batch_iterator import AsyncBatchIterator
@@ -38,7 +39,7 @@ class SQLiteTransaction(BaseDriverTransaction):
         return await add_query.add_models(self.cursor, models)
 
     async def count(self, predicate: "ASTGroupNode") -> int:
-        pass
+        return await fetch_query.count_models(self.cursor, predicate)
 
     async def delete(self, predicate: "ASTGroupNode"):
         await delete_query.delete_models(self.cursor, predicate)
@@ -54,3 +55,34 @@ class SQLiteTransaction(BaseDriverTransaction):
 
     async def delete_schema(self, model_collection: "ModelCollection"):
         await schema_management.delete_schema(self.cursor, model_collection)
+
+
+class SQLiteTransactionManualTransactions(SQLiteTransaction):
+    def __init__(self, cursor: "Cursor"):
+        super().__init__(cursor)
+        self._is_open = False
+
+    async def open(self):
+        if not self._is_open:
+            self.cursor.execute("BEGIN;", ())
+            self._is_open = True
+
+    async def close(self):
+        self._is_open = False
+        await super().close()
+
+    async def commit(self):
+        if self._is_open:
+            self.cursor.execute("COMMIT;", ())
+
+    async def rollback(self):
+        if self._is_open:
+            self.cursor.execute("ROLLBACK;", ())
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        try:
+            await self.rollback() if exc_type else self.commit()
+        except sqlite3.OperationalError:
+            pass
+        finally:
+            await self.close()
