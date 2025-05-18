@@ -2,6 +2,8 @@ from typing import Awaitable, TYPE_CHECKING
 
 import ommi
 from ommi.query_ast import when
+from ommi.database.transaction import OmmiTransaction
+
 if TYPE_CHECKING:
     from ommi.drivers import BaseDriver
     from ommi.models.collections import ModelCollection
@@ -72,6 +74,22 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
         """
         await self.driver.delete_schema(model_collection)
         self._known_model_collections.discard(model_collection)
+
+    def transaction(self) -> OmmiTransaction:
+        """Create a new transaction.
+
+        Returns:
+            An OmmiTransaction that can be used to perform operations within a transaction.
+
+        Example:
+            ```python
+            async with db.transaction() as transaction:
+                await transaction.add(model)
+                # If an exception occurs here, the transaction will be rolled back
+            # Transaction is committed here if no exception occurred
+            ```
+        """
+        return OmmiTransaction(self.driver.transaction())
 
     async def __aenter__(self):
         await self._driver.__aenter__()
