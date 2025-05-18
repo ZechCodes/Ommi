@@ -17,18 +17,22 @@ if TYPE_CHECKING:
 
 
 class OmmiTransaction:
-    """A transaction wrapper for Ommi.
+    """An async context manager for performing database operations within a transaction.
 
     This class provides the same interface as the Ommi class, but operates within
     a transaction context. The transaction is automatically committed when the context
     is exited without an exception, or rolled back if an exception occurs.
+
+    > # ⚠️ Important Consideration
+    > You **must** use the methods on the `transaction` object itself. Do not use the
+    > methods on the `Ommi` instance within the transaction context. There's no guarantee
+    > that the operations will be performed within the transaction context.
 
     Example:
         ```python
         async with db.transaction() as transaction:
             await transaction.add(model)
             # If an exception occurs here, the transaction will be rolled back
-        # Transaction is committed here if no exception occurred
         ```
     """
 
@@ -43,33 +47,34 @@ class OmmiTransaction:
     def add(
         self, *models: "DBModel"
     ) -> "Awaitable[ommi.database.results.DBResult[DBModel]]":
-        """Add models to the database within the transaction.
+        """Add models to the database within the transaction. See [`Ommi.add`](/api/core/#ommi.database.Ommi.add) for more details.
 
         Args:
             *models: The models to add.
 
         Returns:
-            A DBResult containing the added models.
+            Resolves to a `DBResult` wrapping the added models or any exceptions that occurred.
         """
         return ommi.database.results.DBResult.build(self.transaction.add, models)
 
     def find(
         self, *predicates: "ommi.query_ast.ASTGroupNode | DBModel | bool"
     ) -> "Awaitable[ommi.database.query_results.DBQueryResult[DBModel]]":
-        """Find models in the database within the transaction.
+        """Find models in the database within the transaction. See [`Ommi.find`](/api/core/#ommi.database.Ommi.find) for more details.
 
         Args:
             *predicates: The predicates to filter by.
 
         Returns:
-            A DBQueryResult containing the found models.
+            Resolves to a `DBQueryResult` containing the found models or any exceptions that occurred.
         """
         return ommi.database.query_results.DBQueryResult.build(
             self.transaction, when(*predicates)
         )
 
     async def use_models(self, model_collection: "ModelCollection") -> None:
-        """Apply the schema for the given model collection to the database within the transaction.
+        """Apply the schema for the given model collection to the database within the transaction. See
+        [`Ommi.use_models`](/api/core/#ommi.database.Ommi.use_models) for more details.
 
         Args:
             model_collection: The model collection to apply the schema for.
@@ -78,7 +83,8 @@ class OmmiTransaction:
         await self.transaction.apply_schema(model_collection)
 
     async def remove_models(self, model_collection: "ModelCollection") -> None:
-        """Remove the schema for the given model collection from the database within the transaction.
+        """Remove the schema for the given model collection from the database within the transaction. See
+        [`Ommi.remove_models`](/api/core/#ommi.database.Ommi.remove_models) for more details.
 
         Args:
             model_collection: The model collection to remove the schema for.
@@ -86,11 +92,11 @@ class OmmiTransaction:
         await self.transaction.delete_schema(model_collection)
 
     async def commit(self) -> None:
-        """Commit the transaction."""
+        """Commit the operations that have happened within the transaction."""
         await self.transaction.commit()
 
     async def rollback(self) -> None:
-        """Roll back the transaction."""
+        """Rollback the operations that have happened within the transaction."""
         await self.transaction.rollback()
 
     async def __aenter__(self):
