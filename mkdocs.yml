@@ -1,0 +1,93 @@
+site_name: "Ommi: Friendlier Databases"
+site_description: 'An OMM (object model mapper) for the 80% case, providing a consistent interface across database choices.'
+site_author: 'Zech Zimmerman'
+repo_url: 'https://github.com/ZechCodes/Ommi'
+repo_name: 'ZechCodes/Ommi'
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+    - toc.integrate
+  palette:
+    # Bright and colorful - using a primary color and an accent that work well together
+    # You can explore https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#color-palette for more options
+    - scheme: default
+      primary: 'indigo'
+      accent: 'pink'
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: 'blue'
+      accent: 'lime'
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: 'Roboto'
+    code: 'Roboto Mono'
+  icon:
+    repo: fontawesome/brands/github
+  logo: 'assets/logo.svg' # Changed from .png to .svg
+  favicon: 'assets/favicon.svg' # Changed from .png to .svg
+
+# Extensions
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_style: fruity # A colorful syntax highlighting theme
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - attr_list # To add attributes like { .button } to elements
+  - md_in_html
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_root_heading: true
+            show_source: false # Set to true if you want to show source code by default
+            members_order: source # Or 'alphabetical'
+            # You might want to add filters here if you have private members like _member
+            # selection:
+            #   filters:
+            #     - "!^_"  # Exclude members starting with an underscore
+
+nav:
+  - 'Home': 'index.md'
+  - 'Getting Started': 'getting-started.md'
+  - 'Usage Tutorials':
+    - 'Models': 'usage/models.md'
+    - 'Lazy Fields (Query Fields)': 'usage/lazy-fields.md'
+    - 'Association Tables': 'usage/association-tables.md'
+    - 'Model Collections': 'usage/model-collections.md'
+    - 'Handling Results': 'usage/handling-results.md'
+    # TODO: Add more tutorials as needed
+  - 'API Reference': 'api.md'
+
+extra_css:
+  - 'stylesheets/extra.css' # For custom styles like soft corners and shadows
+
+# Copyright
+copyright: 'Copyright &copy; 2024 Your Name/Project Name' # TODO: Update copyright 

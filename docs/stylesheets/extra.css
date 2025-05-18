@@ -1,0 +1,69 @@
+/* Custom styles for Ommi Documentation */
+
+/* Soft-friendly-corners for various elements */
+.md-card, .md-tabs__item, .md-typeset .admonition, .md-typeset details, .md-typeset .highlight, .md-button, .md-button--primary, .md-button--secondary {
+    border-radius: 8px; /* Adjust as desired */
+}
+
+.md-typeset table:not([class]) {
+    border-radius: 8px;
+    overflow: hidden; /* Ensures border-radius clips content */
+}
+
+.md-typeset table:not([class]) th, .md-typeset table:not([class]) td {
+    /* If you want to remove default borders from Material theme tables if they interfere */
+    /* border: none; */
+}
+
+/* Subtle shadows for emphasis */
+.md-card {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.md-typeset .admonition, .md-typeset details {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Enhance button appearance slightly */
+.md-button {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.md-button--primary {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Rainbow effect for headings - this is a bit more involved for a true animated rainbow.
+   A simpler approach is to use a colorful gradient or specific bright colors.
+   Here's a static colorful approach for h1, you can expand or use CSS variables. */
+
+.md-typeset h1 {
+  /* Example: Using a theme accent color - can be made more rainbow-like with gradients */
+  /* Or, if you want a static multi-color effect (harder to maintain) */
+  /* background: -webkit-linear-gradient(left, orange , yellow, green, cyan, blue, violet);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; */
+  /* For now, let's ensure headers are prominent. The theme palette provides good color.*/
+}
+
+/* Make code blocks stand out with a subtle shadow and ensure they also have rounded corners */
+.md-typeset .highlight {
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Softer scrollbars if desired (browser support varies) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--md-default-bg-color--lightest);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--md-primary-fg-color--light);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--md-primary-fg-color);
+} 
