@@ -37,6 +37,9 @@ __lookup = {
     "StoreAs": "ommi.models.field_metadata",
     "Auto": "ommi.models.field_metadata",
     "Key": "ommi.models.field_metadata",
+    "DBResult": "ommi.database",
+    "DBQueryResult": "ommi.database",
+    "OmmiTransaction": "ommi.database",
 }
 
 __modules = set()
