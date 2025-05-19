@@ -103,7 +103,7 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
     query = SelectQuery(
         limit=ast.max_results,
         offset=ast.results_page * ast.max_results if ast.max_results > 0 and ast.results_page > 0 else 0,
-        order_by=_process_ordering(ast.sorting or []),\
+        order_by=_process_ordering(ast.sorting or []),
     )
     
     # Ensure iterables are converted to lists for the stack
