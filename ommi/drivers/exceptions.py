@@ -1,9 +1,3 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ommi.drivers import BaseDriver
-
-
 class BaseDriverException(Exception):
     """Base exception for driver exceptions."""
     def __init__(self, *args, driver: "BaseDriver | Type[BaseDriver] | None" = None):
@@ -47,6 +41,16 @@ class ModelUpdateError(DriverOperationError):
 
 class SchemaError(BaseDriverException):
     """Raised for errors encountered during schema manipulation (apply/delete)."""
+    pass
+
+
+class IncompatibleSchemaEvolutionError(SchemaError):
+    """Raised when an incompatible schema evolution is attempted.
+    
+    In the current version of Ommi, schema evolution is not supported.
+    This exception is raised when a model's schema differs from what's already
+    in the database. Schema evolution will be supported in a future version.
+    """
     pass
 
 

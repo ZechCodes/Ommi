@@ -67,7 +67,20 @@ class BaseDriverTransaction(ABC):
     # ---------------------------------------- #
     @abstractmethod
     async def apply_schema(self, model_collection: "ModelCollection"):
-        """Applies the schema for the given model collection to the database."""
+        """Applies the schema for the given model collection to the database.
+        
+        In the current version, schema evolution is not supported. If a model's
+        schema differs from the existing database schema, an IncompatibleSchemaEvolutionError
+        will be raised. To use a different schema, first call delete_schema().
+        
+        Args:
+            model_collection: The collection of models whose schema needs to be applied.
+            
+        Raises:
+            IncompatibleSchemaEvolutionError: If the schema in the model collection
+                differs from the existing schema in the database and schema evolution
+                would be required.
+        """
         ...
 
     @abstractmethod
