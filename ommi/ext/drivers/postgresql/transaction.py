@@ -35,7 +35,6 @@ class PostgreSQLTransaction(BaseDriverTransaction):
             self._cursor = self._connection.cursor()
         return self._cursor
 
-
     async def open(self):
         if self._transaction is None:
             self._transaction = self._connection.transaction()
@@ -64,7 +63,6 @@ class PostgreSQLTransaction(BaseDriverTransaction):
             # Signal rollback to the context manager
             await self._transaction.__aexit__(ValueError, ValueError("Rollback"), None)
             self._transaction = None # Reset transaction state
-
 
     async def add(self, models: "Iterable[DBModel]") -> "Iterable[DBModel]":
         cur = await self._get_cursor()
