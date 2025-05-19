@@ -1,10 +1,28 @@
 """
-Lazy Evaluation of Query Fields for Ommi Models
+Query Fields for Ommi Models
 
-This module implements lazy loading of query fields from the database, using
-different strategies for associating models. It supports various approaches for
-deferring query execution until needed, thus managing model relationships and
-avoiding issues like circular imports efficiently.
+This module enables dynamic relationships between models by defining fields that
+are populated through database queries. These fields can represent one-to-many,
+many-to-one, and many-to-many relationships between models.
+
+The module provides:
+- QueryStrategy: Protocol defining how to generate queries for related models
+- AssociateOnReference: Strategy for querying based on foreign key references
+- QueryField: Base class for fields that are populated via queries
+- Related: Type annotation for defining query fields on models
+
+Example:
+    ```python
+    from ommi import OmmiModel, LazyLoadTheRelated, LazyLoadEveryRelated, ReferenceTo
+
+    class User(OmmiModel):
+        id: int
+        posts: "LazyLoadEveryRelated[Post]"
+
+    class Post(OmmiModel):
+        author_id: Annotated[int, ReferenceTo(User.id)]
+        author: LazyLoadTheRelated[User]
+    ```
 """
 
 
