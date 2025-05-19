@@ -712,6 +712,33 @@ class ASTComparisonNode(ASTComparableNode):
 def when(
     *comparisons: "ASTComparisonNode | Type[models.DatabaseModel] | bool",
 ) -> ASTGroupNode:
+    """Creates a new query group from one or more comparisons.
+
+    This is the primary entry point for building complex queries. It takes one or more
+    comparison nodes, model types, or boolean values and combines them into an
+    `ASTGroupNode` that can be used for database operations.
+
+    Args:
+        *comparisons: One or more of:
+            - ASTComparisonNode: Direct field comparisons (e.g., User.name == "Alice")
+            - Type[DatabaseModel]: Model type to query all instances
+            - bool: Static boolean value to always include/exclude
+
+    Returns:
+        ASTGroupNode: A new query group containing the provided comparisons.
+
+    Example:
+        ```python
+        # Simple equality comparison
+        query1 = when(User.name == "Alice")
+
+        # Query all users
+        query2 = when(User)
+
+        # Complex query with multiple conditions
+        query3 = when(User.age > 18, User.is_active == True)
+        ```
+    """
     match comparisons:
         case (ASTComparisonNode() as comparison,):
             return comparison.group
