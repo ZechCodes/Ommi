@@ -1,22 +1,17 @@
 import psycopg
 from typing import Any, Iterable, TYPE_CHECKING, TypedDict
 
-# print("\n*** LOADING REFACTORED POSTGRESQL DRIVER MODULE (driver.py) ***\n") # Debug print removed
-
 from tramp.async_batch_iterator import AsyncBatchIterator
 
 from ommi.drivers import BaseDriver
 from ommi.drivers.exceptions import DriverConnectFailed
 from ommi.ext.drivers.postgresql.transaction import PostgreSQLTransaction
 
-# Import new query modules (will have placeholders)
 import ommi.ext.drivers.postgresql.add_query as add_query
 import ommi.ext.drivers.postgresql.delete_query as delete_query
 import ommi.ext.drivers.postgresql.fetch_query as fetch_query
 import ommi.ext.drivers.postgresql.schema_management as schema_management
 import ommi.ext.drivers.postgresql.update_query as update_query
-# import ommi.ext.drivers.postgresql.count_query as count_query
-
 
 if TYPE_CHECKING:
     from ommi.models.collections import ModelCollection
