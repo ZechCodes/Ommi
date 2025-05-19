@@ -5,7 +5,7 @@ from tramp.async_batch_iterator import AsyncBatchIterator
 
 from ommi.drivers import BaseDriver
 from ommi.drivers.exceptions import DriverConnectFailed
-from ommi.ext.drivers.sqlite.transaction import SQLiteTransaction, SQLiteTransactionManualTransactions
+from ommi.ext.drivers.sqlite.transaction import SQLiteTransaction, SQLiteTransactionExplicitTransactions
 
 import ommi.ext.drivers.sqlite.add_query as add_query
 import ommi.ext.drivers.sqlite.delete_query as delete_query
@@ -64,7 +64,7 @@ class SQLiteDriver(BaseDriver):
         cursor = self.connection.cursor()
         transaction_type = SQLiteTransaction
         if self._settings.get("isolation_level", "OMMI_DEFAULT") in ["OMMI_DEFAULT", "NONE"]:
-            transaction_type = SQLiteTransactionManualTransactions
+            transaction_type = SQLiteTransactionExplicitTransactions
 
         return transaction_type(cursor)
 
