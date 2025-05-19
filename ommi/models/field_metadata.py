@@ -3,6 +3,34 @@ Field Metadata Types for Setting Properties of Model Fields
 
 This module defines the types that are used to store metadata about model fields. The metadata is intended to be stored
 as a typing.Annotated type annotation. Helper methods are provided for creating custom field metadata types.
+
+Field metadata is used throughout Ommi to provide additional information about model fields to the ORM system. This
+includes information about:
+
+- Primary keys and auto-incrementing fields
+- Foreign key references and relationships
+- Custom field types and storage names
+
+Example:
+    ```python
+    from typing import Annotated
+    from ommi import ommi_model, Key, ReferenceTo
+    from dataclasses import dataclass
+
+    @ommi_model
+    @dataclass
+    class User:
+        name: str
+        id: Annotated[int, Key] = None  # Primary key field
+        
+    @ommi_model
+    @dataclass
+    class Post:
+        title: str
+        content: str
+        author_id: Annotated[int, ReferenceTo(User.id)]  # Foreign key reference
+        id: Annotated[int, Key] = None
+    ```
 """
 
 
@@ -16,9 +44,19 @@ T = TypeVar("T")
 
 
 class FieldMetadata:
-    """Base type for all field metadata types. Field metadata instances carry the information about how a field on a
-    model should be handled by Ommi and the database driver. The union operator can be used on field metadata instances
-    to aggregate them into a single metadata object."""
+    """
+    Base type for all field metadata types.
+    
+    Field metadata instances carry information about how a field on a
+    model should be handled by Ommi and the database driver. The union 
+    operator (`|`) can be used to combine multiple metadata types.
+    
+    This provides a flexible way to annotate model fields with multiple 
+    behaviors or attributes without complex inheritance hierarchies.
+    
+    Attributes:
+        metadata: A mapping containing the metadata key-value pairs
+    """
 
     metadata: MutableMapping[str, Any]
 
@@ -44,9 +82,28 @@ class FieldMetadata:
         return f"{type(self).__name__}({', '.join(f'{k}={v}' for k, v in self.metadata.items())})"
 
     def get(self, key: str, default: T = None) -> T:
+        """
+        Retrieve a value from the metadata.
+        
+        Args:
+            key: The metadata key to retrieve
+            default: Value to return if the key doesn't exist
+            
+        Returns:
+            The value associated with the key, or the default if not found
+        """
         return self.metadata.get(key, default)
 
     def matches(self, check_for: "FieldMetadata | Type[FieldMetadata]") -> bool:
+        """
+        Check if this metadata matches a specific type or instance.
+        
+        Args:
+            check_for: A FieldMetadata instance or class to check against
+            
+        Returns:
+            True if this metadata matches the check_for criteria, False otherwise
+        """
         match check_for:
             case type() as metadata_type if issubclass(metadata_type, FieldMetadata):
                 return isinstance(self, metadata_type)
@@ -59,12 +116,31 @@ class FieldMetadata:
 
 
 class AggregateMetadata(FieldMetadata):
-    """Aggregates field metadata instances (usually using the union operator) so a field can have multiple kinds of
-    metadata applied simply."""
+    """
+    Combines multiple field metadata instances into one.
+    
+    This allows a field to have multiple kinds of metadata applied by 
+    aggregating them into a single object. The union operator (`|`) is 
+    typically used to create these aggregates.
+    
+    Example:
+        ```python
+        # Combine Key and Auto metadata
+        field_metadata = Key | Auto
+        ```
+    
+    Attributes:
+        metadata: A ChainMap containing all aggregated metadata dictionaries
+        _fields: The list of original metadata instances that were aggregated
+    """
 
     metadata: ChainMap[str, Any]
 
     def __init__(self, *fields: "FieldMetadata") -> None:
+        """
+        Args:
+            *fields: The metadata instances to aggregate
+        """
         self._fields = []
         self.metadata = ChainMap({})
 
@@ -95,41 +171,124 @@ class AggregateMetadata(FieldMetadata):
         self.metadata.maps.append(field.metadata)
 
     def matches(self, metadata: "FieldMetadata | Type[FieldMetadata]") -> bool:
+        """
+        Check if any of the aggregated metadata instances match a type or instance.
+        
+        Args:
+            metadata: A FieldMetadata instance or class to check against
+            
+        Returns:
+            True if any of the aggregated metadata match, False otherwise
+        """
         return any(f.matches(metadata) for f in self._fields)
 
 
 class MetadataFlag(FieldMetadata):
-    """A field metadata type that acts as a flag to indicate that a field has a certain property. Flags are field
-    metadata instances that contain a singular boolean True value to indicate that they're set. Flags should be treated
-    as singletons for purposes of identity checks."""
+    """
+    A field metadata type that acts as a flag.
+    
+    Flags indicate that a field has a certain property. They contain
+    a single boolean True value and should be treated as singletons
+    for identity checks.
+    
+    Examples include the `Key` flag for primary keys and the `Auto` flag
+    for auto-incrementing fields.
+    """
 
 
 class FieldType(FieldMetadata):
-    """Field metadata type for setting the field's data type."""
+    """
+    Field metadata type for setting the field's data type.
+    
+    This metadata specifies how the field should be stored in the database,
+    which may differ from its Python type.
+    
+    Attributes:
+        field_type: The database type for the field
+    """
 
     def __init__(self, field_type: Any):
+        """
+        Args:
+            field_type: The database type specification for the field
+        """
         self.metadata = {"field_type": field_type}
 
 
 class ReferenceTo(FieldMetadata):
-    """Field metadata type for setting the model that the field references."""
+    """
+    Field metadata type for setting the model field that this field references.
+    
+    This is used to define foreign key relationships between models.
+    
+    Example:
+        ```python
+        @ommi_model
+        @dataclass
+        class Post:
+            # Reference to User.id field
+            author_id: Annotated[int, ReferenceTo(User.id)] 
+        ```
+        
+    Attributes:
+        reference_to: The field or field reference being referenced
+    """
 
     def __init__(self, reference_to: "query_ast.ASTReferenceNode | str | Any"):
+        """
+        Args:
+            reference_to: The field being referenced, which can be:
+                - A direct field reference (User.id)
+                - A string path ("User.id")
+                - An AST reference node
+        """
         self.metadata = {"reference_to": reference_to}
 
 
 class StoreAs(FieldMetadata):
-    """Field metadata type for setting the name to use when passing the field to the database backend."""
+    """
+    Field metadata type for setting a custom storage name.
+    
+    This allows using a different field name in the database than in the model.
+    
+    Example:
+        ```python
+        @ommi_model
+        @dataclass
+        class User:
+            # Will be stored as "user_name" in the database
+            name: Annotated[str, StoreAs("user_name")]
+        ```
+        
+    Attributes:
+        store_as: The name to use in the database
+    """
 
     def __init__(self, store_as: str):
+        """
+        Args:
+            store_as: The name to use when storing the field in the database
+        """
         self.metadata = {"store_as": store_as}
 
 
 def create_metadata_type(
     name: str, metadata_type: "Optional[Type[FieldMetadata]]" = Nothing(), /, **kwargs
 ) -> Type[FieldMetadata]:
-    """Helper function for creating a simple field metadata type that has preloaded default values. Useful for creating
-    field types that don't need values set at creation."""
+    """
+    Helper function for creating a simple field metadata type.
+    
+    This creates a new metadata class with preloaded default values,
+    useful for creating field types that don't need values set at creation.
+    
+    Args:
+        name: The name for the new metadata type
+        metadata_type: Optional base class for the new type
+        **kwargs: Default metadata values to include in the type
+        
+    Returns:
+        A new FieldMetadata subclass with the specified properties
+    """
     return cast(
         Type[FieldMetadata],
         type(name, (metadata_type.value_or(FieldMetadata),), {"metadata": kwargs}),
@@ -137,11 +296,21 @@ def create_metadata_type(
 
 
 def create_metadata_flag(name: str) -> FieldMetadata:
-    """Helper function for creating field metadata flag instances. These flags are field metadata instances that contain
-    a singular boolean True value to indicate that they're set. Flags should be treated as singletons for purposes of
-    identity checks."""
+    """
+    Helper function for creating field metadata flag instances.
+    
+    These flags indicate that a field has a certain property and contain
+    a single boolean True value. They should be treated as singletons.
+    
+    Args:
+        name: The name for the flag
+        
+    Returns:
+        A singleton instance of the created flag metadata
+    """
     return create_metadata_type(name, Some(MetadataFlag), **{f"__flag_{name}": True})()
 
 
-Auto = create_metadata_flag("Auto")
-Key = create_metadata_flag("Key")
+# Pre-defined metadata flags
+Auto = create_metadata_flag("Auto")  # Indicates an auto-incrementing field
+Key = create_metadata_flag("Key")    # Indicates a primary key field
