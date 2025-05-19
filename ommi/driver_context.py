@@ -11,10 +11,11 @@ the correct driver context across different parts of the application.
 
 
 from contextvars import ContextVar
-from typing import TypeVar, Generic
+from typing import overload, TypeVar, Generic
+import ommi
 
 
-T = TypeVar("T", bound="drivers.DatabaseDriver")
+T = TypeVar("T", bound="ommi.drivers.BaseDriver")
 
 
 active_driver = ContextVar("active_driver")
@@ -28,6 +29,35 @@ their own isolated notion of the "current" database driver.
 Framework code or utilities within Ommi can then call `active_driver.get()`
 to retrieve the driver appropriate for the current execution context.
 """
+
+@overload
+def get_current_driver[T: "ommi.drivers.BaseDriver", D](default: D) -> T | D:
+    ...
+
+@overload
+def get_current_driver[T: "ommi.drivers.BaseDriver"]() -> T:
+    ...
+
+def get_current_driver[T: "ommi.drivers.BaseDriver", D](*args) -> T | D:
+    """Returns the currently active database driver for the current context.
+
+    Args:
+        default: The value to return if there is no active driver.
+
+    Returns:
+        The active database driver or the default value if there is no active driver.
+
+    Raises:
+        RuntimeError: If there is no active driver and no default is provided.
+    """
+    try:
+        return active_driver.get()
+    except LookupError:
+        match args:
+            case (default,):
+                return default
+            case _:
+                raise RuntimeError("No active driver") from None
 
 
 class UseDriver(Generic[T]):

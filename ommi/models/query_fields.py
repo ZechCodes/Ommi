@@ -93,6 +93,9 @@ class AssociateOnReference(QueryStrategy):
     This strategy examines model references to determine how to join models together.
     It supports both forward references (parent -> child) and backward references
     (child -> parent).
+
+    It is typically the default strategy used when no specific association
+    strategy is specified.
     """
     
     def generate_query(

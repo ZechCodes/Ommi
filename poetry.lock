@@ -220,6 +220,24 @@ trio = ["trio (>=0.23)"]
 wmi = ["wmi (>=1.5.1)"]
 
 [[package]]
+name = "fieldz"
+version = "0.1.0"
+description = "Utilities for providing compatibility with many dataclass-like libraries"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "fieldz-0.1.0-py3-none-any.whl", hash = "sha256:0825a45396877769b107ce016e63f6fedbe625a0ace3e56fe2f9d6d61c7ea8df"},
+    {file = "fieldz-0.1.0.tar.gz", hash = "sha256:ee3352534bc5d04ee8e1cafa5f59add2c11bea0fc2ecefe18454ccfdc7e21fb2"},
+]
+
+[package.dependencies]
+typing-extensions = "*"
+
+[package.extras]
+dev = ["black", "hatch", "ipython", "mypy", "pdbpp", "rich", "ruff"]
+test = ["annotated-types", "attrs", "dataclassy", "msgspec", "pydantic", "pytest", "pytest-cov"]
+
+[[package]]
 name = "ghp-import"
 version = "2.1.0"
 description = "Copy your docs directly to the gh-pages branch."
@@ -249,6 +267,25 @@ files = [
 
 [package.dependencies]
 colorama = ">=0.4"
+
+[[package]]
+name = "griffe-fieldz"
+version = "0.2.1"
+description = "Griffe extension adding support for data-class like things (pydantic, attrs, etc...)"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "griffe_fieldz-0.2.1-py3-none-any.whl", hash = "sha256:04ae78b487c832a38b0495f971784d513da413b867c51e429f39d74f76d4f941"},
+    {file = "griffe_fieldz-0.2.1.tar.gz", hash = "sha256:7371693cdd045ac95aaebd16a81586d8dfa72c30e2d4519e0dde0d80f8ef0dc7"},
+]
+
+[package.dependencies]
+fieldz = ">=0.1.0"
+griffe = ">=1.0"
+
+[package.extras]
+dev = ["ipython", "mypy", "pdbpp", "pre-commit", "rich", "ruff"]
+test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "idna"
@@ -435,6 +472,20 @@ markupsafe = ">=2.0.1"
 mkdocs = ">=1.1"
 
 [[package]]
+name = "mkdocs-gen-files"
+version = "0.5.0"
+description = "MkDocs plugin to programmatically generate documentation pages during the build"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "mkdocs_gen_files-0.5.0-py3-none-any.whl", hash = "sha256:7ac060096f3f40bd19039e7277dd3050be9a453c8ac578645844d4d91d7978ea"},
+    {file = "mkdocs_gen_files-0.5.0.tar.gz", hash = "sha256:4c7cf256b5d67062a788f6b1d035e157fc1a9498c2399be9af5257d4ff4d19bc"},
+]
+
+[package.dependencies]
+mkdocs = ">=1.0.3"
+
+[[package]]
 name = "mkdocs-get-deps"
 version = "0.2.0"
 description = "MkDocs extension that lists all dependencies according to a mkdocs.yml file"
@@ -449,6 +500,20 @@ files = [
 mergedeep = ">=1.3.4"
 platformdirs = ">=2.2.0"
 pyyaml = ">=5.1"
+
+[[package]]
+name = "mkdocs-literate-nav"
+version = "0.6.2"
+description = "MkDocs plugin to specify the navigation in Markdown instead of YAML"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "mkdocs_literate_nav-0.6.2-py3-none-any.whl", hash = "sha256:0a6489a26ec7598477b56fa112056a5e3a6c15729f0214bea8a4dbc55bd5f630"},
+    {file = "mkdocs_literate_nav-0.6.2.tar.gz", hash = "sha256:760e1708aa4be86af81a2b56e82c739d5a8388a0eab1517ecfd8e5aa40810a75"},
+]
+
+[package.dependencies]
+mkdocs = ">=1.4.1"
 
 [[package]]
 name = "mkdocs-material"
@@ -1191,4 +1256,4 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "cbdd52b8d5f3f9678e7a4d18803e24e403562df3b0e80160a132b779070b5f39"
+content-hash = "6696a9bf5b6f5235d00066f1bce458b9003720385fffc8341a6d026d74b06b90"

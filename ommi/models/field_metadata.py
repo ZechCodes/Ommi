@@ -313,4 +313,26 @@ def create_metadata_flag(name: str) -> FieldMetadata:
 
 # Pre-defined metadata flags
 Auto = create_metadata_flag("Auto")  # Indicates an auto-incrementing field
-Key = create_metadata_flag("Key")    # Indicates a primary key field
+"""
+Indicates an auto-incrementing field.
+
+Example:
+    ```python
+    @ommi_model
+    @dataclass
+    class User:
+        id: Annotated[int, Key | Auto]  # Auto-incrementing primary key
+    ```
+"""
+Key = create_metadata_flag("Key")
+"""
+Indicates a primary key field.
+
+Example:
+    ```python
+    @ommi_model
+    @dataclass
+    class User:
+        id: Annotated[int, Key]  # Primary key field
+    ```
+"""

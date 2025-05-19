@@ -91,7 +91,8 @@ class OmmiTransaction:
     without an unhandled exception. If an exception occurs and propagates out of
     the block, the transaction is automatically rolled back.
 
-    > # Warning
+    > **⚠️ Warning**
+    >
     > Always use the methods on the `OmmiTransaction` instance itself
     > (e.g., `t.add(...)`) when inside an `async with t:` block. Calling methods
     > on the original `Ommi` instance from which the transaction was created will

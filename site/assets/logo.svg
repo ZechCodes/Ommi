@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- The gradient definition can be removed if no longer used, or kept if you might use it later -->
+  <!-- <defs>
+    <linearGradient id="ommiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3F51B5;stop-opacity:1" /> 
+      <stop offset="100%" style="stop-color:#E91E63;stop-opacity:1" /> 
+    </linearGradient>
+  </defs> -->
+  <!-- This single path defines the "O" shape (outer and inner boundaries). 
+       fill-rule="evenodd" makes the inner part transparent. -->
+  <path d="M32,4 C16.536,4 4,16.536 4,32 C4,47.464 16.536,60 32,60 C47.464,60 60,47.464 60,32 C60,16.536 47.464,4 32,4 Z M32,12 C23.163,12 16,19.163 16,28 L16,36 C16,44.837 23.163,52 32,52 C40.837,52 48,44.837 48,36 L48,28 C48,19.163 40.837,12 32,12 Z" 
+        fill="white" 
+        fill-rule="evenodd"/>
+</svg> 

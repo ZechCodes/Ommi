@@ -12,6 +12,23 @@ with whatever database you like.
 Ommi doesn't provide its own model types, it allows you to use whatever models you are already using. Compatibility with
 the most popular model implementations are ensured through a comprehensive unit test suite.
 
+## Upcoming Features
+
+Future versions of Ommi will include:
+
+- **Automatic relationship traversal**: Beyond basic reference checks, Ommi will support automatic traversal of complex relationship graphs
+- Additional database drivers
+- Enhanced query capabilities
+
+## Future Features and Improvements
+
+Planned improvements for the Ommi ORM framework include:
+
+- **Schema Evolution**: Add support for evolving schemas safely (adding/changing columns on existing tables)
+- **Nested Transaction Management Options**: Enhanced transaction isolation with options to control rollback behavior of nested transactions
+- **Case-Insensitive Field Names**: Field names in models are case-insensitive to prevent duplicate fields that differ only by case
+- **Advanced Schema Validation**: Improved validation of model schemas during model registration
+
 ### Compatible Model Implementations
 
 Ommi's test suite checks for compatibility with the following model implementations:

@@ -1,22 +1,68 @@
 """
-This module defines functionality for creating and managing database models
-using the Ommi framework. It includes the base `OmmiModel` class, which
-provides methods for database operations, as well as a decorator for defining
-models with Ommi metadata and query fields. It also includes helper functions
-and classes for managing model metadata, query fields, and database drivers.
+Model Definition and Management for Ommi
 
-The core components of this module are:
+This module provides a comprehensive framework for defining, managing, and interacting with database models in the Ommi ORM. It offers a powerful and flexible approach to working with database entities, combining the simplicity of Python classes with advanced ORM features.
 
-1. OmmiModel: The base class for all Ommi model types
-2. ommi_model: A decorator that transforms regular classes into Ommi models
-3. Helper functions for managing model metadata and field types
+Key Components:
 
-Example:
+**1. OmmiModel:**
+
+- Base class for all Ommi model types
+- Provides core functionality for database operations (e.g., save, delete, reload)
+- Implements query methods for fetching and filtering data
+- Supports lazy-loading of related models
+
+**2. ommi_model Decorator:**
+
+- Transforms regular Python classes into fully-featured Ommi models
+- Automatically generates metadata and query fields
+- Enables the use of type annotations for defining model structure
+
+**3. Metadata Management:**
+
+- OmmiMetadata class for storing and managing model-specific metadata
+- FieldMetadata for detailed information about individual fields
+- Support for custom field types and behaviors
+
+**4. Query Fields and Lazy Loading:**
+
+- LazyQueryField for deferred loading of related models
+- Support for one-to-one, one-to-many, and many-to-many relationships
+- Efficient querying of related data
+
+**5. Database Driver Integration:**
+
+- Abstract interface for database operations
+- Support for multiple database backends
+- Context-aware driver selection
+
+**6. Advanced Querying Capabilities:**
+
+- Expressive query syntax using Python operators
+- Support for complex filters, sorting, and aggregations
+- Asynchronous query execution
+
+**7. Model Collections:**
+
+- Management of model instances across the application
+- Global and scoped collections for flexible data access
+
+**8. Type Annotations and Metadata:**
+
+- Extensive use of type hints for better IDE support and type checking
+- Custom metadata types (e.g., Key, StoreAs) for fine-grained control over field behavior
+
+**9. Utility Functions:**
+
+- Helper methods for common tasks like metadata extraction and field type inference
+- Support for dataclass integration and custom field descriptors
+
+Example Usage:
     ```python
     from dataclasses import dataclass
     from typing import Annotated
-    from ommi import ommi_model, Key
-    
+    from ommi import ommi_model, Key, LazyLoadTheRelated, ReferenceTo
+
     @ommi_model
     @dataclass
     class User:
@@ -24,15 +70,43 @@ Example:
         age: int
         id: Annotated[int, Key] = None
         
-    # Now User can be used with Ommi database operations
+    @ommi_model
+    @dataclass
+    class Post:
+        title: str
+        content: str
+        author_id: Annotated[int, ReferenceTo(User.id)]
+        author: LazyLoadTheRelated[User]
+        id: Annotated[int, Key] = None
+
+    # Create and save a user
     user = User(name="Alice", age=30)
-    await db.add(user)
-    
+    await user.save()
+
+    # Create a post with a reference to the user
+    post = Post(title="My First Post", content="Hello, World!", author_id=user.id)
+    await post.save()
+
     # Query users
-    users = await User.fetch(User.age > 25).all()
+    adult_users = await User.fetch(User.age >= 18).all()
+
+    # Lazy-load related data
+    post_author = await post.author
+    print(f"Post '{post.title}' was written by {post_author.name}")
+
+    # Complex querying
+    recent_posts = await Post.fetch(
+        (Post.author.age > 25) & (Post.title.contains("Python"))
+    ).order_by(Post.id.desc()).limit(10).all()
     ```
+
+This module forms the core of the Ommi ORM, providing a robust foundation for building database-driven
+applications with clean, Pythonic code. It combines the simplicity of dataclasses (or your modeling
+library of choice) with the power of advanced ORM features, making it suitable for both simple CRUD
+ operations and complex data modeling scenarios.
 """
 
+__all__ = ['OmmiModel', 'ommi_model', 'QueryFieldMetadata', '_get_fields', '_get_query_fields']
 
 import sys
 from dataclasses import dataclass
@@ -114,26 +188,30 @@ class OmmiModel:
 
     When a class is decorated with @ommi_model, the following changes occur:
 
-    1. The class inherits from OmmiModel, gaining database operation methods like:
+    **1. The class inherits from OmmiModel, gaining database operation methods like:**
+
        - fetch() - Query instances from the database
        - save() - Persist changes to the database 
        - delete() - Remove from the database
        - reload() - Refresh data from the database
        - count() - Count matching instances
 
-    2. Type annotations are processed to create queryable fields:
+    **2. Type annotations are processed to create queryable fields:**
+
        - Basic types (str, int, etc) become regular database columns
        - Annotated types can specify special behaviors like Keys or References
        - Forward references are supported for circular dependencies
        - Fields can be used on the class type to build queries (e.g. User.age >= 18)
 
-    3. Relationship fields are transformed into lazy-loading descriptors:
+    **3. Relationship fields are transformed into lazy-loading descriptors:**
+
        - LazyLoadTheRelated[Model] for one-to-one relationships
        - LazyLoadEveryRelated[Model] for one-to-many relationships
        - Relationships are loaded from the database only when accessed
        - Results are cached after first access
 
-    4. Model metadata is created and stored in __ommi__:
+    **4. Model metadata is created and stored in `__ommi__`:**
+
        - Field definitions and types
        - Foreign key references
        - Collection registration
