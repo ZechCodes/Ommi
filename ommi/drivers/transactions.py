@@ -83,9 +83,5 @@ class BaseDriverTransaction(ABC):
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if exc_type:
-            await self.rollback()
-        else:
-            await self.commit()
-
+        await self.rollback() if exc_type else self.commit()
         await self.close()
