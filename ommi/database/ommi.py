@@ -358,13 +358,7 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
 
         Returns:
             The `Ommi` instance itself.
-
-        Raises:
-            RuntimeError: If the database driver is not connected.
         """
-        if not self.driver.connected:
-            raise RuntimeError("Database driver is not connected.")
-
         return self
 
     async def __aexit__(self, *_):
