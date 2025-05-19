@@ -1,3 +1,60 @@
+"""Provides the main `Ommi` class for database interaction.
+
+This module defines the `Ommi` class, which serves as the primary entry point
+for all database operations within the Ommi ORM. It encapsulates a database
+driver and provides high-level methods for common tasks such as adding records,
+finding records, managing model schemas, and handling transactions.
+
+The `Ommi` class is designed to be initialized with a specific database driver
+(e.g., for SQLite, PostgreSQL) and then used to interact with the database
+associated with that driver.
+
+Key functionalities include:
+
+-   Adding new model instances to the database (`add` method).
+-   Finding existing model instances based on various criteria (`find` method),
+    which returns a builder for flexible query execution (all, one, count, update, delete).
+-   Managing database schemas for model collections (`use_models`, `remove_models`).
+-   Providing an asynchronous context manager for database transactions (`transaction` method).
+-   Implicitly setting up models from a global collection if `allow_implicit_model_setup` is true.
+
+Usage Example:
+    ```python
+    from ommi import Ommi, ommi_model
+    from ommi.ext.drivers.sqlite import SQLiteDriver # Example driver
+    from ommi.models.collections import ModelCollection
+
+    collection = ModelCollection()
+
+    @ommi_model(collection=collection)
+    class User:
+        id: int
+        name: str
+
+    # Initialize with a driver (e.g., in-memory SQLite for this example)
+    db = Ommi(SQLiteDriver.connect())
+
+    async def main():
+        # Ensure models are known to the database
+        await db.use_models(collection)
+
+        # Add a user
+        add_result = await db.add(User(name="Alice"))
+        if add_result.result_or(False):
+            print(f"Added: {add_status.result}")
+
+        # Find the user
+        user = await db.find(User.name == "Alice").one()
+        if user.result_or(False):
+            print(f"Found: {user_status.value}")
+
+        # Perform operations in a transaction
+        async with db.transaction() as t:
+            await t.add(User(name="Bob"))
+            # ... other operations ...
+            # Transaction commits on successful exit, rolls back on exception.
+    ```
+"""
 from typing import Awaitable, TYPE_CHECKING
 
 import ommi
@@ -11,7 +68,51 @@ if TYPE_CHECKING:
 
 
 class Ommi[TDriver: "ommi.BaseDriver"]:
+    """Main class for interacting with a database through a specified driver.
+
+    The `Ommi` class provides a high-level API for database operations, including
+    adding, finding, updating, and deleting records, as well as managing database
+    schemas and transactions. It is initialized with a database driver instance,
+    which dictates how it communicates with the underlying database.
+
+    Attributes:
+        driver (TDriver): The database driver instance used for all operations.
+
+    Example: Example Usage
+        ```python
+        from ommi import Ommi, ommi_model
+        from ommi.ext.drivers.sqlite import SQLiteDriver # Example driver
+        from ommi.models.collections import ModelCollection
+
+        collection = ModelCollection()
+
+        @ommi_model(collection=collection)
+        class User:
+            id: int
+            name: str
+
+        async def main():
+            driver = SQLiteDriver.connect()
+            async with Ommi(driver) as db:
+                await db.use_models(collection)
+                await db.add(User(name="Alice")).or_raise()
+                user = await db.find(User.name == "Alice").one.or_raise()
+                print(f"Found: {user.name}")
+        ```
+    """
     def __init__(self, driver: TDriver, *, allow_imlicit_model_setup: bool = True):
+        """Initializes the Ommi database interaction layer.
+
+        Args:
+            driver: The database driver instance (e.g., `SQLiteDriver`, `PostgreSQLDriver`)
+                that Ommi will use to communicate with the database.
+            allow_imlicit_model_setup: If `True` (the default), Ommi will attempt to
+                automatically set up models from `ommi.models.collections.get_global_collection()`
+                before the first operation if no models have been explicitly registered via
+                `use_models()`. This can be convenient for simpler setups but might be
+                undesirable in complex applications where explicit schema management is preferred.
+                Set to `False` to disable this behavior and require explicit calls to `use_models()`.
+        """
         self._driver = driver
         self._known_model_collections: set["ModelCollection"] = set()
         self._allow_implicit_model_setup = allow_imlicit_model_setup
@@ -21,10 +122,18 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
         return self._driver
 
     def _ensure_model_setup(self) -> "Awaitable[None] | None":
-        """Ensure that models are set up if implicit model setup is allowed.
+        """Ensures that models are set up if implicit model setup is allowed.
+
+        If `_allow_implicit_model_setup` is true and no model collections are currently
+        known, this method will attempt to apply the schema of the global model collection
+        obtained via `ommi.models.collections.get_global_collection()`.
+
+        This is an internal method primarily called before operations like `add()` or `find()`
+        to ensure the database schema is ready.
 
         Returns:
-            An awaitable if models need to be set up, None otherwise.
+            An awaitable if models need to be set up (i.e., `self.use_models()` is called),
+            otherwise `None`.
         """
         if not self._known_model_collections and self._allow_implicit_model_setup:
             return self.use_models(ommi.models.collections.get_global_collection())
@@ -34,44 +143,50 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
         self, *models: "ommi.shared_types.DBModel"
     ) -> "Awaitable[ommi.database.results.DBResult[ommi.shared_types.DBModel]]":
         """Persists one or more model instances to the database.
+
         This method takes new model instances and attempts to save them as new records.
+        If implicit model setup is enabled and no models have been explicitly registered
+        via `use_models()`, this method will trigger the setup of the global model collection.
 
-        It prepares model instances for insertion into the database. When no models are provided
-        to Ommi, this implicitly sets up the global model collection when enabled.
-
-        The result of the operation is wrapped in a `DBResult` type (DBSuccess or DBFailure). This
-        allows for explicit handling of operation success or failure: if the operation is successful,
-        `DBSuccess.result` contains the added model instance(s). If an error occurs during the operation,
-        `DBFailure.exception` holds the specific exception.
+        The result of the operation is wrapped in a `ommi.database.results.DBResult` type.
+        This allows for explicit handling of the operation's success or failure:
+        -   If successful, `DBResult.is_success` will be `True`, and `DBResult.value`
+            will contain the added model instance(s) (potentially updated with database-generated
+            values like primary keys).
+        -   If an error occurs, `DBResult.is_failure` will be `True`, and
+            `DBResult.exception` will hold the specific exception.
 
         Args:
             *models: A variable number of `DBModel` instances to be added to the
                      database. These should be new instances not yet persisted.
 
         Returns:
-            Resolves to a `DBResult` that wraps the result on success and the exception on failure.
+            An awaitable that resolves to a `DBResult`. The `DBResult` wraps the added
+            model(s) on success or the exception on failure.
 
-        Example: Example: Adding a single user
+        Example: Adding a single user
             ```python
+            from ommi.database.results import DBResult # For match/case
+
             user = User(name="Alice")
             result_one = await db.add(user)
-            match result_one:
-                case DBResult.DBSuccess(added_user):
-                    print(f"Added user: {added_user.name}")
-                case DBResult.DBFailure(e):
-                    print(f"Failed to add user: {e}")
+            if result_one.is_success:
+                added_user = result_one.value
+                print(f"Added user: {added_user.name}")
+            else:
+                print(f"Failed to add user: {result_one.exception}")
             ```
 
-        Example: Example: Adding multiple users
+        Example: Adding multiple users
             ```python
             user1 = User(name="Alice")
             user2 = User(name="Bob")
             result_many = await db.add(user1, user2)
-            match result_many:
-                case DBResult.DBSuccess(added_items):
-                    print(f"Successfully added {len(added_items)} users.")
-                case DBResult.DBFailure(e):
-                    print(f"Failed to add multiple users: {e}")
+            if result_many.is_success:
+                added_items = result_many.value
+                print(f"Successfully added {len(added_items)} users.")
+            else:
+                print(f"Failed to add multiple users: {result_many.exception}")
             ```
         """
         setup_awaitable = self._ensure_model_setup()
@@ -88,126 +203,77 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
         self, *predicates: "ommi.query_ast.ASTGroupNode | ommi.shared_types.DBModel | bool"
     ) -> "Awaitable[ommi.database.query_results.DBQueryResultBuilder[ommi.shared_types.DBModel]]":
         """Initiates a query to retrieve models from the database based on specified criteria.
-        This method provides a flexible way to define conditions for your search, returning
-        an `ommi.database.query_results.DBQueryResultBuilder`. This builder object is central
-        to fetching data and does not execute the query immediately. Instead, it provides
-        several methods to execute the query and retrieve results in different forms:
 
-        - `.all()`: Asynchronously fetches all matching records, returning an `AsyncBatchIterator`
-          within the `DBQuerySuccess.result`.
-        - `.one()`: Fetches a single record. If successful, the record is in `DBQuerySuccess.result`.
-          It may result in a `DBStatusNoResultException` (within `DBQueryFailure.exception`)
-          if no record is found, or other database exceptions for different errors.
-        - `.count()`: Returns the total number of matching records as an integer within
-          `DBQueryResult.result`.
-        - `.delete()`: Deletes all records matching the predicates. The result (success/failure)
-          is given in as a `DBResult` (`DBSuccess` or `DBFailure`).
-        - `.update(**values)` or `.update(values_dict)`: Updates fields of matching records.
-          The result is given in a `DBResult` (`DBSuccess` or `DBFailure`).
+        This method provides a flexible way to define conditions for your search. It returns
+        an `ommi.database.query_results.DBQueryResultBuilder` instance immediately.
+        This builder object is central to fetching data and does not execute the query
+        until one of its data retrieval or modification methods is called and awaited.
+
+        If implicit model setup is enabled and no models have been explicitly registered
+        via `use_models()`, this method will trigger the setup of the global model collection.
+
+        Available `DBQueryResultBuilder` methods:
+        -   `.all()`: Asynchronously fetches all matching records. On success, returns an
+            `AsyncBatchIterator` via `DBQueryResult.value`.
+        -   `.one()`: Fetches a single record. On success, returns the record via `DBQueryResult.value`.
+            Raises `DBStatusNoResultException` (accessible via `DBQueryResult.exception`)
+            if no record is found.
+        -   `.count()`: Returns the total number of matching records as an integer via
+            `DBQueryResult.value`.
+        -   `.delete()`: Deletes all records matching the predicates. Returns a `DBResult`
+            indicating success or failure.
+        -   `.update(**values)` or `.update(values_dict)`: Updates fields of matching records.
+            Returns a `DBResult` indicating success or failure.
 
         Each of these execution methods (`.all()`, `.one()`, etc.) returns an awaitable.
-        When this awaitable is resolved, it yields a `ommi.DBQueryResult` type (for data-retrieval
-        methods like `.all()`, `.one()`, `.count()`) or a `ommi.DBResult` (for CRUD methods like
-        `.delete()`, `.update()`), allowing you to handle the outcome robustly. The
-        `DBQueryResultBuilder` itself can also be directly awaited, defaulting to the `.all()` behavior.
+        When this awaitable is resolved, it yields an `ommi.database.query_results.DBQueryResult`
+        (for `.all()`, `.one()`, `.count()`) or an `ommi.database.results.DBResult`
+        (for `.delete()`, `.update()`), allowing robust outcome handling.
+        The `DBQueryResultBuilder` itself can also be directly awaited, defaulting to `.all()`.
 
-        > # 💬 Helpful information
-        > The `find` method allows intuitive predicate definitions, often directly through Pythonic comparison
-        expressions (e.g., `User.age > 18`). This approach minimizes boilerplate for common queries. It's
-        designed for clarity. This can be made more powerful through the use of `ommi.query_ast.when` which gives
-        you access to it's `And` and `Or` methods to build more complex queries, eg.
-        > ```python
-        > db.find(when(User.name == "Alice").Or(User.name == "Bob"))
-        > ```
+        > **Note on Predicates:**
+        > Predicates define the search criteria. You can use:
+        > - Pythonic comparison expressions: `User.age > 18`
+        > - `ommi.query_ast.when()` for complex AND/OR logic: `when(User.name == "A").Or(User.age < 20)`
+        > - Model classes (e.g., `User`) to target all instances or provide context.
 
         Args:
-            *predicates: Variable number of conditions that define the query.
-                These are typically combined with an AND logic by default (internally,
-                these are passed to `ommi.query_ast.when(*predicates)`).
-                Common forms include:
-
-                - Boolean expressions involving model fields: e.g., `User.name == "Alice"`,
-                  `User.age > 18`. These are the fundamental building blocks.
-                - `ommi.query_ast.ASTGroupNode`: For more complex conditions involving
-                  explicit AND/OR logic, often constructed using `ommi.query_ast.when()`
-                  with `ASTGroupNode.And()` or `ASTGroupNode.Or()`.
-                - Model classes (e.g., `User`): If a model class is passed as a predicate,
-                  it typically acts as a target for the query, implying operations on
-                  all instances of that model, or providing context for other field-based
-                  predicates. For instance, `db.find(User, User.name == "Test")`.
-                  To query all instances of a model, you might use `db.find(User)`.
+            *predicates: Variable number of conditions that define the query. These are
+                typically combined with AND logic by default (internally passed to
+                `ommi.query_ast.when(*predicates)`).
 
         Returns:
-            `DBQueryResultBuilder` that resolves to a `DBQueryResult`, alternatively it provides aggregation and exception handling methods.
+            An awaitable that resolves to a `DBQueryResultBuilder`. This builder can then be
+            used to execute the query and retrieve results in various forms.
 
-        Example: Example 1: Find user by ID
-            Assuming `User` is an `@ommi_model` with fields like `id`, `name`, `age`, `is_active`
+        Example: Find user by ID
             ```python
-            from ommi.query_ast import when # Corrected import
-            from ommi.database.query_results import DBQueryResult # For match/case
-            from ommi.database.results import DBResult, DBStatusNoResultException # For match/case
+            from ommi.query_ast import when
+            from ommi.database.query_results import DBQueryResult
+            from ommi.database.results import DBResult, DBStatusNoResultException
 
             user_id_to_find = 1
             query_by_id = db.find(User.id == user_id_to_find)
-            result_status = await query_by_id.one() # Await .one() to get DBQueryResult
-            match result_status:
-                case DBQueryResult.DBSuccess(user):
-                    print(f"Found user by ID: {user.name}")
-                case DBQueryResult.DBFailure(DBStatusNoResultException()):
-                    print(f"User with ID {user_id_to_find} not found.")
-                case DBQueryResult.DBFailure(e):
-                    print(f"Error finding user by ID: {e}")
+            result_status = await query_by_id.one()
+
+            if result_status.is_success:
+                user = result_status.value
+                print(f"Found user by ID: {user.name}")
+            elif result_status.exception_is(DBStatusNoResultException):
+                print(f"User with ID {user_id_to_find} not found.")
+            else:
+                print(f"Error finding user by ID: {result_status.exception}")
             ```
 
-        Example: Example 2: Find users older than 18 and count them
-            Predicates are ANDed by default when passed directly to `find()` or `when()`
+        Example: Find users older than 18 and count them
             ```python
             older_users_query = db.find(User.age > 18, User.is_active == True)
-            count_status = await older_users_query.count() # Await .count()
-            match count_status:
-                case DBQueryResult.DBSuccess(number_of_users):
-                    print(f"Number of active users older than 18: {number_of_users}")
-                case DBQueryResult.DBFailure(e):
-                    print(f"Error counting users: {e}")
-            ```
-
-        Example: Example 3: Find users named Alice OR Bob, and iterate
-            Use `when()` and the `.Or()` method on the resulting `ASTGroupNode` for explicit `OR` conditions.
-            ```python
-            named_users_query = db.find(when(User.name == "Alice").Or(User.name == "Bob"))
-
-            all_results_status = await named_users_query.all()
-            match all_results_status:
-                case DBQueryResult.DBSuccess(user_iterator):
-                    print("Users named Alice or Bob:")
-                    async for user in user_iterator:
-                        print(f"- {user.name}")
-                case DBQueryResult.DBFailure(e):
-                    print(f"Error finding named users: {e}")
-            ```
-
-        Example: Example 4: Updating records
-            ```python
-            update_query = db.find(User.name == "Old Name")
-            update_status = await update_query.update(name="New Name", is_active=False) # Await .update()
-
-            match update_status:
-                case DBResult.DBSuccess(): # Update might not return data in .result
-                    print("Successfully updated records.")
-                case DBResult.DBFailure(e):
-                    print(f"Error updating records: {e}")
-            ```
-
-        Example: Example 5: Deleting records
-            ```python
-            delete_query = db.find(User.is_active == False)
-            delete_status = await delete_query.delete() # Await .delete()
-
-            match delete_status:
-                case DBResult.DBSuccess(): # Delete might not return data
-                    print("Successfully deleted inactive users.")
-                case DBResult.DBFailure(e):
-                    print(f"Error deleting users: {e}")
+            count_status = await older_users_query.count()
+            if count_status.is_success:
+                number_of_users = count_status.value
+                print(f"Number of active users older than 18: {number_of_users}")
+            else:
+                print(f"Error counting users: {count_status.exception}")
             ```
         """
         setup_awaitable = self._ensure_model_setup()
@@ -221,42 +287,91 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
         return ommi.database.query_results.DBQueryResult.build(self.driver, when(*predicates))
 
     async def use_models(self, model_collection: "ModelCollection") -> None:
-        """Apply the schema for the given model collection to the database.
+        """Explicitly applies the schema for a given model collection to the database.
+
+        This involves first attempting to delete any existing schema for the collection
+        and then applying the new schema. This ensures that the database tables and
+        indexes match the model definitions in the provided collection.
+
+        This method should be called if `allow_implicit_model_setup` is `False` or if
+        you need to manage different sets of models explicitly.
 
         Args:
-            model_collection: The model collection to apply the schema for.
+            model_collection: The `ModelCollection` instance whose schema (tables, indexes)
+                              needs to be created or updated in the database.
         """
         await self.driver.delete_schema(model_collection)
         await self.driver.apply_schema(model_collection)
         self._known_model_collections.add(model_collection)
 
     async def remove_models(self, model_collection: "ModelCollection") -> None:
-        """Remove the schema for the given model collection from the database.
+        """Removes the schema for the given model collection from the database.
+
+        This typically involves dropping tables associated with the models in the collection.
+        The collection is also removed from Ommi's set of known model collections.
 
         Args:
-            model_collection: The model collection to remove the schema for.
+            model_collection: The `ModelCollection` whose schema should be removed
+                              from the database.
         """
         await self.driver.delete_schema(model_collection)
         self._known_model_collections.discard(model_collection)
 
     def transaction(self) -> OmmiTransaction:
-        """Creates an async context manager that can be used to perform database operations within a transaction.
+        """Creates an asynchronous context manager for database transactions.
+
+        Operations performed on the `OmmiTransaction` object within the `async with`
+        block will be part of a single atomic transaction. The transaction is
+        automatically committed if the block exits successfully, or rolled back
+        if an unhandled exception occurs within the block.
 
         Returns:
-            An `OmmiTransaction` that can be used to perform operations within a transaction.
+            An `OmmiTransaction` instance that can be used with `async with`.
 
-        Example: Example: Basic transaction usage
+        Example: Basic transaction usage
             ```python
-            async with db.transaction() as transaction:
-                await transaction.add(model)
-                # If an exception occurs here, the transaction will be rolled back
+            async with db.transaction() as t:
+                await t.add(User(name="Charlie"))
+                # If an error occurs here, changes are rolled back.
+                # If all operations succeed, changes are committed.
+            ```
+
+        Example: Manual rollback within a transaction
+            ```python
+            try:
+                async with db.transaction() as tx:
+                    await tx.add(User(name="Dave"))
+                    if some_condition_fails:
+                        await tx.rollback() # Explicitly roll back
+                    else:
+                        await tx.commit() # Explicitly commit (optional if auto-commit on exit is desired)
+            except Exception as e:
+                print(f"Transaction failed: {e}")
             ```
         """
         return OmmiTransaction(self.driver.transaction())
 
     async def __aenter__(self):
-        await self._driver.__aenter__()
+        """This context manager ensures that the database connection is open
+        when entering the `async with` block. Using a context manager ensures that
+        exceptions are properly handled and resources are cleaned up automatically.
+
+        Returns:
+            The `Ommi` instance itself.
+
+        Raises:
+            RuntimeError: If the database driver is not connected.
+        """
+        if not self.driver.connected:
+            raise RuntimeError("Database driver is not connected.")
+
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        return await self._driver.__aexit__(exc_type, exc_val, exc_tb)
+    async def __aexit__(self, *_):
+        """Exits the asynchronous context, closing the driver connection.
+
+        Ensures that the database connection managed by the driver is properly closed
+        when the `async with` block finishes, regardless of whether it completed
+        successfully or an exception occurred.
+        """
+        await self.driver.disconnect()
