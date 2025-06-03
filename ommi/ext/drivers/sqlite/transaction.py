@@ -191,8 +191,15 @@ class SQLiteTransactionExplicitTransactions(SQLiteTransaction):
         Executes a `BEGIN;` statement to explicitly start the SQLite transaction.
         """
         if not self._is_open:
-            self.cursor.execute("BEGIN;", ())
-            self._is_open = True
+            try:
+                self.cursor.execute("BEGIN;", ())
+                self._is_open = True
+            except sqlite3.OperationalError as e:
+                if "cannot start a transaction within a transaction" in str(e):
+                    # Already in a transaction, mark as open but don't execute BEGIN
+                    self._is_open = True
+                else:
+                    raise
 
     async def close(self):
         """Closes the transaction and the underlying cursor.
@@ -209,6 +216,7 @@ class SQLiteTransactionExplicitTransactions(SQLiteTransaction):
         """
         if self._is_open:
             self.cursor.execute("COMMIT;", ())
+            self._is_open = False
 
     async def rollback(self):
         """Rolls back the active transaction.
@@ -217,6 +225,7 @@ class SQLiteTransactionExplicitTransactions(SQLiteTransaction):
         """
         if self._is_open:
             self.cursor.execute("ROLLBACK;", ())
+            self._is_open = False
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Handles exiting the asynchronous context manager.
@@ -229,7 +238,7 @@ class SQLiteTransactionExplicitTransactions(SQLiteTransaction):
         Finally, it ensures the transaction is closed.
         """
         try:
-            await self.rollback() if exc_type else self.commit()
+            await self.rollback() if exc_type else await self.commit()
         except sqlite3.OperationalError:
             # This can happen if the connection is already closed or if trying
             # to rollback a transaction that was never started or already completed.
