@@ -143,7 +143,11 @@ class SQLiteDriver(BaseDriver):
         Returns:
             The same models, potentially updated with database-generated values
         """
-        return await add_query.add_models(self.connection.cursor(), models)
+        result = await add_query.add_models(self.connection.cursor(), models)
+        # Only commit if not in autocommit mode (isolation_level is not None)
+        if self.connection.isolation_level is not None:
+            self.connection.commit()
+        return result
 
     async def count(self, predicate: "ASTGroupNode") -> int:
         """Count the number of records matching a predicate.

@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 
 async def add_models(cursor: "Cursor", models: "Iterable[DBModel]") -> "Iterable[DBModel]":
-    return (*_add_models(cursor, models),)
+    return list(_add_models(cursor, models))
 
 
 def _add_models(cursor: "Cursor", models: "Iterable[DBModel]") -> "Generator[DBModel, None, None]":
