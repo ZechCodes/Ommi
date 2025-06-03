@@ -84,18 +84,17 @@ def _build_select_query(query: SelectQuery, *, count: bool = False) -> "SQLState
     if query.where:
         query_builder.append(f"WHERE {query.where}")
 
-    if query.limit > 0:
-        query_builder.append(f"LIMIT {query.limit}")
-
-        if query.offset > 0:
-            query_builder.append(f"OFFSET {query.offset}")
-
-    if query.order_by:
+    if query.order_by and not count:
         ordering = ", ".join(
             f"{column} {'ASC' if ordering is ResultOrdering.ASCENDING else 'DESC'}"
             for column, ordering in query.order_by.items()
         )
-        query_builder.append("ORDER BY")
-        query_builder.append(ordering)
+        query_builder.append(f"ORDER BY {ordering}")
+
+    if query.limit > 0 and not count:
+        query_builder.append(f"LIMIT {query.limit}")
+
+        if query.offset > 0:
+            query_builder.append(f"OFFSET {query.offset}")
 
     return " ".join(query_builder) + ";"
