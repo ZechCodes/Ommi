@@ -194,7 +194,9 @@ class DBFailure[T](DBResult[T]):
     @property
     def result(self) -> T:
         """Accessing `result` on `DBFailure` raises `DBStatusNoResultException`."""
-        raise DBStatusNoResultException("DBResult does not wrap a result")
+        raise DBStatusNoResultException(
+            f"DBResult.{type(self).__name__} does not wrap a result, it only contains an exception"
+        )
 
     def result_or[D](self, default: D) -> D:
         """Returns the default value, as `DBFailure` implies no data result."""
