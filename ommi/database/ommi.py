@@ -55,7 +55,7 @@ Usage Example:
             # Transaction commits on successful exit, rolls back on exception.
     ```
 """
-from typing import Awaitable, TYPE_CHECKING
+from typing import Any, Awaitable, TYPE_CHECKING
 
 import ommi
 from ommi.query_ast import when
@@ -189,15 +189,12 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
                 print(f"Failed to add multiple users: {result_many.exception}")
             ```
         """
+        builder = ommi.database.results.DBResult.build(self.driver.add, models)
         setup_awaitable = self._ensure_model_setup()
         if setup_awaitable is not None:
-            # We need to wrap the add operation in a function that awaits the setup first
-            async def _add_with_setup():
-                await setup_awaitable
-                return await self.driver.add(models)
-            return ommi.database.results.DBResult.build(_add_with_setup)
+            builder = SetupOnAwait(setup_awaitable, builder)
 
-        return ommi.database.results.DBResult.build(self.driver.add, models)
+        return builder
 
     def find(
         self, *predicates: "ommi.query_ast.ASTGroupNode | ommi.shared_types.DBModel | bool"
@@ -276,15 +273,12 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
                 print(f"Error counting users: {count_status.exception}")
             ```
         """
+        builder = ommi.database.query_results.DBQueryResult.build(self.driver, when(*predicates))
         setup_awaitable = self._ensure_model_setup()
         if setup_awaitable is not None:
-            # We need to wrap the find operation in a function that awaits the setup first
-            async def _find_with_setup():
-                await setup_awaitable
-                return ommi.database.query_results.DBQueryResult.build(self.driver, when(*predicates))
-            return _find_with_setup()
+            builder = SetupOnAwait(setup_awaitable, builder)
 
-        return ommi.database.query_results.DBQueryResult.build(self.driver, when(*predicates))
+        return builder
 
     async def use_models(self, model_collection: "ModelCollection") -> None:
         """Explicitly applies the schema for a given model collection to the database.
@@ -369,3 +363,19 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
         successfully or an exception occurred.
         """
         await self.driver.disconnect()
+
+
+class SetupOnAwait:
+    def __init__(self, setup_awaitable: Awaitable, obj: Awaitable[Any]):
+        self._setup_awaitable = setup_awaitable
+        self._awaitable = obj
+
+    def __await__(self):
+        return self._get().__await__()
+
+    def __getattr__(self, name):
+        return getattr(self._awaitable, name)
+
+    async def _get(self):
+        await self._setup_awaitable
+        return await self._awaitable
