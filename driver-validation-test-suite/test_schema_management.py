@@ -127,7 +127,7 @@ async def test_schema_with_relationships(driver: BaseDriver):
 
     async with WithModels(driver, collection):
         # Add a department
-        dept = await driver.add([Department(name="Engineering")])[0]
+        dept = (await driver.add([Department(name="Engineering")]))[0]
         
         # Add employees referencing the department
         employees = await driver.add([
@@ -163,7 +163,7 @@ async def test_schema_evolution(driver: BaseDriver):
 
     # Apply schema and add data
     await driver.apply_schema(collection1)
-    initial_model = await driver.add([InitialModel(name="Initial Item")])[0]
+    initial_model = (await driver.add([InitialModel(name="Initial Item")]))[0]
     
     # Now evolve the schema with a new model
     collection2 = ModelCollection()
@@ -304,10 +304,10 @@ async def test_multiple_model_schema(driver: BaseDriver):
 
     async with WithModels(driver, collection):
         # Create a customer
-        customer = await driver.add([Customer(name="Test Customer")])[0]
+        customer = (await driver.add([Customer(name="Test Customer")]))[0]
         
         # Create an order for the customer
-        order = await driver.add([Order(total=125.99, customer_id=customer.id)])[0]
+        order = (await driver.add([Order(total=125.99, customer_id=customer.id)]))[0]
         
         # Create order items
         await driver.add([
