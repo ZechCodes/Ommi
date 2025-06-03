@@ -92,7 +92,7 @@ class SelectQuery:
 def build_query(ast: ASTGroupNode) -> SelectQuery:
     query = SelectQuery(
         limit=ast.max_results,
-        offset=ast.results_page * ast.max_results,
+        offset=ast.results_page,  # Treat results_page as direct offset, not page number
         order_by=_process_ordering(ast.sorting),
     )
     where = []
