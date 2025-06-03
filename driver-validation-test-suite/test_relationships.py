@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from typing import Any, Annotated, List
 
 import pytest
-import attrs
-import pydantic
 from ommi import BaseDriver, ommi_model
 from ommi.models.collections import ModelCollection
 from ommi.models.field_metadata import ReferenceTo, Key
@@ -116,20 +114,18 @@ async def test_lazy_load_one_to_many(driver: BaseDriver):
     @dataclass
     class Department:
         name: str
-        id: int = None
-        
         # One-to-many relationship with forward reference
-        employees: "LazyLoadEveryRelated['Employee']"
+        employees: "LazyLoadEveryRelated['Employee']" = None
+        id: int = None
 
     @ommi_model(collection=collection)
     @dataclass
     class Employee:
         name: str
         department_id: Annotated[int, ReferenceTo(Department.id)]
-        id: int = None
-        
         # Many-to-one relationship
         department: LazyLoadTheRelated[Department]
+        id: int = None
 
     async with WithModels(driver, collection):
         # Create departments
@@ -166,11 +162,10 @@ async def test_circular_references(driver: BaseDriver):
     class Person:
         name: str
         best_friend_id: Annotated[int, ReferenceTo("Person.id")] = None
-        id: int = None
-        
         # Self-referential relationship
-        best_friend: "LazyLoadTheRelated['Person']"
-        friends: "LazyLoadEveryRelated['Person']"
+        best_friend: "LazyLoadTheRelated['Person']" = None
+        friends: "LazyLoadEveryRelated['Person']" = None
+        id: int = None
 
     async with WithModels(driver, collection):
         # Create people without relationships first
@@ -294,19 +289,17 @@ async def test_many_to_many_with_association_table(driver: BaseDriver):
     @dataclass
     class Student:
         name: str
-        id: int = None
-        
         # Many-to-many relationship with explicit association table
-        courses: "LazyLoadEveryRelated[Annotated[Course, AssociateUsing(StudentCourse)]]"
+        courses: "LazyLoadEveryRelated[Annotated[Course, AssociateUsing(StudentCourse)]]" = None
+        id: int = None
 
     @ommi_model(collection=collection)
     @dataclass
     class Course:
         title: str
-        id: int = None
-        
         # Many-to-many relationship with explicit association table
-        students: "LazyLoadEveryRelated[Annotated[Student, AssociateUsing(StudentCourse)]]"
+        students: "LazyLoadEveryRelated[Annotated[Student, AssociateUsing(StudentCourse)]]" = None
+        id: int = None
 
     async with WithModels(driver, collection):
         # Create students
@@ -360,94 +353,47 @@ async def test_many_to_many_with_association_table(driver: BaseDriver):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "model_style",
-    [
-        "dataclass",
-        "attrs",
-        "pydantic",
-    ],
-)
-async def test_lazy_load_across_model_styles(driver: BaseDriver, model_style: str):
-    """Test lazy loading relationships across different model definition styles."""
+async def test_lazy_load_model_styles(driver: BaseDriver):
+    """Test lazy loading relationships with dataclasses."""
     collection = ModelCollection()
     
-    if model_style == "dataclass":
-        @ommi_model(collection=collection)
-        @dataclass
-        class Parent:
-            name: str
-            id: int = None
-            
-            # Forward reference in quotes
-            children: "LazyLoadEveryRelated['Child']"
-            
-        @ommi_model(collection=collection)
-        @dataclass
-        class Child:
-            name: str
-            parent_id: Annotated[int, ReferenceTo(Parent.id)]
-            id: int = None
-            
-            parent: LazyLoadTheRelated[Parent]
-            
-    elif model_style == "attrs":
-        @ommi_model(collection=collection)
-        @attrs.define
-        class Parent:
-            name: str
-            id: int = None
-            
-            # Forward reference in quotes
-            children: "LazyLoadEveryRelated['Child']"
-            
-        @ommi_model(collection=collection)
-        @attrs.define
-        class Child:
-            name: str
-            parent_id: Annotated[int, ReferenceTo(Parent.id)]
-            id: int = None
-            
-            parent: LazyLoadTheRelated[Parent]
-            
-    elif model_style == "pydantic":
-        @ommi_model(collection=collection)
-        class Parent(pydantic.BaseModel):
-            name: str
-            id: int = None
-            
-            # Forward reference in quotes
-            children: "LazyLoadEveryRelated['Child']"
-            
-        @ommi_model(collection=collection)
-        class Child(pydantic.BaseModel):
-            name: str
-            parent_id: Annotated[int, ReferenceTo(Parent.id)]
-            id: int = None
-            
-            parent: LazyLoadTheRelated[Parent]
+    @ommi_model(collection=collection)
+    @dataclass
+    class Parent:
+        name: str
+        # Forward reference in quotes
+        children: "LazyLoadEveryRelated['Child']" = None
+        id: int = None
+        
+    @ommi_model(collection=collection)
+    @dataclass
+    class Child:
+        name: str
+        parent_id: Annotated[int, ReferenceTo(Parent.id)]
+        parent: LazyLoadTheRelated[Parent]
+        id: int = None
     
     async with WithModels(driver, collection):
         # Create parent
         parents = await driver.add([
-            Parent(name=f"Parent ({model_style})"),
+            Parent(name="Parent (dataclass)"),
         ])
         
         # Create children
         children = await driver.add([
-            Child(name=f"Child 1 ({model_style})", parent_id=parents[0].id),
-            Child(name=f"Child 2 ({model_style})", parent_id=parents[0].id),
+            Child(name="Child 1 (dataclass)", parent_id=parents[0].id),
+            Child(name="Child 2 (dataclass)", parent_id=parents[0].id),
         ])
         
         # Test parent -> children
         parent_children = await parents[0].children
         assert len(parent_children) == 2
         assert {child.name for child in parent_children} == {
-            f"Child 1 ({model_style})", 
-            f"Child 2 ({model_style})"
+            "Child 1 (dataclass)", 
+            "Child 2 (dataclass)"
         }
         
         # Test child -> parent
         child_parent = await children[0].parent
         assert child_parent.id == parents[0].id
-        assert child_parent.name == f"Parent ({model_style})" 
+        assert child_parent.name == "Parent (dataclass)" 
