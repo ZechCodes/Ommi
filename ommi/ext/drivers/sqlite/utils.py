@@ -115,33 +115,41 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 query.add_model(model)
 
             case ASTLiteralNode(value):
-                where.append("?")
-                # Convert boolean values to integers for SQLite
-                if isinstance(value, bool):
-                    query.values.append(int(value))
+                # Handle special SQL keywords
+                if value in ("IS", "IS NOT", "NULL"):
+                    where.append(value)
                 else:
-                    query.values.append(value)
+                    where.append("?")
+                    # Convert boolean values to integers for SQLite
+                    if isinstance(value, bool):
+                        query.values.append(int(value))
+                    else:
+                        query.values.append(value)
 
             case ASTLogicalOperatorNode() as op:
                 where.append(logical_operator_mapping[op])
 
             case ASTOperatorNode() as op:
-                # Check if this is a NULL comparison
-                if len(where) >= 2 and where[-1] == "?" and query.values and query.values[-1] is None:
-                    # Replace the last "?" with "NULL" and adjust operator
-                    where[-1] = "NULL"
-                    query.values.pop()  # Remove the None value from parameters
-                    if op == ASTOperatorNode.EQUALS:
-                        where.append("IS")
-                    elif op == ASTOperatorNode.NOT_EQUALS:
-                        where.append("IS NOT")
-                    else:
-                        where.append(operator_mapping[op])
-                else:
-                    where.append(operator_mapping[op])
+                where.append(operator_mapping[op])
 
             case ASTComparisonNode(left, right, op):
-                node_stack.append(iter((left, op, right)))
+                # Check if this is a NULL comparison and modify the operator
+                if isinstance(right, ASTLiteralNode) and right.value is None:
+                    if op == ASTOperatorNode.EQUALS:
+                        # Replace = with IS for NULL
+                        modified_op = ASTLiteralNode("IS")
+                        modified_right = ASTLiteralNode("NULL")
+                        node_stack.append(iter((left, modified_op, modified_right)))
+                    elif op == ASTOperatorNode.NOT_EQUALS:
+                        # Replace != with IS NOT for NULL  
+                        modified_op = ASTLiteralNode("IS NOT")
+                        modified_right = ASTLiteralNode("NULL")
+                        node_stack.append(iter((left, modified_op, modified_right)))
+                    else:
+                        # For other operators, keep as-is (will be false in SQL)
+                        node_stack.append(iter((left, op, right)))
+                else:
+                    node_stack.append(iter((left, op, right)))
 
             case ASTGroupFlagNode.OPEN:
                 if len(node_stack) > 1:
