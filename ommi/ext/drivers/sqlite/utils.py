@@ -59,8 +59,12 @@ def _validate_row_values(model: "Type[DBModel]", row: tuple[Any, ...]) -> Genera
 def _find_type_validator[T](type_hint: Type[T]) -> Callable[[Any], T] | None:
     hint = get_origin(type_hint) or type_hint
     for validator_type, validator in type_validators.items():
-        if issubclass(hint, validator_type):
-            return validator
+        try:
+            if issubclass(hint, validator_type):
+                return validator
+        except TypeError:
+            # hint is not a class (e.g., it's a generic type), skip it
+            continue
 
     return None
 
@@ -106,19 +110,35 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
                 query.add_model(model)
 
             case ASTReferenceNode(field, model):
-                name = f"{model.__ommi__.model_name}.{field.metadata.get('store_as')}"
+                name = f"\"{model.__ommi__.model_name}\".\"{field.metadata.get('store_as')}\""
                 where.append(name)
                 query.add_model(model)
 
             case ASTLiteralNode(value):
                 where.append("?")
-                query.values.append(value)
+                # Convert boolean values to integers for SQLite
+                if isinstance(value, bool):
+                    query.values.append(int(value))
+                else:
+                    query.values.append(value)
 
             case ASTLogicalOperatorNode() as op:
                 where.append(logical_operator_mapping[op])
 
             case ASTOperatorNode() as op:
-                where.append(operator_mapping[op])
+                # Check if this is a NULL comparison
+                if len(where) >= 2 and where[-1] == "?" and query.values and query.values[-1] is None:
+                    # Replace the last "?" with "NULL" and adjust operator
+                    where[-1] = "NULL"
+                    query.values.pop()  # Remove the None value from parameters
+                    if op == ASTOperatorNode.EQUALS:
+                        where.append("IS")
+                    elif op == ASTOperatorNode.NOT_EQUALS:
+                        where.append("IS NOT")
+                    else:
+                        where.append(operator_mapping[op])
+                else:
+                    where.append(operator_mapping[op])
 
             case ASTComparisonNode(left, right, op):
                 node_stack.append(iter((left, op, right)))
@@ -143,7 +163,7 @@ def build_query(ast: ASTGroupNode) -> SelectQuery:
 
 def _process_ordering(sorting: list[ASTReferenceNode]) -> dict[str, ResultOrdering]:
     return {
-        f"{ref.model.__model_name__}.{ref.field.name}": ref.ordering for ref in sorting
+        f"\"{ref.model.__ommi__.model_name}\".\"{ref.field.metadata.get('store_as')}\"": ref.ordering for ref in sorting
     }
 
 
@@ -151,12 +171,12 @@ def build_subquery(
     model: "Type[DBModel]", models: "list[Type[DBModel]]", where: str
 ) -> str:
     pks = ", ".join(
-        f"{model.__ommi__.model_name}.{pk.get('store_as')}"
+        f"\"{model.__ommi__.model_name}\".\"{pk.get('store_as')}\""
         for pk in model.get_primary_key_fields()
     )
     sub_query = [
         f"SELECT {pks}",
-        f"FROM {model.__ommi__.model_name}",
+        f"FROM \"{model.__ommi__.model_name}\"",
     ]
     sub_query.extend(generate_joins(model, models))
 
@@ -174,16 +194,16 @@ def generate_joins(model: "Type[DBModel]", models: "list[Type[DBModel]]"):
 def _create_join(model: "Type[DBModel]", join_model: "Type[DBModel]") -> str:
     if model in join_model.__ommi__.references:
         columns = " AND ".join(
-            f"{join_model.__ommi__.model_name}.{r.from_field.get('store_as')} = "
-            f"{model.__ommi__.model_name}.{r.to_field.get('store_as')}"
+            f"\"{join_model.__ommi__.model_name}\".\"{r.from_field.get('store_as')}\" = "
+            f"\"{model.__ommi__.model_name}\".\"{r.to_field.get('store_as')}\""
             for r in join_model.__ommi__.references[model]
         )
 
     else:
         columns = " AND ".join(
-            f"{join_model.__ommi__.model_name}.{r.to_field.get('store_as')} = "
-            f"{model.__ommi__.model_name}.{r.from_field.get('store_as')}"
+            f"\"{join_model.__ommi__.model_name}\".\"{r.to_field.get('store_as')}\" = "
+            f"\"{model.__ommi__.model_name}\".\"{r.from_field.get('store_as')}\""
             for r in model.__ommi__.references[join_model]
         )
 
-    return f"JOIN {join_model.__ommi__.model_name} ON {columns}"
+    return f"JOIN \"{join_model.__ommi__.model_name}\" ON {columns}"

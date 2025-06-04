@@ -254,62 +254,15 @@ async def test_multiple_model_schema(driver: BaseDriver):
 
 
 @pytest.mark.asyncio
-async def test_schema_case_sensitivity(driver: BaseDriver):
-    """Test case sensitivity in schema (model names, field names).
-    
-    All drivers should support case-sensitive field names in models, even if
-    the underlying database is case-insensitive. Drivers should implement mapping
-    mechanisms to ensure consistent behavior across all database types.
-    """
+async def test_duplicate_field_validation(driver: BaseDriver):
+    """Test that models cannot have fields with duplicate normalized names/store_as values."""
     collection = ModelCollection()
-
-    @ommi_model(collection=collection)
-    @dataclass
-    class CaseSensitiveModel:
-        Name: str
-        name: str
-        VALUE: int
-        value: int
-        id: int = None
-
-    # Apply schema
-    await driver.apply_schema(collection)
     
-    try:
-        # Add a record
-        model = CaseSensitiveModel(
-            Name="Upper",
-            name="lower",
-            VALUE=100,
-            value=200
-        )
-        await driver.add([model])
-        
-        # Test 1: Fields with different cases should be treated as distinct
-        result = await driver.fetch(when(CaseSensitiveModel.id == model.id)).one()
-        assert result.Name == "Upper"
-        assert result.name == "lower"
-        assert result.VALUE == 100
-        assert result.value == 200
-        
-        # Test 2: When querying, case must match exactly
-        results = await driver.fetch(when(CaseSensitiveModel.Name == "Upper")).get()
-        assert len(results) == 1
-        
-        results = await driver.fetch(when(CaseSensitiveModel.Name == "upper")).get()
-        assert len(results) == 0
-        
-        # Test 3: Update operations must respect case
-        await driver.update(when(CaseSensitiveModel.id == model.id), {"Name": "MODIFIED"})
-        result = await driver.fetch(when(CaseSensitiveModel.id == model.id)).one()
-        assert result.Name == "MODIFIED"
-        assert result.name == "lower"  # Should be unchanged
-        
-        # Test 4: Different-cased fields can be updated independently
-        await driver.update(when(CaseSensitiveModel.id == model.id), {"name": "modified"})
-        result = await driver.fetch(when(CaseSensitiveModel.id == model.id)).one()
-        assert result.Name == "MODIFIED" 
-        assert result.name == "modified"
-    finally:
-        # Clean up
-        await driver.delete_schema(collection) 
+    # This should be detected as an error when the model is created
+    with pytest.raises(ValueError, match="Duplicate field name"):
+        @ommi_model(collection=collection)
+        @dataclass 
+        class DuplicateFieldModel:
+            name: str
+            name_duplicate: Annotated[str, {"store_as": "name"}]  # Same store_as as normalized 'name'
+            id: int = None

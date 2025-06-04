@@ -77,7 +77,7 @@ def _generate_select_sql(
 
 def _build_select_query(query: SelectQuery, *, count: bool = False) -> "SQLStatement":
     columns = "Count(*)" if count else "*"
-    query_builder = [f"SELECT {columns} FROM {query.model.__ommi__.model_name}"]
+    query_builder = [f"SELECT {columns} FROM \"{query.model.__ommi__.model_name}\""]
     if query.models:
         query_builder.extend(generate_joins(query.model, query.models))
 

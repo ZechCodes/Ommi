@@ -101,14 +101,14 @@ async def test_order_by_operations(driver: BaseDriver):
         ])
         
         # Test single field ascending sort
-        query = when(SortableItem).sort(SortableItem.name.asc())
+        query = when(SortableItem).sort(SortableItem.name.asc)
         results = await driver.fetch(query).get()
         
         # Verify order: A, B, C, D, E
         assert [item.name for item in results] == ["Item A", "Item B", "Item C", "Item D", "Item E"]
         
         # Test single field descending sort
-        query = when(SortableItem).sort(SortableItem.priority.desc())
+        query = when(SortableItem).sort(SortableItem.priority.desc)
         results = await driver.fetch(query).get()
         
         # Verify order: E, D, C, B, A
@@ -121,7 +121,7 @@ async def test_order_by_operations(driver: BaseDriver):
             SortableItem(name="Item Y", priority=3, created_at="2023-07-01"),
         ])
         
-        query = when(SortableItem).sort(SortableItem.priority.asc(), SortableItem.name.asc())
+        query = when(SortableItem).sort(SortableItem.priority.asc, SortableItem.name.asc)
         results = await driver.fetch(query).get()
         
         # Items with priority 3 should be sorted by name: C, X, Y
@@ -129,7 +129,7 @@ async def test_order_by_operations(driver: BaseDriver):
         assert [item.name for item in priority_3_items] == ["Item C", "Item X", "Item Y"]
         
         # Test multi-field sort (different directions)
-        query = when(SortableItem).sort(SortableItem.priority.asc(), SortableItem.name.desc())
+        query = when(SortableItem).sort(SortableItem.priority.asc, SortableItem.name.desc)
         results = await driver.fetch(query).get()
         
         # Items with priority 3 should be sorted by name in descending order: Y, X, C
@@ -283,8 +283,8 @@ async def test_async_batch_iterator(driver: BaseDriver):
         ])
         
         # Create a query and get an AsyncBatchIterator
-        query = when(StreamItem).sort(StreamItem.index.asc())
-        result = await driver.fetch(query)
+        query = when(StreamItem).sort(StreamItem.index.asc)
+        result = driver.fetch(query)
         
         # Count manually by iterating
         count = 0
@@ -299,7 +299,7 @@ async def test_async_batch_iterator(driver: BaseDriver):
         assert indexes == list(range(item_count))
         
         # Test AsyncBatchIterator slicing
-        result = await driver.fetch(query)
+        result = driver.fetch(query)
         slice_result = await result[10:20].get()
         
         assert len(slice_result) == 10

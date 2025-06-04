@@ -14,10 +14,10 @@ async def delete_models(cursor: "Cursor", predicate: "ASTGroupNode"):
 
 def _generate_delete_sql(predicate: "ASTGroupNode") -> "SQLQuery":
     query = build_query(predicate)
-    query_builder = ["DELETE FROM", query.model.__ommi__.model_name]
+    query_builder = ["DELETE FROM", f"\"{query.model.__ommi__.model_name}\""]
     if query.models:
         pks = ", ".join(
-            f"{query.model.__ommi__.model_name}.{pk.get('store_as')}"
+            f"\"{query.model.__ommi__.model_name}\".\"{pk.get('store_as')}\""
             for pk in query.model.get_primary_key_fields()
         )
         sub_query = build_subquery(query.model, query.models, query.where)

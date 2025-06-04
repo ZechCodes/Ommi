@@ -18,16 +18,16 @@ def _generate_update_sql(predicate: "ASTGroupNode", values: dict[str, Any]) -> "
     query = build_query(predicate)
     fields = query.model.__ommi__.fields
     query_builder = [
-        f"UPDATE {query.model.__ommi__.model_name}",
+        f"UPDATE \"{query.model.__ommi__.model_name}\"",
         f"SET",
         ", ".join(
-            f"{fields[name].get('store_as')} = ?" for name in values.keys()
+            f"\"{fields[name].get('store_as')}\" = ?" for name in values.keys()
         ),
     ]
     if query.models:
         sub_query = build_subquery(query.model, query.models, query.where)
         pks = ", ".join(
-            f"{query.model.__ommi__.model_name}.{pk.get('store_as')}"
+            f"\"{query.model.__ommi__.model_name}\".\"{pk.get('store_as')}\""
             for pk in query.model.get_primary_key_fields()
         )
         query_builder.append(f"WHERE ({pks}) IN ({sub_query})")

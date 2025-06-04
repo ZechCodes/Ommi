@@ -26,8 +26,8 @@ def _generate_insert_query(models: "Iterable[DBModel]") -> "Generator[tuple[SQLQ
 def _generate_insert_query_for_model(model: "DBModel") -> "SQLQuery":
     fields = _get_model_fields(model)
     return (
-        f"INSERT INTO {model.__ommi__.model_name} "
-        f"({', '.join(name for name in fields)})"
+        f"INSERT INTO \"{model.__ommi__.model_name}\" "
+        f"({', '.join(f'\"{name}\"' for name in fields)})"
         f"VALUES "
         f"({', '.join(['?'] * len(fields))});",
         tuple(fields.values()),

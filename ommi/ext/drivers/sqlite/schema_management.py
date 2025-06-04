@@ -26,7 +26,7 @@ def _generate_create_table_sql(collection: "ModelCollection") -> "Generator[SQLS
 
 def _generate_create_table_sql_for_model(model: "DBModel") -> "SQLStatement":
     return (
-        f"CREATE TABLE IF NOT EXISTS {model.__ommi__.model_name}"
+        f"CREATE TABLE IF NOT EXISTS \"{model.__ommi__.model_name}\""
         f"("
         f"{_generate_columns_sql(model)}, "
         f"PRIMARY KEY ({_generate_primary_keys_sql(model)})"
@@ -35,7 +35,7 @@ def _generate_create_table_sql_for_model(model: "DBModel") -> "SQLStatement":
 
 def _generate_primary_keys_sql(model: "DBModel") -> "SQLStatement":
     return ", ".join(
-        pk.get("store_as") for pk in model.get_primary_key_fields()
+        f"\"{pk.get('store_as')}\"" for pk in model.get_primary_key_fields()
     )
 
 def _generate_columns_sql(model: "DBModel") -> "SQLStatement":
@@ -47,7 +47,7 @@ def _generate_columns_sql(model: "DBModel") -> "SQLStatement":
 def _generate_column_sql(field: "FieldMetadata") -> "SQLStatement":
     return " ".join(
         (
-            field.get("store_as"),
+            f"\"{field.get('store_as')}\"",
             get_sqlite_type(field.get("field_type")),
         )
     )
@@ -55,4 +55,4 @@ def _generate_column_sql(field: "FieldMetadata") -> "SQLStatement":
 
 def _generate_drop_table_sql(collection: "ModelCollection") -> "Generator[SQLStatement, None, None]":
     for model in collection.models:
-        yield f"DROP TABLE IF EXISTS {model.__ommi__.model_name};"
+        yield f"DROP TABLE IF EXISTS \"{model.__ommi__.model_name}\";"
