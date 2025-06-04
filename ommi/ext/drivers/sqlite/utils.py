@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field as dc_field
 from datetime import date, datetime
-from typing import Any, Callable, Generator, get_origin, Type, TYPE_CHECKING
+from typing import Any, Callable, Generator, get_origin, get_args, Type, TYPE_CHECKING, Union
 
 from ommi.query_ast import (
     ASTGroupNode,
@@ -40,6 +40,10 @@ type_mapping: dict[Type[Any], str] = {
 type_validators = {
     datetime: lambda value: value,  # No-op to avoid type conflict with date
     date: lambda value: value.split()[0],
+    int: lambda value: int(value) if value is not None else None,
+    float: lambda value: float(value) if value is not None else None,
+    bool: lambda value: bool(value) if value is not None else None,
+    str: lambda value: str(value) if value is not None else None,
 }
 
 
@@ -58,6 +62,15 @@ def _validate_row_values(model: "Type[DBModel]", row: tuple[Any, ...]) -> Genera
 
 def _find_type_validator[T](type_hint: Type[T]) -> Callable[[Any], T] | None:
     hint = get_origin(type_hint) or type_hint
+    
+    # Handle Union types (like Optional[int] which is Union[int, None])
+    if hint is Union:
+        args = get_args(type_hint)
+        # For Optional types, get the non-None type
+        non_none_types = [arg for arg in args if arg is not type(None)]
+        if non_none_types:
+            hint = non_none_types[0]
+    
     for validator_type, validator in type_validators.items():
         try:
             if issubclass(hint, validator_type):
