@@ -259,10 +259,10 @@ async def test_duplicate_field_validation(driver: BaseDriver):
     collection = ModelCollection()
     
     # This should be detected as an error when the model is created
-    with pytest.raises(ValueError, match="Duplicate field name"):
+    with pytest.raises(ValueError, match="Duplicate StoreAs value"):
         @ommi_model(collection=collection)
         @dataclass 
         class DuplicateFieldModel:
             name: str
-            name_duplicate: Annotated[str, {"store_as": "name"}]  # Same store_as as normalized 'name'
+            name_duplicate: Annotated[str, StoreAs("name")]  # Same store_as as normalized 'name'
             id: int = None

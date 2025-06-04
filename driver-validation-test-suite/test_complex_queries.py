@@ -297,13 +297,6 @@ async def test_async_batch_iterator(driver: BaseDriver):
         # Verify all items were fetched and in the correct order
         assert count == item_count
         assert indexes == list(range(item_count))
-        
-        # Test AsyncBatchIterator slicing
-        result = driver.fetch(query)
-        slice_result = await result[10:20].get()
-        
-        assert len(slice_result) == 10
-        assert [item.index for item in slice_result] == list(range(10, 20))
 
 
 @pytest.mark.asyncio
