@@ -39,13 +39,13 @@ Usage Example:
         await db.use_models(collection)
 
         # Add a user
-        add_result = await db.add(User(name="Alice"))
-        if add_result.result_or(False):
-            print(f"Added: {add_status.result}")
+        add_result = await db.add(User(name="Alice")).or_use(False)
+        if add_result:
+            print(f"Added: {add_result}")
 
         # Find the user
-        user = await db.find(User.name == "Alice").one()
-        if user.result_or(False):
+        user = await db.find(User.name == "Alice").one.or_use(False)
+        if user:
             print(f"Found: {user_status.value}")
 
         # Perform operations in a transaction
@@ -141,7 +141,7 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
 
     def add(
         self, *models: "ommi.shared_types.DBModel"
-    ) -> "Awaitable[ommi.database.results.DBResult[ommi.shared_types.DBModel]]":
+    ) -> "ommi.database.results.DBResultBuilder[ommi.shared_types.DBModel]":
         """Persists one or more model instances to the database.
 
         This method takes new model instances and attempts to save them as new records.
@@ -170,11 +170,11 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
 
             user = User(name="Alice")
             result_one = await db.add(user)
-            if result_one.is_success:
-                added_user = result_one.value
-                print(f"Added user: {added_user.name}")
-            else:
-                print(f"Failed to add user: {result_one.exception}")
+            match result_one:
+                case DBResult.DBSuccess(added_user):
+                    print(f"Added user: {added_user.name}")
+                case DBResult.DBFailure(exception):
+                    print(f"Failed to add user: {exception}")
             ```
 
         Example: Adding multiple users
@@ -182,11 +182,11 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
             user1 = User(name="Alice")
             user2 = User(name="Bob")
             result_many = await db.add(user1, user2)
-            if result_many.is_success:
-                added_items = result_many.value
-                print(f"Successfully added {len(added_items)} users.")
-            else:
-                print(f"Failed to add multiple users: {result_many.exception}")
+            match result_many:
+                case DBResult.DBSuccess(added_users):
+                    print(f"Successfully added {len(added_users)} users.")
+                case DBResult.DBFailure(exception):
+                    print(f"Failed to add multiple users: {exception}")
             ```
         """
         builder = ommi.database.results.DBResult.build(self.driver.add, models)
@@ -198,7 +198,7 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
 
     def find(
         self, *predicates: "ommi.query_ast.ASTGroupNode | ommi.shared_types.DBModel | bool"
-    ) -> "Awaitable[ommi.database.query_results.DBQueryResultBuilder[ommi.shared_types.DBModel]]":
+    ) -> "ommi.database.query_results.DBQueryResultBuilder[ommi.shared_types.DBModel]":
         """Initiates a query to retrieve models from the database based on specified criteria.
 
         This method provides a flexible way to define conditions for your search. It returns
@@ -221,12 +221,19 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
             indicating success or failure.
         -   `.update(**values)` or `.update(values_dict)`: Updates fields of matching records.
             Returns a `DBResult` indicating success or failure.
+        -   `.or_use(default)`: Executes the query (defaulting to `.all()`), returning
+            results or a default on failure.
+        -   `.or_raise()`: Executes the query (defaulting to `.all()`), raising exceptions
+            directly.
 
         Each of these execution methods (`.all()`, `.one()`, etc.) returns an awaitable.
         When this awaitable is resolved, it yields an `ommi.database.query_results.DBQueryResult`
         (for `.all()`, `.one()`, `.count()`) or an `ommi.database.results.DBResult`
         (for `.delete()`, `.update()`), allowing robust outcome handling.
         The `DBQueryResultBuilder` itself can also be directly awaited, defaulting to `.all()`.
+
+        `.all`, `.one`, and `count` can all be treated as properties that return a WrapInResult object
+        that can be used to control the resolved value once awaited (`await db.find(...).all.or_raise()`).
 
         > **Note on Predicates:**
         > Predicates define the search criteria. You can use:
@@ -250,27 +257,27 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
             from ommi.database.results import DBResult, DBStatusNoResultException
 
             user_id_to_find = 1
-            query_by_id = db.find(User.id == user_id_to_find)
-            result_status = await query_by_id.one()
+            result = await db.find(User.id == user_id_to_find).one()
 
-            if result_status.is_success:
-                user = result_status.value
-                print(f"Found user by ID: {user.name}")
-            elif result_status.exception_is(DBStatusNoResultException):
-                print(f"User with ID {user_id_to_find} not found.")
-            else:
-                print(f"Error finding user by ID: {result_status.exception}")
+            match result:
+                case DBQueryResult.DBQuerySuccess(user):
+                    print(f"Found user: {user.name}")
+                case DBQueryResult.DBQueryFailure(DBStatusNoResultException()):
+                    print("No user found.")
+                case DBQueryResult.DBQueryFailure(exception):
+                    print(f"Error finding user: {exception}")
             ```
 
         Example: Find users older than 18 and count them
             ```python
             older_users_query = db.find(User.age > 18, User.is_active == True)
             count_status = await older_users_query.count()
-            if count_status.is_success:
-                number_of_users = count_status.value
-                print(f"Number of active users older than 18: {number_of_users}")
-            else:
-                print(f"Error counting users: {count_status.exception}")
+            match count_status:
+                case DBResult.DBSuccess(count):
+                    print(f"Number of active users older than 18: {count}")
+                case DBResult.DBFailure(exception):
+                    print(f"Error counting users: {exception}")
+
             ```
         """
         builder = ommi.database.query_results.DBQueryResult.build(self.driver, when(*predicates))
