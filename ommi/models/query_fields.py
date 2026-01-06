@@ -13,15 +13,15 @@ The module provides:
 
 Example:
     ```python
-    from ommi import OmmiModel, LazyLoadTheRelated, LazyLoadEveryRelated, ReferenceTo
+    from ommi import OmmiModel, Lazy, LazyList, ReferenceTo
 
     class User(OmmiModel):
         id: int
-        posts: "LazyLoadEveryRelated[Post]"
+        posts: "LazyList[Post]"
 
     class Post(OmmiModel):
         author_id: Annotated[int, ReferenceTo(User.id)]
-        author: LazyLoadTheRelated[User]
+        author: Lazy[User]
     ```
 """
 
@@ -153,7 +153,7 @@ class AssociateUsing(QueryStrategy):
         @ommi_model
         class User:
             id: int
-            permissions: "LazyLoadEveryRelated[Annotated[Permission, AssociateUsing(UserPermission)]]"
+            permissions: "LazyList[Annotated[Permission, AssociateUsing(UserPermission)]]"
         
         @ommi_model
         class Permission:
@@ -393,20 +393,20 @@ class LazyQueryField[T](ABC):
         return AssociateOnReference()
 
 
-class LazyLoadTheRelated[T](LazyQueryField):
+class Lazy[T](LazyQueryField):
     """
     A lazy-loaded field for one-to-one relationships.
-    
+
     This field represents a relationship where the current model is related to
     a single instance of another model. The related model is loaded from the
     database only when accessed.
-    
+
     Example:
         ```python
         @ommi_model
         class Post:
             author_id: Annotated[int, ReferenceTo(User.id)]
-            author: LazyLoadTheRelated[User]
+            author: Lazy[User]
         ```
     """
     
@@ -444,20 +444,20 @@ class LazyLoadTheRelated[T](LazyQueryField):
         return result
 
 
-class LazyLoadEveryRelated[T](LazyQueryField):
+class LazyList[T](LazyQueryField):
     """
     A lazy-loaded field for one-to-many relationships.
-    
+
     This field represents a relationship where the current model is related to
     multiple instances of another model. The related models are loaded from the
     database only when accessed.
-    
+
     Example:
         ```python
         @ommi_model
         class User:
             id: int
-            posts: LazyLoadEveryRelated[Post]
+            posts: LazyList[Post]
         ```
     """
     
@@ -493,8 +493,3 @@ class LazyLoadEveryRelated[T](LazyQueryField):
             result = DBResult.DBFailure(e)
 
         return result
-
-
-# Pythonic aliases for lazy loading types
-Lazy = LazyLoadTheRelated
-LazyList = LazyLoadEveryRelated

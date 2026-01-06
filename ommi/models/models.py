@@ -61,7 +61,7 @@ Example Usage:
     ```python
     from dataclasses import dataclass
     from typing import Annotated
-    from ommi import ommi_model, Key, LazyLoadTheRelated, ReferenceTo
+    from ommi import ommi_model, Key, Lazy, ReferenceTo
 
     @ommi_model
     @dataclass
@@ -69,14 +69,14 @@ Example Usage:
         name: str
         age: int
         id: Annotated[int, Key] = None
-        
+
     @ommi_model
     @dataclass
     class Post:
         title: str
         content: str
         author_id: Annotated[int, ReferenceTo(User.id)]
-        author: LazyLoadTheRelated[User]
+        author: Lazy[User]
         id: Annotated[int, Key] = None
 
     # Create and save a user
@@ -174,7 +174,7 @@ class QueryFieldMetadata:
     
     Attributes:
         name: The name of the field
-        type: The type of lazy query field (e.g., LazyLoadTheRelated)
+        type: The type of lazy query field (e.g., Lazy)
         args: Type arguments for the query field
     """
     name: str
@@ -205,8 +205,8 @@ class OmmiModel:
 
     **3. Relationship fields are transformed into lazy-loading descriptors:**
 
-       - LazyLoadTheRelated[Model] for one-to-one relationships
-       - LazyLoadEveryRelated[Model] for one-to-many relationships
+       - Lazy[Model] for one-to-one relationships
+       - LazyList[Model] for one-to-many relationships
        - Relationships are loaded from the database only when accessed
        - Results are cached after first access
 
@@ -241,14 +241,14 @@ class OmmiModel:
             title: str
             content: str
             author_id: Annotated[int, ReferenceTo(User.id)]
-            author: LazyLoadTheRelated[User]
+            author: Lazy[User]
 
         @ommi_model
         @dataclass
         class User:
             id: Annotated[int, Key]
             name: str
-            posts: LazyLoadEveryRelated[Post]
+            posts: LazyList[Post]
         ```
 
     Example: Query Building
@@ -859,7 +859,7 @@ def _get_query_fields(fields: dict[str, Any]) -> dict[str, Any]:
     """
     Extract lazy query fields from class annotations.
     
-    This identifies fields that are lazy query fields (like LazyLoadTheRelated)
+    This identifies fields that are lazy query fields (like Lazy)
     that need special handling during model initialization.
     
     Args:
@@ -879,7 +879,7 @@ def _is_lazy_query_field(annotation: Any) -> bool:
     Check if an annotation is a lazy query field.
     
     This determines if the annotation refers to a LazyQueryField subclass,
-    such as LazyLoadTheRelated or LazyLoadEveryRelated.
+    such as Lazy or LazyList.
     
     Args:
         annotation: The annotation to check

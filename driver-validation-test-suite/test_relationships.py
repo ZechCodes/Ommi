@@ -9,11 +9,11 @@ from ommi import BaseDriver, ommi_model
 from ommi.models.collections import ModelCollection
 from ommi.models.field_metadata import ReferenceTo, Key
 from ommi.models.query_fields import (
-    LazyLoadTheRelated,
-    LazyLoadEveryRelated,
+    Lazy,
+    LazyList,
     AssociateUsing,
 )
-from ommi.query_ast import when
+from ommi.query_ast import where
 
 from conftest import WithModels
 
@@ -83,7 +83,7 @@ async def test_lazy_load_one_to_one(driver: BaseDriver):
         username: str
         profile_id: Annotated[int, ReferenceTo(Profile.id)]
         # One-to-one relationship
-        profile: LazyLoadTheRelated[Profile]
+        profile: Lazy[Profile]
         id: int = None
         
     async with WithModels(driver, collection):
@@ -115,7 +115,7 @@ async def test_lazy_load_one_to_many(driver: BaseDriver):
     class Department:
         name: str
         # One-to-many relationship with forward reference
-        employees: "LazyLoadEveryRelated['Employee']" = None
+        employees: "LazyList['Employee']" = None
         id: int = None
 
     @ommi_model(collection=collection)
@@ -124,7 +124,7 @@ async def test_lazy_load_one_to_many(driver: BaseDriver):
         name: str
         department_id: Annotated[int, ReferenceTo(Department.id)]
         # Many-to-one relationship
-        department: LazyLoadTheRelated[Department]
+        department: Lazy[Department]
         id: int = None
 
     async with WithModels(driver, collection):
@@ -163,8 +163,8 @@ async def test_circular_references(driver: BaseDriver):
         name: str
         best_friend_id: Annotated[int, ReferenceTo("Person.id")] = None
         # Self-referential relationship
-        best_friend: "LazyLoadTheRelated['Person']" = None
-        friends: "LazyLoadEveryRelated['Person']" = None
+        best_friend: "Lazy['Person']" = None
+        friends: "LazyList['Person']" = None
         id: int = None
 
     async with WithModels(driver, collection):
@@ -290,7 +290,7 @@ async def test_many_to_many_with_association_table(driver: BaseDriver):
     class Student:
         name: str
         # Many-to-many relationship with explicit association table
-        courses: "LazyLoadEveryRelated[Annotated[Course, AssociateUsing(StudentCourse)]]" = None
+        courses: "LazyList[Annotated[Course, AssociateUsing(StudentCourse)]]" = None
         id: int = None
 
     @ommi_model(collection=collection)
@@ -298,7 +298,7 @@ async def test_many_to_many_with_association_table(driver: BaseDriver):
     class Course:
         title: str
         # Many-to-many relationship with explicit association table
-        students: "LazyLoadEveryRelated[Annotated[Student, AssociateUsing(StudentCourse)]]" = None
+        students: "LazyList[Annotated[Student, AssociateUsing(StudentCourse)]]" = None
         id: int = None
 
     async with WithModels(driver, collection):
@@ -362,7 +362,7 @@ async def test_lazy_load_model_styles(driver: BaseDriver):
     class Parent:
         name: str
         # Forward reference in quotes
-        children: "LazyLoadEveryRelated['Child']" = None
+        children: "LazyList['Child']" = None
         id: int = None
         
     @ommi_model(collection=collection)
@@ -370,7 +370,7 @@ async def test_lazy_load_model_styles(driver: BaseDriver):
     class Child:
         name: str
         parent_id: Annotated[int, ReferenceTo(Parent.id)]
-        parent: LazyLoadTheRelated[Parent]
+        parent: Lazy[Parent]
         id: int = None
     
     async with WithModels(driver, collection):

@@ -10,8 +10,8 @@ from ommi import ommi_model, BaseDriver
 from ommi.ext.drivers.sqlite import SQLiteDriver
 from ommi.models.collections import ModelCollection
 from ommi.models.field_metadata import ReferenceTo
-from ommi.models.query_fields import LazyLoadTheRelated, LazyLoadEveryRelated
-from ommi.query_ast import when
+from ommi.models.query_fields import Lazy, LazyList
+from ommi.query_ast import where
 
 
 @pytest_asyncio.fixture
@@ -34,7 +34,7 @@ async def test_simple_circular_references(driver: BaseDriver):
         id: int = None
         
         # Forward reference to ModelB in quotes
-        b: "LazyLoadTheRelated['ModelB']"
+        b: "Lazy['ModelB']"
 
     @ommi_model(collection=collection)
     @dataclass
@@ -42,8 +42,8 @@ async def test_simple_circular_references(driver: BaseDriver):
         name: str
         a_id: Annotated[int, ReferenceTo(ModelA.id)]
         id: int = None
-        
-        a: LazyLoadTheRelated[ModelA]
+
+        a: Lazy[ModelA]
 
     # Apply schema
     await driver.apply_schema(collection)
@@ -56,7 +56,7 @@ async def test_simple_circular_references(driver: BaseDriver):
         model_b = await driver.add([ModelB(name="B Instance", a_id=model_a.id)])[0]
         
         # Update ModelA to reference ModelB
-        await driver.update(when(ModelA.id == model_a.id), {"b_id": model_b.id})
+        await driver.update(where(ModelA.id == model_a.id), {"b_id": model_b.id})
         
         # Test lazy loading both ways
         loaded_a = await model_b.a
@@ -64,7 +64,7 @@ async def test_simple_circular_references(driver: BaseDriver):
         assert loaded_a.name == "A Instance"
         
         # Re-fetch model_a to get the updated b_id
-        updated_a = await driver.fetch(when(ModelA.id == model_a.id)).one()
+        updated_a = await driver.fetch(where(ModelA.id == model_a.id)).one()
         loaded_b = await updated_a.b
         assert loaded_b.id == model_b.id
         assert loaded_b.name == "B Instance"
@@ -91,8 +91,8 @@ async def test_self_referential_model(driver: BaseDriver):
         id: int = None
         
         # Self-referential relationships
-        parent: "LazyLoadTheRelated['TreeNode']"
-        children: "LazyLoadEveryRelated['TreeNode']"
+        parent: "Lazy['TreeNode']"
+        children: "LazyList['TreeNode']"
 
     # Apply schema
     await driver.apply_schema(collection)
@@ -150,7 +150,7 @@ async def test_complex_circular_references(driver: BaseDriver):
         id: int = None
         
         # Forward reference in quotes
-        b_list: "LazyLoadEveryRelated['ModelB']"
+        b_list: "LazyList['ModelB']"
 
     @ommi_model(collection=collection)
     @dataclass
@@ -159,9 +159,9 @@ async def test_complex_circular_references(driver: BaseDriver):
         a_id: Annotated[int, ReferenceTo(ModelA.id)]
         id: int = None
         
-        a: LazyLoadTheRelated[ModelA]
+        a: Lazy[ModelA]
         # Forward reference in quotes
-        c: "LazyLoadTheRelated['ModelC']"
+        c: "Lazy['ModelC']"
 
     @ommi_model(collection=collection)
     @dataclass
@@ -170,8 +170,8 @@ async def test_complex_circular_references(driver: BaseDriver):
         b_id: Annotated[int, ReferenceTo(ModelB.id)]
         id: int = None
         
-        b: LazyLoadTheRelated[ModelB]
-        a_list: LazyLoadEveryRelated[ModelA]
+        b: Lazy[ModelB]
+        a_list: LazyList[ModelA]
 
     # Apply schema
     await driver.apply_schema(collection)
@@ -194,7 +194,7 @@ async def test_complex_circular_references(driver: BaseDriver):
         
         # Now let's associate Model C with Model A explicitly through a query
         # (assuming such relationship exists in the database schema)
-        c_a_query = when(ModelA, ModelC.id == model_c.id)
+        c_a_query = where(ModelA, ModelC.id == model_c.id)
         a_from_c = await driver.fetch(c_a_query).get()
         assert len(a_from_c) == 1  # We should find Model A through Model B's a_id
         assert a_from_c[0].id == model_a.id
@@ -215,7 +215,7 @@ async def test_lazy_loading_circular_references(driver: BaseDriver):
         id: int = None
         
         # Self-referential relationship
-        friends: "LazyLoadEveryRelated['Person']"
+        friends: "LazyList['Person']"
         
     # Apply schema
     await driver.apply_schema(collection)
@@ -250,7 +250,7 @@ async def test_lazy_loading_circular_references(driver: BaseDriver):
         ])
         
         # Test friendship queries (not using lazy loading directly since we need the association table)
-        alice_friends_query = when(Person, Friendship.person_id == alice.id, Friendship.friend_id == Person.id)
+        alice_friends_query = where(Person, Friendship.person_id == alice.id, Friendship.friend_id == Person.id)
         alice_friends = await driver.fetch(alice_friends_query).get()
         
         assert len(alice_friends) == 2
@@ -258,13 +258,13 @@ async def test_lazy_loading_circular_references(driver: BaseDriver):
         assert friend_names == {"Bob", "Charlie"}
         
         # Test circular friendship query
-        bob_friends_of_alice_query = when(
+        bob_friends_of_alice_query = where(
             Person, 
             Friendship.person_id == bob.id,
             Friendship.friend_id == Person.id,
             Person.id.in_([
                 # Subquery for friends of Alice
-                when(Person, Friendship.person_id == alice.id, Friendship.friend_id == Person.id).id
+                where(Person, Friendship.person_id == alice.id, Friendship.friend_id == Person.id).id
             ])
         )
         

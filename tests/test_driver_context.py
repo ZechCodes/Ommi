@@ -9,7 +9,7 @@ from ommi import BaseDriver, ommi_model
 from ommi.driver_context import UseDriver, get_current_driver
 from ommi.ext.drivers.sqlite import SQLiteDriver
 from ommi.models.collections import ModelCollection
-from ommi.query_ast import when
+from ommi.query_ast import where
 
 
 @dataclass
@@ -207,23 +207,23 @@ async def test_real_driver_with_context():
         # Use driver_a to add a model
         with UseDriver(a):
             await a.add([TestModel(name="Model in A")])
-            result_a = await a.fetch(when(TestModel.name == "Model in A")).one()
+            result_a = await a.fetch(where(TestModel.name == "Model in A")).one()
             assert result_a.name == "Model in A"
             
             # No data in driver_b yet
             with UseDriver(b):
-                count_b = await b.count(when(TestModel))
+                count_b = await b.count(where(TestModel))
                 assert count_b == 0
                 
                 # Add a model to driver_b
                 await b.add([TestModel(name="Model in B")])
             
             # Back to driver_a, verify data
-            result_a_again = await a.fetch(when(TestModel.name == "Model in A")).one()
+            result_a_again = await a.fetch(where(TestModel.name == "Model in A")).one()
             assert result_a_again.name == "Model in A"
             
             # Model in B should not exist in driver_a
-            count_a_b = await a.count(when(TestModel.name == "Model in B"))
+            count_a_b = await a.count(where(TestModel.name == "Model in B"))
             assert count_a_b == 0
         
         # Clean up

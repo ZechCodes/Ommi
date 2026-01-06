@@ -9,8 +9,8 @@ from ommi.database import DBResult
 from ommi.ext.drivers.sqlite import SQLiteDriver
 from ommi.models.collections import ModelCollection
 from ommi.models.field_metadata import ReferenceTo
-from ommi.models.query_fields import AssociateUsing, LazyLoadTheRelated, LazyLoadEveryRelated
-from ommi.query_ast import when
+from ommi.models.query_fields import AssociateUsing, Lazy, LazyList
+from ommi.query_ast import where
 
 collection = ModelCollection()
 
@@ -33,7 +33,7 @@ class ModelB:
 class ModelC:
     id: int
 
-    a: "LazyLoadEveryRelated[Annotated[ModelA, AssociateUsing(AssociationTable)]]"
+    a: "LazyList[Annotated[ModelA, AssociateUsing(AssociationTable)]]"
 
 
 @ommi_model(collection=collection)
@@ -58,7 +58,7 @@ async def driver():
 
 @pytest.mark.asyncio
 async def test_lazy_load_the_related(driver):
-    relation = LazyLoadTheRelated(lambda:when(ModelB.a_id == a.id), driver=driver)
+    relation = Lazy(lambda: where(ModelB.a_id == a.id), driver=driver)
     result = await relation.get_result()
     assert isinstance(result, DBResult.DBSuccess)
     assert await relation == b
@@ -66,7 +66,7 @@ async def test_lazy_load_the_related(driver):
 
 @pytest.mark.asyncio
 async def test_load_relation(driver):
-    relation = LazyLoadEveryRelated(lambda:when(ModelB.a_id == a.id), driver=driver)
+    relation = LazyList(lambda: where(ModelB.a_id == a.id), driver=driver)
     result = await relation.get_result()
     assert isinstance(result, DBResult.DBSuccess)
     assert await relation == [b]

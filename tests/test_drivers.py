@@ -17,11 +17,11 @@ from ommi.models.collections import ModelCollection
 from ommi.models import ommi_model
 from ommi.models.field_metadata import ReferenceTo, Key
 from ommi.models.query_fields import (
-    LazyLoadTheRelated,
-    LazyLoadEveryRelated,
+    Lazy,
+    LazyList,
     AssociateUsing,
 )
-from ommi.query_ast import when
+from ommi.query_ast import where
 
 test_models = ModelCollection()
 
@@ -64,7 +64,7 @@ async def driver(request) -> Generator[BaseDriver, None, None]:
 @pytest.mark.asyncio()
 async def test_async_batch_iterator_offset(driver):
     await driver.add([TestModel(name=f"dummy_{i}") for i in range(10)])
-    result = await driver.fetch(when(TestModel).limit(5, 1)).get()
+    result = await driver.fetch(where(TestModel).limit(5, 1)).get()
     assert result[0].name == "dummy_5"
 
 
@@ -89,7 +89,7 @@ async def test_insert_and_fetch(driver):
         assert model.toggle == True
         assert model.decimal == 1.23
 
-        result = await driver.fetch(when(InnerTestModel.id == 10)).one()
+        result = await driver.fetch(where(InnerTestModel.id == 10)).one()
         assert result.id == model.id
         assert result.name == model.name
         assert result.toggle == model.toggle
@@ -100,15 +100,15 @@ async def test_insert_and_fetch(driver):
 async def test_driver(driver):
     await driver.add([model := TestModel(name="dummy")])
 
-    result = await driver.fetch(when(TestModel.name == "dummy")).one()
+    result = await driver.fetch(where(TestModel.name == "dummy")).one()
     assert result.name == model.name
 
-    await driver.update(when(TestModel.id == result.id), {"name": "Dummy"})
-    result = await driver.fetch(when(TestModel.id == result.id)).one()
+    await driver.update(where(TestModel.id == result.id), {"name": "Dummy"})
+    result = await driver.fetch(where(TestModel.id == result.id)).one()
     assert result.name == "Dummy"
 
-    await driver.delete(when(TestModel.name == "Dummy"))
-    result = await driver.fetch(when(TestModel.name == "Dummy")).get()
+    await driver.delete(where(TestModel.name == "Dummy"))
+    result = await driver.fetch(where(TestModel.name == "Dummy")).get()
     assert len(result) == 0
 
 
@@ -116,7 +116,7 @@ async def test_driver(driver):
 async def test_fetch(driver):
     await driver.add([model := TestModel(name="dummy")])
 
-    result = await driver.fetch(when(TestModel.name == "dummy")).one()
+    result = await driver.fetch(where(TestModel.name == "dummy")).one()
     assert result.name == model.name
 
 
@@ -125,9 +125,9 @@ async def test_update(driver):
     await driver.add([model := TestModel(name="dummy")])
 
     model.name = "Dummy"
-    await driver.update(when(TestModel.name == "dummy"), {"name": "Dummy"})
+    await driver.update(where(TestModel.name == "dummy"), {"name": "Dummy"})
 
-    result = await driver.fetch(when(TestModel.name == "Dummy")).one()
+    result = await driver.fetch(where(TestModel.name == "Dummy")).one()
     assert result.name == model.name
 
 
@@ -135,8 +135,8 @@ async def test_update(driver):
 async def test_delete(driver):
     await driver.add([model := TestModel(name="dummy")])
 
-    await driver.delete(when(TestModel.id == model.id))
-    result = await driver.fetch(when(TestModel)).get()
+    await driver.delete(where(TestModel.id == model.id))
+    result = await driver.fetch(where(TestModel)).get()
     assert len(result) == 0
 
 
@@ -146,7 +146,7 @@ async def test_count(driver):
         [TestModel(name="dummy1"), TestModel(name="dummy2")]
     )
 
-    result = await driver.count(when(TestModel))
+    result = await driver.count(where(TestModel))
     assert result == 2
 
 
@@ -173,9 +173,9 @@ async def test_driver_delete_query(driver):
         ],
     )
 
-    await driver.delete(when(TestModel.name == "dummy1"))
+    await driver.delete(where(TestModel.name == "dummy1"))
 
-    r = await driver.fetch(when(TestModel)).get()
+    r = await driver.fetch(where(TestModel)).get()
     assert len(r) == 1
     assert r[0].name == "dummy2"
 
@@ -192,18 +192,18 @@ async def test_driver_update_query(driver):
     )
 
     ignore_id, new_name = 2, "dummy"
-    await driver.update(when(TestModel.id != ignore_id), {"name": new_name})
-    result = await driver.fetch(when(TestModel.name == new_name)).get()
+    await driver.update(where(TestModel.id != ignore_id), {"name": new_name})
+    result = await driver.fetch(where(TestModel.name == new_name)).get()
     assert len(result) > 1
     assert all(m.name == new_name for m in result)
     assert all(m.id != ignore_id for m in result)
 
     ignore_id, new_name = 1, "DUMMY"
     await driver.update(
-        when(TestModel.id != ignore_id).And(TestModel.name == "dummy"),
+        where(TestModel.id != ignore_id).and_(TestModel.name == "dummy"),
         {"name": new_name},
     )
-    result = await driver.fetch(when(TestModel.name == new_name)).get()
+    result = await driver.fetch(where(TestModel.name == new_name)).get()
     assert len(result) > 1
     assert all(m.name == new_name for m in result)
     assert all(m.id != ignore_id for m in result)
@@ -218,7 +218,7 @@ class LazyLoadFieldADataclass:
     id: int
     name: str
 
-    b: "LazyLoadEveryRelated[LazyLoadFieldBDataclass]"
+    b: "LazyList[LazyLoadFieldBDataclass]"
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -227,7 +227,7 @@ class LazyLoadFieldBDataclass:
     id: int
     a_id: Annotated[int, ReferenceTo(LazyLoadFieldADataclass.id)]
 
-    a: LazyLoadTheRelated[LazyLoadFieldADataclass]
+    a: Lazy[LazyLoadFieldADataclass]
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -236,7 +236,7 @@ class LazyLoadFieldAAttrs:
     id: int
     name: str
 
-    b: "LazyLoadEveryRelated[LazyLoadFieldBAttrs]"
+    b: "LazyList[LazyLoadFieldBAttrs]"
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -245,7 +245,7 @@ class LazyLoadFieldBAttrs:
     id: int
     a_id: Annotated[int, ReferenceTo(LazyLoadFieldAAttrs.id)]
 
-    a: LazyLoadTheRelated[LazyLoadFieldAAttrs]
+    a: Lazy[LazyLoadFieldAAttrs]
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -253,7 +253,7 @@ class LazyLoadFieldAPydantic(pydantic.BaseModel):
     id: int
     name: str
 
-    b: "LazyLoadEveryRelated[LazyLoadFieldBPydantic]"
+    b: "LazyList[LazyLoadFieldBPydantic]"
 
 
 @ommi_model(collection=lazy_load_field_collection)
@@ -261,7 +261,7 @@ class LazyLoadFieldBPydantic(pydantic.BaseModel):
     id: int
     a_id: Annotated[int, ReferenceTo(LazyLoadFieldAPydantic.id)]
 
-    a: LazyLoadTheRelated[LazyLoadFieldAPydantic]
+    a: Lazy[LazyLoadFieldAPydantic]
 
 
 @pytest.mark.asyncio()
@@ -321,7 +321,7 @@ async def test_join_queries(driver):
         )
 
         result = await driver.fetch(
-            when(JoinModelB, JoinModelA.name == "testing")
+            where(JoinModelB, JoinModelA.name == "testing")
         ).get()
         assert {10, 11} == {m.id for m in result}
 
@@ -356,9 +356,9 @@ async def test_join_deletes(driver):
         )
 
         await driver.delete(
-            when(JoinModelB, JoinModelA.name == "testing")
+            where(JoinModelB, JoinModelA.name == "testing")
         )
-        result = await driver.fetch(when(JoinModelB)).get()
+        result = await driver.fetch(where(JoinModelB)).get()
         assert {m.id for m in result} == {12}
 
 
@@ -393,8 +393,8 @@ async def test_join_updates(driver):
             [JoinModelA(id=11, name="foobar"), JoinModelB(id=12, value="foo", a_id=11)],
         )
 
-        await driver.update(when(JoinModelB, JoinModelA.name == "testing"), {"value": "foobar"})
-        result = await driver.fetch(when(JoinModelB.value == "foobar")).get()
+        await driver.update(where(JoinModelB, JoinModelA.name == "testing"), {"value": "foobar"})
+        result = await driver.fetch(where(JoinModelB.value == "foobar")).get()
         assert {m.id for m in result} == {10, 11}
 
 
@@ -427,7 +427,7 @@ async def test_join_counts(driver):
             [JoinModelA(id=11, name="foobar"), JoinModelB(id=12, a_id=11),]
         )
 
-        result = await driver.count(when(JoinModelB, JoinModelA.name == "testing"))
+        result = await driver.count(where(JoinModelB, JoinModelA.name == "testing"))
         assert result == 2
 
 
@@ -460,24 +460,24 @@ async def test_composite_keys(driver):
         )
 
         result = await driver.fetch(
-            when(CompositeModelB, CompositeModelA.value == "foo")
+            where(CompositeModelB, CompositeModelA.value == "foo")
         ).get()
         assert len(result) == 1
         assert result[0].id == 1
 
-        result = await driver.count(when(CompositeModelA, CompositeModelB.id == 1))
+        result = await driver.count(where(CompositeModelA, CompositeModelB.id == 1))
         assert result == 1
 
-        await driver.update(when(CompositeModelA, CompositeModelB.id == 1), {"value": "FOOBAR"})
-        result = await driver.fetch(when(CompositeModelA.value == "FOOBAR")).get()
+        await driver.update(where(CompositeModelA, CompositeModelB.id == 1), {"value": "FOOBAR"})
+        result = await driver.fetch(where(CompositeModelA.value == "FOOBAR")).get()
         assert len(result) == 1
         assert result[0].id1 == 10
         assert result[0].id2 == 20
 
         await driver.delete(
-            when(CompositeModelA, CompositeModelB.id == 1)
+            where(CompositeModelA, CompositeModelB.id == 1)
         )
-        result = await driver.fetch(when(CompositeModelA)).get()
+        result = await driver.fetch(where(CompositeModelA)).get()
         assert len(result) == 1
 
 
@@ -499,7 +499,7 @@ async def test_composite_key_lazy_loads(driver):
         id1: Annotated[int, ReferenceTo(CompositeModelA.id1)]
         id2: Annotated[int, ReferenceTo(CompositeModelA.id2)]
 
-        a: LazyLoadEveryRelated[CompositeModelA]
+        a: LazyList[CompositeModelA]
 
     async with WithModels(driver, composite_collection):
         await driver.add(
@@ -514,7 +514,7 @@ async def test_composite_key_lazy_loads(driver):
             ],
         )
 
-        result = await driver.fetch(when(CompositeModelB)).one()
+        result = await driver.fetch(where(CompositeModelB)).one()
         a = await result.a
         assert result.id == 1
         assert len(a) == 1
@@ -528,7 +528,7 @@ association_collection = ModelCollection()
 class AssociationModelA:
     id: Annotated[int, Key]
 
-    b: "LazyLoadEveryRelated[Annotated[AssociationModelB, AssociateUsing(AssociationTable)]]"
+    b: "LazyList[Annotated[AssociationModelB, AssociateUsing(AssociationTable)]]"
 
 
 @ommi_model(collection=association_collection)
@@ -563,7 +563,7 @@ async def test_association_tables(driver):
             ],
         )
 
-        result = await driver.fetch(when(AssociationModelA.id == 10)).one()
+        result = await driver.fetch(where(AssociationModelA.id == 10)).one()
         b = await result.b
         assert result.id == 10
         assert len(b) == 2
@@ -585,7 +585,7 @@ async def test_transaction_commit(driver):
                 [InnerTestModel(10)],
             )
 
-        result = await driver.fetch(when(InnerTestModel.id == 10)).one()
+        result = await driver.fetch(where(InnerTestModel.id == 10)).one()
         assert result.id == 10
 
 
@@ -605,7 +605,7 @@ async def test_transaction_rollback(driver):
             )
             await transaction.rollback()
 
-        result = await driver.count(when(InnerTestModel))
+        result = await driver.count(where(InnerTestModel))
         assert result == 0
 
 
@@ -629,5 +629,5 @@ async def test_transaction_exception(driver):
 
                 raise TestException()
 
-        result = await driver.fetch(when(InnerTestModel)).get()
+        result = await driver.fetch(where(InnerTestModel)).get()
         assert len(result) == 0

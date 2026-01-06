@@ -9,8 +9,8 @@ import pytest
 from ommi import BaseDriver, ommi_model
 from ommi.models.collections import ModelCollection
 from ommi.models.field_metadata import ReferenceTo
-from ommi.query_ast import when
-from ommi.models.query_fields import LazyLoadTheRelated, LazyLoadEveryRelated
+from ommi.query_ast import where
+from ommi.models.query_fields import Lazy, LazyList
 
 from conftest import WithModels
 
