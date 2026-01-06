@@ -96,6 +96,7 @@ class ASTOperatorNode(ASTNode, Enum):
     GREATER_THAN_OR_EQUAL = auto()
     LESS_THAN = auto()
     LESS_THAN_OR_EQUAL = auto()
+    IN = auto()
 
 
 class ASTGroupFlagNode(ASTNode, Enum):
@@ -288,11 +289,11 @@ class ASTGroupNode(ASTNode):
     def __repr__(self):
         return f"{type(self).__name__}({self.items!r})"
 
-    def And(self, *comparisons: "SearchGroup | ASTComparisonNode | bool"):
+    def and_(self, *comparisons: "SearchGroup | ASTComparisonNode | bool"):
         """Adds one or more comparisons to this group, joined by AND with previous items.
 
         If multiple comparisons are provided, they are first combined into their own
-        `ASTGroupNode` (using `when()`) before being added.
+        `ASTGroupNode` (using `where()`) before being added.
 
         Args:
             *comparisons: One or more comparison expressions (e.g., `User.name == "X"`),
@@ -301,13 +302,13 @@ class ASTGroupNode(ASTNode):
         Returns:
             The `ASTGroupNode` instance, for method chaining.
         """
-        return self._add_node_or_group(when(*comparisons), ASTLogicalOperatorNode.AND)
+        return self._add_node_or_group(where(*comparisons), ASTLogicalOperatorNode.AND)
 
-    def Or(self, *comparisons: "SearchGroup | ASTComparisonNode | bool"):
+    def or_(self, *comparisons: "SearchGroup | ASTComparisonNode | bool"):
         """Adds one or more comparisons to this group, joined by OR with previous items.
 
         If multiple comparisons are provided, they are first combined into their own
-        `ASTGroupNode` (using `when()`) before being added.
+        `ASTGroupNode` (using `where()`) before being added.
 
         Args:
             *comparisons: One or more comparison expressions (e.g., `User.name == "X"`),
@@ -316,7 +317,11 @@ class ASTGroupNode(ASTNode):
         Returns:
             The `ASTGroupNode` instance, for method chaining.
         """
-        return self._add_node_or_group(when(*comparisons), ASTLogicalOperatorNode.OR)
+        return self._add_node_or_group(where(*comparisons), ASTLogicalOperatorNode.OR)
+
+    # Deprecated aliases for backwards compatibility
+    And = and_
+    Or = or_
 
     def _add_node_or_group(
         self,
@@ -549,6 +554,26 @@ class ASTReferenceNode(ASTComparableNode):
         """
         return ASTReferenceNode(self._field, self._model, ResultOrdering.DESCENDING)
 
+    def in_(self, values: list) -> "ASTComparisonNode":
+        """Creates an IN comparison node for checking membership in a list.
+
+        Args:
+            values: A list of values to check membership against.
+
+        Returns:
+            An `ASTComparisonNode` representing this IN comparison.
+
+        Example:
+            ```python
+            # Find users with specific statuses
+            db.find(User.status.in_(["active", "pending"]))
+            ```
+        """
+        self.group.add(
+            node := ASTComparisonNode(self, values, ASTOperatorNode.IN, self.group)
+        )
+        return node
+
     def __hash__(self):
         return hash((self._field, self._model, self._ordering))
 
@@ -670,11 +695,11 @@ class ASTComparisonNode(ASTComparableNode):
             f"{self._operator})"
         )
 
-    def And(self, *comparisons: "ASTComparisonNode | SearchGroup | bool"):
+    def and_(self, *comparisons: "ASTComparisonNode | SearchGroup | bool"):
         """Combines this comparison with others using an AND operator.
 
         Adds the current comparison node to its associated group (if not already added
-        implicitly during creation) and then calls `And()` on that group.
+        implicitly during creation) and then calls `and_()` on that group.
 
         Args:
             *comparisons: Other comparison nodes or groups to AND with.
@@ -683,13 +708,13 @@ class ASTComparisonNode(ASTComparableNode):
             The `ASTGroupNode` containing this and the other comparisons.
         """
         self.group.add(self)
-        return self.group.And(*comparisons)
+        return self.group.and_(*comparisons)
 
-    def Or(self, *comparisons: "ASTComparisonNode | SearchGroup | bool"):
+    def or_(self, *comparisons: "ASTComparisonNode | SearchGroup | bool"):
         """Combines this comparison with others using an OR operator.
 
         Adds the current comparison node to its associated group (if not already added
-        implicitly during creation) and then calls `Or()` on that group.
+        implicitly during creation) and then calls `or_()` on that group.
 
         Args:
             *comparisons: Other comparison nodes or groups to OR with.
@@ -698,7 +723,11 @@ class ASTComparisonNode(ASTComparableNode):
             The `ASTGroupNode` containing this and the other comparisons.
         """
         self.group.add(self)
-        return self.group.Or(*comparisons)
+        return self.group.or_(*comparisons)
+
+    # Deprecated aliases for backwards compatibility
+    And = and_
+    Or = or_
 
     def _make_node(self, value):
         match value:
@@ -709,7 +738,7 @@ class ASTComparisonNode(ASTComparableNode):
                 return ASTLiteralNode(value)
 
 
-def when(
+def where(
     *comparisons: "ASTComparisonNode | Type[models.DatabaseModel] | bool",
 ) -> ASTGroupNode:
     """Creates a new query group from one or more comparisons.
@@ -730,13 +759,13 @@ def when(
     Example:
         ```python
         # Simple equality comparison
-        query1 = when(User.name == "Alice")
+        query1 = where(User.name == "Alice")
 
         # Query all users
-        query2 = when(User)
+        query2 = where(User)
 
         # Complex query with multiple conditions
-        query3 = when(User.age > 18, User.is_active == True)
+        query3 = where(User.age > 18, User.is_active == True)
         ```
     """
     match comparisons:
@@ -757,3 +786,7 @@ def when(
                         group.add(c)
 
             return group
+
+
+# Deprecated alias for backwards compatibility
+when = where

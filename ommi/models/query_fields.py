@@ -118,7 +118,7 @@ class AssociateOnReference(QueryStrategy):
             RuntimeError: If no reference can be found between the models
         """
         if refs := model.__ommi__.references.get(contains):
-            return ommi.query_ast.when(
+            return ommi.query_ast.where(
                 *(
                     getattr(r.to_model, r.to_field.get("field_name"))
                     == getattr(model, r.from_field.get("field_name"))
@@ -127,7 +127,7 @@ class AssociateOnReference(QueryStrategy):
             )
 
         if refs := contains.__ommi__.references.get(type(model)):
-            return ommi.query_ast.when(
+            return ommi.query_ast.where(
                 *(
                     getattr(r.from_model, r.from_field.get("field_name"))
                     == getattr(model, r.to_field.get("field_name"))
@@ -204,7 +204,7 @@ class AssociateUsing(QueryStrategy):
         """
         contains_model = get_args(contains)[0]
         refs = self.association_model.__ommi__.references.get(type(model))
-        return ommi.query_ast.when(
+        return ommi.query_ast.where(
             contains_model,
             *(
                 getattr(r.from_model, r.from_field.get("field_name"))
@@ -493,3 +493,8 @@ class LazyLoadEveryRelated[T](LazyQueryField):
             result = DBResult.DBFailure(e)
 
         return result
+
+
+# Pythonic aliases for lazy loading types
+Lazy = LazyLoadTheRelated
+LazyList = LazyLoadEveryRelated

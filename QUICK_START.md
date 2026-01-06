@@ -72,8 +72,7 @@ Use the `@ommi_model` decorator to transform Python classes into database models
 ```python
 from dataclasses import dataclass
 from typing import Annotated
-from ommi import ommi_model, Key, ReferenceTo
-from ommi.models.query_fields import LazyLoadTheRelated, LazyLoadEveryRelated
+from ommi import ommi_model, Key, ReferenceTo, Lazy, LazyList
 
 @ommi_model
 @dataclass
@@ -82,13 +81,13 @@ class User:
     age: int
     id: Annotated[int, Key] = None  # Primary key field
 
-@ommi_model  
+@ommi_model
 @dataclass
 class Post:
     title: str
     content: str
     author_id: Annotated[int, ReferenceTo(User.id)]
-    author: LazyLoadTheRelated[User]  # One-to-one relationship
+    author: Lazy[User]  # One-to-one relationship
     id: Annotated[int, Key] = None
 ```
 
@@ -136,30 +135,30 @@ Available metadata:
 
 Lazy fields enable relationships between models without immediate database queries:
 
-### LazyLoadTheRelated (One-to-One)
+### Lazy (One-to-One)
 
 ```python
 @ommi_model
-@dataclass  
+@dataclass
 class Post:
     author_id: Annotated[int, ReferenceTo(User.id)]
-    author: LazyLoadTheRelated[User]  # Loads single related model
+    author: Lazy[User]  # Loads single related model
 
 # Usage
 post = await db.find(Post.id == 1).one()
 author = await post.author  # Queries database when accessed
 ```
 
-### LazyLoadEveryRelated (One-to-Many)
+### LazyList (One-to-Many)
 
 ```python
 @ommi_model
 @dataclass
 class User:
     id: Annotated[int, Key]
-    posts: LazyLoadEveryRelated[Post]  # Loads multiple related models
+    posts: LazyList[Post]  # Loads multiple related models
 
-# Usage  
+# Usage
 user = await db.find(User.id == 1).one()
 posts = await user.posts  # Returns list of Post objects
 ```
@@ -175,11 +174,11 @@ class UserPermission:
     user_id: Annotated[int, ReferenceTo(User.id)]
     permission_id: Annotated[int, ReferenceTo(Permission.id)]
 
-@ommi_model  
+@ommi_model
 @dataclass
 class User:
     id: Annotated[int, Key]
-    permissions: LazyLoadEveryRelated[Annotated[Permission, AssociateUsing(UserPermission)]]
+    permissions: LazyList[Annotated[Permission, AssociateUsing(UserPermission)]]
 ```
 
 ## Transactions
@@ -307,10 +306,10 @@ class User:
     # ... field definitions
 
 # Apply schema to database
-await db.use_models(collection)
+await db.sync_models(collection)
 
 # Remove schema from database
-await db.remove_models(collection)
+await db.drop_models(collection)
 ```
 
 ## Error Handling
@@ -342,9 +341,8 @@ user = await db.find(User.id == 999).one.or_use(None)
 import asyncio
 from dataclasses import dataclass
 from typing import Annotated
-from ommi import Ommi, ommi_model, Key, ReferenceTo
+from ommi import Ommi, ommi_model, Key, ReferenceTo, Lazy
 from ommi.ext.drivers.sqlite import SQLiteDriver
-from ommi.models.query_fields import LazyLoadTheRelated, LazyLoadEveryRelated
 from ommi.models.collections import ModelCollection
 
 # Create model collection
@@ -358,32 +356,32 @@ class User:
     id: Annotated[int, Key] = None
 
 @ommi_model(collection=collection)
-@dataclass  
+@dataclass
 class Post:
     title: str
     content: str
     author_id: Annotated[int, ReferenceTo(User.id)]
-    author: LazyLoadTheRelated[User]
+    author: Lazy[User]
     id: Annotated[int, Key] = None
 
 async def main():
     # Create database connection
     async with Ommi(SQLiteDriver.connect()) as db:
         # Set up schema
-        await db.use_models(collection)
-        
+        await db.sync_models(collection)
+
         # Create user
         user = User(name="Alice", age=30)
         await db.add(user)
-        
+
         # Create post
         post = Post(
-            title="My First Post", 
+            title="My First Post",
             content="Hello, Ommi!",
             author_id=user.id
         )
         await db.add(post)
-        
+
         # Query with relationships
         post = await db.find(Post.title == "My First Post").one.or_use(None)
         if post:

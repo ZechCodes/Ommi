@@ -58,7 +58,7 @@ Usage Example:
 from typing import Any, Awaitable, TYPE_CHECKING
 
 import ommi
-from ommi.query_ast import when
+from ommi.query_ast import where
 from ommi.database.transaction import OmmiTransaction
 
 if TYPE_CHECKING:
@@ -252,7 +252,7 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
 
         Example: Find user by ID
             ```python
-            from ommi.query_ast import when
+            from ommi.query_ast import where
             from ommi.database.query_results import DBQueryResult
             from ommi.database.results import DBResult, DBStatusNoResultException
 
@@ -280,14 +280,14 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
 
             ```
         """
-        builder = ommi.database.query_results.DBQueryResult.build(self.driver, when(*predicates))
+        builder = ommi.database.query_results.DBQueryResult.build(self.driver, where(*predicates))
         setup_awaitable = self._ensure_model_setup()
         if setup_awaitable is not None:
             builder = SetupOnAwait(setup_awaitable, builder)
 
         return builder
 
-    async def use_models(self, model_collection: "ModelCollection") -> None:
+    async def sync_models(self, model_collection: "ModelCollection") -> None:
         """Explicitly applies the schema for a given model collection to the database.
 
         This involves first attempting to delete any existing schema for the collection
@@ -305,7 +305,10 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
         await self.driver.apply_schema(model_collection)
         self._known_model_collections.add(model_collection)
 
-    async def remove_models(self, model_collection: "ModelCollection") -> None:
+    # Deprecated alias for backwards compatibility
+    use_models = sync_models
+
+    async def drop_models(self, model_collection: "ModelCollection") -> None:
         """Removes the schema for the given model collection from the database.
 
         This typically involves dropping tables associated with the models in the collection.
@@ -317,6 +320,9 @@ class Ommi[TDriver: "ommi.BaseDriver"]:
         """
         await self.driver.delete_schema(model_collection)
         self._known_model_collections.discard(model_collection)
+
+    # Deprecated alias for backwards compatibility
+    remove_models = drop_models
 
     def transaction(self) -> OmmiTransaction:
         """Creates an asynchronous context manager for database transactions.

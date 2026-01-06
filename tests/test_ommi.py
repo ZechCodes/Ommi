@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 import pytest_asyncio
-from _pytest.python_api import raises
+from pytest import raises
 
 from ommi import Ommi, ommi_model
 from ommi.models.collections import ModelCollection

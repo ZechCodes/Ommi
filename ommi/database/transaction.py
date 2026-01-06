@@ -71,7 +71,7 @@ Example:
 from typing import Awaitable, TYPE_CHECKING
 
 import ommi
-from ommi.query_ast import when
+from ommi.query_ast import where
 
 if TYPE_CHECKING:
     from ommi.drivers import BaseDriverTransaction
@@ -164,17 +164,17 @@ class OmmiTransaction:
 
         Args:
             *predicates: Query conditions, typically involving model fields or `ASTGroupNode`
-                         instances created with `ommi.query_ast.when()`.
+                         instances created with `ommi.query_ast.where()`.
 
         Returns:
             An awaitable that resolves to a `DBQueryResultBuilder` for executing the query
             within the transaction.
         """
         return ommi.database.query_results.DBQueryResult.build(
-            self.transaction, when(*predicates)
+            self.transaction, where(*predicates)
         )
 
-    async def use_models(self, model_collection: "ModelCollection") -> None:
+    async def sync_models(self, model_collection: "ModelCollection") -> None:
         """Applies the schema for a model collection within the current transaction.
 
         This involves deleting any existing schema for the collection and then applying
@@ -188,7 +188,10 @@ class OmmiTransaction:
         await self.transaction.delete_schema(model_collection)
         await self.transaction.apply_schema(model_collection)
 
-    async def remove_models(self, model_collection: "ModelCollection") -> None:
+    # Deprecated alias for backwards compatibility
+    use_models = sync_models
+
+    async def drop_models(self, model_collection: "ModelCollection") -> None:
         """Removes the schema for a model collection from the database within the transaction.
 
         This operation is performed within the transaction's scope. If the transaction
@@ -198,6 +201,9 @@ class OmmiTransaction:
             model_collection: The `ModelCollection` whose schema is to be removed.
         """
         await self.transaction.delete_schema(model_collection)
+
+    # Deprecated alias for backwards compatibility
+    remove_models = drop_models
 
     async def commit(self) -> None:
         """Explicitly commits the current transaction.
