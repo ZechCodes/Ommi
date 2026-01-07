@@ -93,7 +93,7 @@ async def demo_many_to_many():
         ).or_raise()
 
         # --- Lazily load tags for a post ---
-        retrieved_post1 = await db.find(Post.id == 1).one.or_raise()
+        retrieved_post1 = await db.find(Post.id == 1).one().or_raise()
         print(f"Post: '{retrieved_post1.title}'")
 
         print("Loading tags for Post 1...")
@@ -104,7 +104,7 @@ async def demo_many_to_many():
             print(f"- {tag.name}")
         
         # --- (Optional) Lazily load posts for a tag (if reverse relationship is defined) ---
-        # retrieved_tag_guide = await db.find(Tag.id == tag_guide.id).one.or_raise()
+        # retrieved_tag_guide = await db.find(Tag.id == tag_guide.id).one().or_raise()
         # print(f"\nTag: '{retrieved_tag_guide.name}'")
         # print(f"Loading posts for Tag '{retrieved_tag_guide.name}'...")
         # guide_posts = await retrieved_tag_guide.posts

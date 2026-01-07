@@ -72,9 +72,9 @@ async def manage_collections_example():
         await db.add(BlogPost(title="My Blog Post", author_id=1)).or_raise() # Assuming User ID 1 exists
         await db.add(LogEntry(message="Application started")).or_raise()
 
-        print(f"User count: {await db.find(User).count.or_raise()}")
-        print(f"BlogPost count: {await db.find(BlogPost).count.or_raise()}")
-        print(f"LogEntry count: {await db.find(LogEntry).count.or_raise()}")
+        print(f"User count: {await db.find(User).count().or_raise()}")
+        print(f"BlogPost count: {await db.find(BlogPost).count().or_raise()}")
+        print(f"LogEntry count: {await db.find(LogEntry).count().or_raise()}")
 
         # Teardown for explicit collections
         print("Removing tables for blog_feature_models...")

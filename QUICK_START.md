@@ -252,7 +252,7 @@ match result:
         print(f"Error: {exception}")
 
 # Or use or_use() for simpler handling
-user = await db.find(User.id == 1).one.or_use(None)
+user = await db.find(User.id == 1).one().or_use(None)
 if user:
     print(f"Found: {user.name}")
 
@@ -262,7 +262,7 @@ async for user in adult_users:
     print(f"Adult user: {user.name}")
 
 # Count records
-count = await db.find(User.age > 30).count.or_use(0)
+count = await db.find(User.age > 30).count().or_use(0)
 print(f"Users over 30: {count}")
 ```
 
@@ -273,7 +273,7 @@ print(f"Users over 30: {count}")
 await db.find(User.name == "Alice").update(age=31)
 
 # Update specific record
-user = await db.find(User.id == 1).one.or_use(None)
+user = await db.find(User.id == 1).one().or_use(None)
 if user:
     user.age = 32
     await user.save()
@@ -286,7 +286,7 @@ if user:
 await db.find(User.age < 18).delete()
 
 # Delete specific record  
-user = await db.find(User.id == 1).one.or_use(None)
+user = await db.find(User.id == 1).one().or_use(None)
 if user:
     await user.delete()
 ```
@@ -329,10 +329,10 @@ match result:
         print(f"Error: {exception}")
 
 # Use or_raise() for exception-based handling
-user = await db.find(User.id == 1).one.or_raise()
+user = await db.find(User.id == 1).one().or_raise()
 
 # Use or_use() for default values
-user = await db.find(User.id == 999).one.or_use(None)
+user = await db.find(User.id == 999).one().or_use(None)
 ```
 
 ## Complete Example
@@ -383,7 +383,7 @@ async def main():
         await db.add(post)
 
         # Query with relationships
-        post = await db.find(Post.title == "My First Post").one.or_use(None)
+        post = await db.find(Post.title == "My First Post").one().or_use(None)
         if post:
             author = await post.author
             print(f"Post '{post.title}' by {author.name}")

@@ -69,7 +69,7 @@ async def demo_one_to_one_lazy_load():
         await db.add(article_1, comment_1).or_raise()
 
         # Fetch a comment
-        retrieved_comment = await db.find(Comment.id == 101).one.or_raise()
+        retrieved_comment = await db.find(Comment.id == 101).one().or_raise()
         print(f"Comment: '{retrieved_comment.text}' (Article ID: {retrieved_comment.article_id})")
 
         # At this point, `retrieved_comment.article` has not been loaded from the DB.
@@ -125,7 +125,7 @@ async def demo_one_to_many_lazy_load():
         await db.add(article_2, comment_2a, comment_2b, comment_2c).or_raise()
 
         # Fetch an article
-        retrieved_article = await db.find(Article.id == 2).one.or_raise()
+        retrieved_article = await db.find(Article.id == 2).one().or_raise()
         print(f"Article: '{retrieved_article.title}'")
 
         # Load its comments lazily

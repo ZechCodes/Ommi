@@ -47,14 +47,14 @@ async def setup_and_use_models():
         await db.add(new_product).or_raise()
         print(f"Added product: {new_product}")
 
-        retrieved_product = await db.find(Product.product_id == 1).one.or_raise()
+        retrieved_product = await db.find(Product.product_id == 1).one().or_raise()
         print(f"Found: {retrieved_product}")
 
         await db.find(Product.product_id == 1).update(price=1150.00, stock_count=45).or_raise()
-        updated_product = await db.find(Product.product_id == 1).one.or_raise()
+        updated_product = await db.find(Product.product_id == 1).one().or_raise()
         print(f"Updated: {updated_product}")
 
-        available_count = await db.find(Product.stock_count > 0).count.or_raise()
+        available_count = await db.find(Product.stock_count > 0).count().or_raise()
         print(f"Products available: {available_count}")
 
         # Teardown for automatically managed tables depends on DB & driver.
@@ -78,11 +78,11 @@ async def setup_and_use_models():
 Once your models are defined and their tables created via `collection.setup_on(db)`:
 
 *   **Adding Objects:** `await db.add(YourModel(...)).or_raise()`
-*   **Finding Objects:** `await db.find(YourModel.field == value).one.or_raise()` (for a single object) or `await db.find(...).or_raise()` (for multiple, then iterate asynchronously).
+*   **Finding Objects:** `await db.find(YourModel.field == value).one().or_raise()` (for a single object) or `await db.find(...).or_raise()` (for multiple, then iterate asynchronously).
 *   **Updating Objects:** `await db.find(YourModel.field == value).update(new_field_value=...).or_raise()`
-*   **Deleting Objects:** `await db.find(YourModel.field == value).delete.or_raise()`
-*   **Counting Objects:** `await db.find(YourModel.field == value).count.or_raise()`
+*   **Deleting Objects:** `await db.find(YourModel.field == value).delete().or_raise()`
+*   **Counting Objects:** `await db.find(YourModel.field == value).count().or_raise()`
 
-All interactions are asynchronous and utilize the `Ommi` instance (`db`). The `.or_raise()` method is commonly used to raise an exception if the operation fails or finds no results (for `.one`).
+All interactions are asynchronous and utilize the `Ommi` instance (`db`). The `.or_raise()` method is commonly used to raise an exception if the operation fails or finds no results (for `.one()`).
 
 Next, learn about [Lazy Fields (Query Fields)](lazy-fields.md), which also work with these automatically managed models. 
