@@ -11,8 +11,8 @@ This approach is excellent for:
 
 Ommi provides specialized types within `ommi.models.query_fields` to define different kinds of lazy-loaded relationships:
 
-*   **`LazyLoadTheRelated[TargetModelType]`**: For one-to-one or many-to-one relationships. When awaited, it fetches a single instance of `TargetModelType` or `None`.
-*   **`LazyLoadEveryRelated[TargetModelType]`**: For one-to-many or many-to-many relationships. When awaited, it fetches a list of `TargetModelType` instances.
+*   **`Lazy[TargetModelType]`**: For one-to-one or many-to-one relationships. When awaited, it fetches a single instance of `TargetModelType` or `None`.
+*   **`LazyList[TargetModelType]`**: For one-to-many or many-to-many relationships. When awaited, it fetches a list of `TargetModelType` instances.
 
 These types are typically used in conjunction with `typing.Annotated` and `ommi.models.field_metadata.ReferenceTo` (for foreign keys). For many-to-many relationships, `ommi.models.query_fields.AssociateUsing` is also involved, as shown in the [Association Tables](association-tables.md) guide.
 
@@ -32,9 +32,9 @@ from typing import Annotated, Optional
 from ommi import Ommi, ommi_model
 from ommi.models.collections import ModelCollection
 from ommi.models.field_metadata import ReferenceTo
-from ommi.models.query_fields import LazyLoadTheRelated
-# `when` is not needed for basic inferred joins but useful for custom queries.
-# from ommi.query_ast import when
+from ommi.models.query_fields import Lazy
+# `where` is not needed for basic inferred joins but useful for custom queries.
+# from ommi.query_ast import where
 from ommi.ext.drivers.sqlite import SQLiteDriver # Example driver
 
 app_models = ModelCollection()
@@ -55,7 +55,7 @@ class Comment:
 
     # Query field to lazily load the related Article.
     # Ommi infers the join condition using `article_id` and its `ReferenceTo(Article)`.
-    article: "LazyLoadTheRelated[Article]"
+    article: "Lazy[Article]"
 
 
 async def demo_one_to_one_lazy_load():
@@ -95,8 +95,8 @@ An `Article` can have multiple `Comment`s. Ommi infers this relationship by find
 
 ```python
 # (Continuing from previous example, ensure Article and Comment models are defined)
-# Ensure necessary imports are present: LazyLoadEveryRelated
-# from ommi.models.query_fields import LazyLoadEveryRelated
+# Ensure necessary imports are present: LazyList
+# from ommi.models.query_fields import LazyList
 
 @ommi_model(collection=app_models) # Assuming app_models and Comment are already defined
 @dataclass
@@ -107,7 +107,7 @@ class Article:
     # Query field to lazily load all related Comments for this Article.
     # Ommi infers that it needs to find Comments where Comment.article_id == self.id
     # based on the ReferenceTo(Article) in the Comment model.
-    comments: "LazyLoadEveryRelated[Comment]"
+    comments: "LazyList[Comment]"
 
 
 async def demo_one_to_many_lazy_load():
@@ -145,16 +145,16 @@ async def demo_one_to_many_lazy_load():
 
 ## How it Works
 
-When you define an attribute like `article: "LazyLoadTheRelated[Article]"` on your `Comment` model:
+When you define an attribute like `article: "Lazy[Article]"` on your `Comment` model:
 
 1.  Ommi recognizes this as a query field during model processing.
 2.  It inspects the `Comment` model for fields that have a `ReferenceTo(Article)` annotation (in this case, `Comment.article_id`).
 3.  This foreign key relationship informs Ommi how to construct the query to fetch the related `Article` for a given `Comment` instance (i.e., `WHERE Article.id == comment_instance.article_id`).
-4.  When an instance of `Comment` is created, the `article` attribute becomes an instance of `LazyLoadTheRelated`.
+4.  When an instance of `Comment` is created, the `article` attribute becomes an instance of `Lazy`.
 5.  This object holds the context needed (like the parent `Comment` instance's ID and the inferred join condition) and has access to the database driver.
 6.  When you `await` this attribute (e.g., `await retrieved_comment.article`), it executes the inferred query to fetch the related `Article` data.
 
-A similar process occurs for `LazyLoadEveryRelated[Comment]` on the `Article` model, where Ommi looks for `Comment` models referencing the `Article`.
+A similar process occurs for `LazyList[Comment]` on the `Article` model, where Ommi looks for `Comment` models referencing the `Article`.
 
 This inference mechanism provides a clean and Pythonic way to declare and use lazily-loaded relationships, minimizing explicit query definitions for common relationship patterns.
 

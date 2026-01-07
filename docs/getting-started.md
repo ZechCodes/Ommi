@@ -231,10 +231,10 @@ class Post:
 # Explicitly control which models are set up and when
 async with Ommi(driver, allow_imlicit_model_setup=False) as db:
     # Set up only user-related models first
-    await db.use_models(user_collection)
-    
+    await db.sync_models(user_collection)
+
     # Later, set up blog models when needed
-    await db.use_models(blog_collection)
+    await db.sync_models(blog_collection)
     
     # Now you can use models from both collections
     await db.add(User(name="Alice", email="alice@example.com", age=30)).or_raise()
@@ -438,10 +438,10 @@ from ommi.query_ast import when
 # Using method chaining for AND conditions
 active_adults = db.find(User.age >= 18, User.status == "active")
 
-# Using when() for complex OR logic
+# Using where() for complex OR logic
 complex_query = db.find(
-    when(User.age < 18).Or(
-        when(User.status == "premium").And(User.age >= 65)
+    where(User.age < 18).or_(
+        where(User.status == "premium").and_(User.age >= 65)
     )
 )
 ```

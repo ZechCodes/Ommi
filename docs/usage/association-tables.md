@@ -2,7 +2,7 @@
 
 Many-to-many relationships (e.g., a `Student` can enroll in multiple `Courses`, and a `Course` can have many `Students`) are typically modeled using an intermediary **association table** (or join table).
 
-Ommi handles this by combining **Query Fields** with an explicit association model. You use `LazyLoadEveryRelated` along with `typing.Annotated` and `ommi.models.query_fields.AssociateUsing` to define these relationships.
+Ommi handles this by combining **Query Fields** with an explicit association model. You use `LazyList` along with `typing.Annotated` and `ommi.models.query_fields.AssociateUsing` to define these relationships.
 
 ## Defining Models for a Many-to-Many Relationship
 
@@ -23,8 +23,8 @@ from typing import Annotated, List, Optional
 from ommi import Ommi, ommi_model
 from ommi.models.collections import ModelCollection
 from ommi.models.field_metadata import ReferenceTo
-from ommi.models.query_fields import AssociateUsing, LazyLoadEveryRelated
-from ommi.query_ast import when # Not strictly needed for M2M definition, but good for other queries
+from ommi.models.query_fields import AssociateUsing, LazyList
+from ommi.query_ast import where # Not strictly needed for M2M definition, but good for other queries
 from ommi.ext.drivers.sqlite import SQLiteDriver
 
 app_models = ModelCollection()
@@ -36,10 +36,10 @@ class Post:
     title: str
 
     # Query Field for fetching all related Tags for this Post
-    # It uses LazyLoadEveryRelated with an Annotated type.
+    # It uses LazyList with an Annotated type.
     # AssociateUsing(PostTag) tells Ommi to use the PostTag model as the intermediary.
     # Ommi infers the join conditions from the foreign keys in PostTag.
-    tags: "LazyLoadEveryRelated[Annotated[Tag, AssociateUsing(PostTag)]]"
+    tags: "LazyList[Annotated[Tag, AssociateUsing(PostTag)]]"
 
 @ommi_model(collection=app_models)
 @dataclass
@@ -48,7 +48,7 @@ class Tag:
     name: str
 
     # Optional: Define the reverse relationship from Tag to Post
-    # posts: "LazyLoadEveryRelated[Annotated[Post, AssociateUsing(PostTag)]]"
+    # posts: "LazyList[Annotated[Post, AssociateUsing(PostTag)]]"
 
 @ommi_model(collection=app_models)
 @dataclass
@@ -123,8 +123,8 @@ async def demo_many_to_many():
 
 1.  **Association Model (`PostTag`):** This model is crucial. It explicitly defines the links between `Post` and `Tag` using foreign keys (defined with `Annotated[int, ReferenceTo(Model.id)]`).
 2.  **Query Field on Primary Model (`Post.tags`):**
-    *   It's typed with `LazyLoadEveryRelated` because a post can have multiple tags.
-    *   Inside `LazyLoadEveryRelated`, `Annotated[Tag, AssociateUsing(PostTag)]` is used.
+    *   It's typed with `LazyList` because a post can have multiple tags.
+    *   Inside `LazyList`, `Annotated[Tag, AssociateUsing(PostTag)]` is used.
         *   `Tag`: Specifies that the query field will return instances of `Tag`.
         *   `AssociateUsing(PostTag)`: Tells Ommi that `PostTag` is the intermediary table to use for resolving this relationship.
 3.  **Lazy Loading:** When you `await post_instance.tags`, Ommi:
@@ -140,7 +140,7 @@ This provides a declarative way to define complex many-to-many relationships, wi
 ## Key Aspects
 
 *   **Explicit Association Model:** You *must* define the association model (e.g., `PostTag`). This model can also hold additional attributes about the relationship itself (e.g., `created_at` timestamp).
-*   **`AssociateUsing`:** This is the key to linking the `LazyLoadEveryRelated` query field to the correct association table.
+*   **`AssociateUsing`:** This is the key to linking the `LazyList` query field to the correct association table.
 *   **`ReferenceTo`:** Used in the association model to define the foreign keys linking back to the primary models.
 *   **Bidirectional Relationships:** You can define the relationship on both sides (e.g., `Post.tags` and `Tag.posts`) using the same `AssociateUsing(PostTag)` mechanism.
 

@@ -5,7 +5,7 @@ By default, Ommi automatically manages the database schema for models defined wi
 ## Why Use Explicit Model Collections?
 
 *   **Modularity:** Group related models for different features or domains.
-*   **Granular Schema Management:** Set up or tear down tables for specific model groups independently using `await db.use_models(your_collection)`.
+*   **Granular Schema Management:** Set up or tear down tables for specific model groups independently using `await db.sync_models(your_collection)`.
 *   **Testing:** Easily manage schemas for specific test suites.
 *   **Clarity:** Clearly define which models belong together.
 
@@ -14,7 +14,7 @@ By default, Ommi automatically manages the database schema for models defined wi
 1.  **Import `ModelCollection`:** From `ommi.models.collections`.
 2.  **Instantiate Collections:** Create one or more `ModelCollection` instances (e.g., `core_models = ModelCollection()`, `feature_models = ModelCollection()`).
 3.  **Assign Models:** Use `@ommi_model(collection=your_collection_instance)` to associate models with an explicit collection.
-4.  **Manage Schema via `Ommi` instance:** Use `await db.use_models(your_collection_instance)` to create tables for that collection and `await db.remove_models(your_collection_instance)` to remove them.
+4.  **Manage Schema via `Ommi` instance:** Use `await db.sync_models(your_collection_instance)` to create tables for that collection and `await db.drop_models(your_collection_instance)` to remove them.
 
 ### Example
 
@@ -58,12 +58,12 @@ async def manage_collections_example():
     driver = SQLiteDriver.connect()
     async with Ommi(driver) as db:
         # Ommi automatically handles schema for LogEntry (default/global setup)
-        # For explicit collections, we call db.use_models() with the collection:
+        # For explicit collections, we call db.sync_models() with the collection:
         print("Setting up tables for core_app_models...")
-        await db.use_models(core_app_models)
+        await db.sync_models(core_app_models)
 
         print("Setting up tables for blog_feature_models...")
-        await db.use_models(blog_feature_models)
+        await db.sync_models(blog_feature_models)
 
         print("Explicit collection tables created. Default model tables (LogEntry) managed automatically.")
 
@@ -78,10 +78,10 @@ async def manage_collections_example():
 
         # Teardown for explicit collections
         print("Removing tables for blog_feature_models...")
-        await db.remove_models(blog_feature_models)
+        await db.drop_models(blog_feature_models)
 
         print("Removing tables for core_app_models...")
-        await db.remove_models(core_app_models)
+        await db.drop_models(core_app_models)
 
         # Tables for LogEntry (default/global) would remain if DB is persistent,
         # or be gone if DB is in-memory and connection is closed.
@@ -95,9 +95,9 @@ if __name__ == "__main__":
 ## Key Takeaways
 
 *   **`@ommi_model(collection=...)`**: Assigns a model to an explicit collection.
-*   **`await db.use_models(your_collection)`**: Essential for creating tables for models within an *explicit* collection.
-*   **`await db.remove_models(your_collection)`**: Removes tables for an *explicit* collection.
-*   **Automatic Handling for Default Models**: Models defined with `@ommi_model()` (no `collection`) have their schema managed implicitly by Ommi. You do *not* call `db.use_models()` without arguments for this purpose.
+*   **`await db.sync_models(your_collection)`**: Essential for creating tables for models within an *explicit* collection.
+*   **`await db.drop_models(your_collection)`**: Removes tables for an *explicit* collection.
+*   **Automatic Handling for Default Models**: Models defined with `@ommi_model()` (no `collection`) have their schema managed implicitly by Ommi. You do *not* call `db.sync_models()` without arguments for this purpose.
 *   **Mixing**: You can have some models in explicit collections and others handled by Ommi's default mechanism within the same application.
 
 Explicit model collections give you precise control when your project's complexity grows. 

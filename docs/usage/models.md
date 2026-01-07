@@ -71,7 +71,7 @@ async def setup_and_use_models():
 *   **`@dataclass`:** Standard for field definitions.
 *   **Type Hinting & Metadata (`typing.Annotated`):** For database-specific properties like `Key`, `Auto`, `StoreAs`, `ReferenceTo` from `ommi.models.field_metadata`. Combine using `|`.
 *   **Automatic Schema Handling (Default):** For models not assigned to an explicit collection, Ommi manages table creation/updates automatically. You don't need to call explicit setup functions for them.
-*   **Explicit Model Collections:** For more control, use explicit `ModelCollection` instances. These require `await db.use_models(your_collection)` for schema setup. (See the [Model Collections](model-collections.md) tutorial).
+*   **Explicit Model Collections:** For more control, use explicit `ModelCollection` instances. These require `await db.sync_models(your_collection)` for schema setup. (See the [Model Collections](model-collections.md) tutorial).
 
 ## Using Models with `Ommi`
 

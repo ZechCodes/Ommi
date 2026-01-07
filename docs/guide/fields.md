@@ -25,8 +25,8 @@
       heading_level: 3
       members: [
         "LazyQueryField",
-        "LazyLoadTheRelated",
-        "LazyLoadEveryRelated",
+        "Lazy",
+        "LazyList",
         "AssociateUsing",
         "AssociateOnReference",
       ]
