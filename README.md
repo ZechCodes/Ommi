@@ -1,5 +1,10 @@
 # Ommi
 
+[![PyPI version](https://img.shields.io/pypi/v/ommi?style=flat-square)](https://pypi.org/project/ommi/)
+[![Python versions](https://img.shields.io/pypi/pyversions/ommi?style=flat-square)](https://pypi.org/project/ommi/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/ZechCodes/Ommi?style=flat-square)](https://github.com/ZechCodes/Ommi/stargazers)
+
 > [!CAUTION]
 > Ommi is under construction and much of the functionality is undergoing frequent revision. There is no guarantee future
 > versions will be backwards compatible.
